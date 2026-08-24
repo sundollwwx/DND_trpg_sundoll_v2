@@ -1,7 +1,7 @@
 # 桑哆尔的世界 · Unity
 
-> 状态：**M3 地图制作器 MVP 最小切片已开始；M2 Windows/跨平台验收待补**
-> 更新日期：2026-08-24
+> 状态：**M3 最小切片已验证，完整退出条件未关闭；M2 Windows/跨平台验收阻塞**
+> 更新日期：2026-08-25
 
 这是“桑哆尔的世界”Unity 原生桌面产品的规划容器。目前包含方案文档、一次性 M0 Spike，以及正在推进的正式 Unity 工程 `SundollWorld`。
 
@@ -14,6 +14,7 @@
 - [M1 结果报告](./SundollWorld/Docs/M1-结果报告.md)
 - [M2 结果报告](./SundollWorld/Docs/M2-结果报告.md)
 - [M3 结果报告](./SundollWorld/Docs/M3-结果报告.md)
+- [v0.3 实施状态](./SundollWorld/Docs/v0.3-实施状态.md)
 
 ## 产品目标
 
@@ -32,9 +33,10 @@
 
 ## 正式工程当前状态
 
-- 正式产品代码位于 `SundollWorld/Assets/Sundoll/`，当前已包含 M1 最小纵向闭环、M2 存档基础设施和 M3 地图编辑最小切片。
+- 正式产品代码位于 `SundollWorld/Assets/Sundoll/`，当前已包含 M1 最小纵向闭环、M2 存档基础设施和已验证的 M3 地图编辑切片。
 - 启动场景为 `Assets/Sundoll/Scenes/M1Bootstrap.unity`；当前运行时面板仍是诊断用 UI。
-- M2 存档格式为 pre-v1；Windows、跨平台互开、地图编辑完整工具、性能和最终工作台 UI 尚未完成。
+- Git 基线已经建立；首个基线提交为 `b8d704f`，Unity 缓存与构建产物保持在本机且不纳入版本控制。
+- M2 存档格式为 pre-v1；Windows、跨平台互开、正式 Workbench、选择/复制旋转、门箱对象和性能门槛尚未完成。
 - 未复制任何旧项目素材。
 
-M0 Spike 已建立并完成独立数据层与 Unity Editor 验证；正式工程已完成 M1、M2 核心切片，并已开始 M3。由于当前没有 Windows 环境，M2 的跨平台限制保留在文档中，M3 先在 macOS 上推进。
+M0 已正式接受并保留 Windows/Finder 限制；正式工程已完成 M1、M2 核心切片和 M3 的已列明切片。最近一次完整 EditMode 证据为 33/33；2026-08-25 的独立批处理复跑被 Unity Licensing Client 阻塞，未生成新的 XML，因此不计为新的测试通过。当前没有 Windows 环境，M3 继续在 macOS 上推进。

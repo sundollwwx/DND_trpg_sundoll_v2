@@ -1,8 +1,19 @@
 # 桑哆尔的世界 · Unity 从零开发工作计划
 
-> 文档状态：v0.2，开工前评审稿  
-> 更新日期：2026-08-21  
-> 当前状态：**M3 地图制作器 MVP 最小切片已开始；M2 Windows、跨平台互开与压力验证待补**
+> 文档状态：v0.3，执行跟踪稿
+> 更新日期：2026-08-25
+> 当前状态：**M3 最小切片已验证，完整退出条件未关闭；M2 Windows 与跨平台矩阵阻塞**
+
+## 里程碑状态矩阵
+
+| 阶段 | Passed | Partial | Blocked |
+| --- | --- | --- | --- |
+| M0 | 数据验证、Unity Editor 验证、macOS IL2CPP、Windows Mono 构建 | Finder 到 Unity 的真实跨窗口拖放 | Windows IL2CPP 与 Windows 原子写盘 |
+| M1 | 纵向领域闭环、纯数据重建、4/4 测试、macOS universal build | 当前正式构建仍为 Mono | Windows Smoke |
+| M2 | Revision、HEAD、Journal、blob、便携包、8 项 M2 测试 | HEAD 恢复、并发/磁盘错误、异步保存 | Windows 强制退出、原子写盘与跨平台互开矩阵 |
+| M3 | 批量绘制、几何工具、五图层、Dirty Region、缓存；最近证据为 33/33 EditMode | 正式 Workbench、选择/复制旋转、门箱对象、性能门槛 | 本轮批处理受 Unity Licensing Client 阻塞，尚无新的 XML 证据 |
+
+详细执行证据与限制见 [v0.3 实施状态](./SundollWorld/Docs/v0.3-实施状态.md)。状态为 Partial 或 Blocked 的项目不得被解释为对应里程碑已经完整关闭。
 
 ## 0. 结论先行
 
