@@ -34,7 +34,11 @@ namespace Sundoll.Infrastructure
 
         public bool HasHead => File.Exists(HeadPath);
 
-        public M2SaveResult Save(M1WorldState state, string journalStreamId, long journalOperationSequence)
+        public M2SaveResult Save(
+            M1WorldState state,
+            string journalStreamId,
+            long journalOperationSequence,
+            long? expectedGeneration = null)
         {
             if (state == null)
             {
@@ -42,6 +46,11 @@ namespace Sundoll.Infrastructure
             }
 
             var previousHead = ReadHeadOrDefault();
+            if (expectedGeneration.HasValue && previousHead.generation != expectedGeneration.Value)
+            {
+                throw new M2GenerationConflictException(expectedGeneration.Value, previousHead.generation);
+            }
+
             journalStreamId = string.IsNullOrWhiteSpace(journalStreamId)
                 ? (string.IsNullOrWhiteSpace(previousHead.activeJournalStreamId) ? NewStreamId() : previousHead.activeJournalStreamId)
                 : journalStreamId;
@@ -136,41 +145,76 @@ namespace Sundoll.Infrastructure
 
         public M2LoadResult LoadBestAvailable()
         {
-            if (!HasHead)
-            {
-                return null;
-            }
-
-            var head = ReadHead();
             var diagnostics = new List<string>();
-            foreach (var candidate in new[] { head.activeSaveRevisionId, head.lastKnownGoodRevisionId })
+            var hadHead = HasHead;
+            M2Head head = null;
+            if (hadHead)
             {
-                if (string.IsNullOrWhiteSpace(candidate))
-                {
-                    continue;
-                }
-
                 try
                 {
-                    return LoadRevision(candidate, candidate == head.activeSaveRevisionId ? "HEAD" : "LKG", head);
+                    head = ReadHead();
                 }
-                catch (Exception exception)
+                catch (FileNotFoundException exception)
                 {
-                    diagnostics.Add(candidate + ": " + exception.Message);
+                    diagnostics.Add("HEAD: " + exception.Message);
+                }
+                catch (InvalidDataException exception)
+                {
+                    diagnostics.Add("HEAD: " + exception.Message);
+                }
+                catch (ArgumentException exception)
+                {
+                    diagnostics.Add("HEAD: " + exception.Message);
+                }
+            }
+            else
+            {
+                diagnostics.Add("HEAD: file was not found.");
+            }
+
+            if (head != null)
+            {
+                foreach (var candidate in new[] { head.activeSaveRevisionId, head.lastKnownGoodRevisionId })
+                {
+                    if (string.IsNullOrWhiteSpace(candidate))
+                    {
+                        continue;
+                    }
+
+                    try
+                    {
+                        return LoadRevision(candidate, candidate == head.activeSaveRevisionId ? "HEAD" : "LKG", head);
+                    }
+                    catch (Exception exception)
+                    {
+                        diagnostics.Add(candidate + ": " + exception.Message);
+                    }
                 }
             }
 
-            foreach (var directory in GetRevisionDirectoriesByNewest())
+            var directories = GetRevisionDirectoriesByNewest();
+            foreach (var directory in directories)
             {
                 var candidate = Path.GetFileName(directory);
-                if (candidate == head.activeSaveRevisionId || candidate == head.lastKnownGoodRevisionId)
+                if (head != null && (candidate == head.activeSaveRevisionId || candidate == head.lastKnownGoodRevisionId))
                 {
                     continue;
                 }
 
                 try
                 {
-                    var result = LoadRevision(candidate, "RecoveryCandidate", head);
+                    var source = head == null ? "RevisionScan" : "RecoveryCandidate";
+                    var candidateHead = head ?? new M2Head
+                    {
+                        activeSaveRevisionId = candidate,
+                        lastKnownGoodRevisionId = candidate
+                    };
+                    var result = LoadRevision(candidate, source, candidateHead);
+                    if (head == null)
+                    {
+                        result.head = CreateRecoveredHead(result.manifest);
+                    }
+
                     result.diagnostic = string.Join(" | ", diagnostics.ToArray());
                     return result;
                 }
@@ -178,6 +222,11 @@ namespace Sundoll.Infrastructure
                 {
                     diagnostics.Add(candidate + ": " + exception.Message);
                 }
+            }
+
+            if (!hadHead && directories.Count == 0)
+            {
+                return null;
             }
 
             throw new InvalidDataException("No valid M2 revision could be recovered. " + string.Join(" | ", diagnostics.ToArray()));
@@ -221,7 +270,10 @@ namespace Sundoll.Infrastructure
             }
 
             var head = JsonUtility.FromJson<M2Head>(File.ReadAllText(HeadPath, new UTF8Encoding(false)));
-            if (head == null || head.formatVersion != 1 || !M2FileIO.IsSafeIdentifier(head.activeSaveRevisionId))
+            if (head == null || head.formatVersion != 1 || head.generation < 0 ||
+                !M2FileIO.IsSafeIdentifier(head.activeSaveRevisionId) ||
+                !M2FileIO.IsSafeIdentifier(head.activeJournalStreamId) ||
+                (!string.IsNullOrWhiteSpace(head.lastKnownGoodRevisionId) && !M2FileIO.IsSafeIdentifier(head.lastKnownGoodRevisionId)))
             {
                 throw new InvalidDataException("M2 HEAD is invalid.");
             }
@@ -334,7 +386,45 @@ namespace Sundoll.Infrastructure
 
         private M2Head ReadHeadOrDefault()
         {
-            return HasHead ? ReadHead() : new M2Head { activeJournalStreamId = NewStreamId() };
+            if (HasHead)
+            {
+                try
+                {
+                    return ReadHead();
+                }
+                catch (FileNotFoundException)
+                {
+                    // HEAD disappeared between the existence check and read. Scan immutable revisions below.
+                }
+                catch (InvalidDataException)
+                {
+                    // A damaged HEAD must not hide valid immutable revisions.
+                }
+                catch (ArgumentException)
+                {
+                    // JsonUtility reports malformed JSON as an argument error on some Unity versions.
+                }
+            }
+
+            var recovered = LoadBestAvailable();
+            return recovered == null
+                ? new M2Head { activeJournalStreamId = NewStreamId() }
+                : recovered.head;
+        }
+
+        private static M2Head CreateRecoveredHead(M2RevisionManifest manifest)
+        {
+            return new M2Head
+            {
+                formatVersion = 1,
+                worldSchemaVersion = manifest.worldSchemaVersion,
+                activeSaveRevisionId = manifest.saveRevisionId,
+                activeJournalStreamId = M2FileIO.IsSafeIdentifier(manifest.journalStreamId)
+                    ? manifest.journalStreamId
+                    : NewStreamId(),
+                generation = 0,
+                lastKnownGoodRevisionId = manifest.saveRevisionId
+            };
         }
 
         private void EnsureLayout()

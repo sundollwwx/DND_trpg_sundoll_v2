@@ -98,6 +98,19 @@ namespace Sundoll.Infrastructure
         public long generation;
     }
 
+    public sealed class M2GenerationConflictException : InvalidOperationException
+    {
+        public M2GenerationConflictException(long expectedGeneration, long actualGeneration)
+            : base("HEAD generation conflict: expected " + expectedGeneration + ", actual " + actualGeneration + ".")
+        {
+            ExpectedGeneration = expectedGeneration;
+            ActualGeneration = actualGeneration;
+        }
+
+        public long ExpectedGeneration { get; }
+        public long ActualGeneration { get; }
+    }
+
     public sealed class M2LoadResult
     {
         public M1WorldState state;

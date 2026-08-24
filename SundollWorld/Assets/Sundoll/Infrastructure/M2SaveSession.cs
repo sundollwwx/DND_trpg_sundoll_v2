@@ -68,6 +68,7 @@ namespace Sundoll.Infrastructure
 
         public string ProjectRoot => projectStore.RootPath;
         public string ActiveRevisionId { get; private set; }
+        public long ActiveGeneration { get; private set; }
         public string LastAction { get; private set; } = "M2 尚未保存";
         public int PendingTransactions => autosavePolicy.PendingTransactions;
         public M2SaveResult LastSave { get; private set; }
@@ -94,6 +95,7 @@ namespace Sundoll.Infrastructure
             }
 
             session.currentState = loaded.state;
+            session.ActiveGeneration = loaded.head.generation;
             session.journalStreamId = loaded.head.activeJournalStreamId;
             session.journalStore = new M2JournalStore(projectRoot, session.journalStreamId);
             if (session.journalStore.TryLoadLatest(out var recovery) && recovery.batch.worldRevision > session.currentState.revision)
@@ -146,6 +148,7 @@ namespace Sundoll.Infrastructure
 
             currentState = loaded.state;
             ActiveRevisionId = loaded.manifest.saveRevisionId;
+            ActiveGeneration = loaded.head.generation;
             if (journalStore.TryLoadLatest(out var recovery) && recovery.batch.worldRevision > currentState.revision)
             {
                 currentState = recovery.state;
@@ -208,8 +211,9 @@ namespace Sundoll.Infrastructure
 
         private M2SaveResult SaveCurrent(string reason)
         {
-            LastSave = projectStore.Save(currentState, journalStreamId, journalStore.LastSequence);
+            LastSave = projectStore.Save(currentState, journalStreamId, journalStore.LastSequence, ActiveGeneration);
             ActiveRevisionId = LastSave.saveRevisionId;
+            ActiveGeneration = LastSave.generation;
             autosavePolicy.MarkSaved();
             LastAction = reason + "：" + ActiveRevisionId;
             return LastSave;

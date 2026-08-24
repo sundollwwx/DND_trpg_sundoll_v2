@@ -65,6 +65,7 @@ namespace Sundoll.Tests.EditMode
             var bus = M1VerticalSlice.CreateDemoBus();
             var stableStore = new M2ProjectStore(root);
             var first = stableStore.Save(bus.State, "stream-test", 0);
+            var stableHeadJson = File.ReadAllText(stableStore.HeadPath, new UTF8Encoding(false));
             bus.Execute(new M1MovePieceCommand("m2-failed-save", bus.State.revision, 5, 0));
 
             var failingStore = new M2ProjectStore(root, point =>
@@ -79,6 +80,67 @@ namespace Sundoll.Tests.EditMode
             var loaded = stableStore.LoadActive();
             Assert.That(loaded.manifest.saveRevisionId, Is.EqualTo(first.saveRevisionId));
             Assert.That(loaded.state.pieceInstance.location.x, Is.EqualTo(1));
+            Assert.That(File.ReadAllText(stableStore.HeadPath, new UTF8Encoding(false)), Is.EqualTo(stableHeadJson));
+        }
+
+        [Test]
+        public void MissingHeadRecoversNewestValidImmutableRevisionWithoutRewritingHead()
+        {
+            var bus = M1VerticalSlice.CreateDemoBus();
+            var store = new M2ProjectStore(root);
+            store.Save(bus.State, "stream-test", 0);
+            bus.Execute(new M1MovePieceCommand("newest", bus.State.revision, 6, 0));
+            var newest = store.Save(bus.State, "stream-test", 1);
+            File.Delete(store.HeadPath);
+
+            var recovered = store.LoadBestAvailable();
+
+            Assert.That(recovered.source, Is.EqualTo("RevisionScan"));
+            Assert.That(recovered.manifest.saveRevisionId, Is.EqualTo(newest.saveRevisionId));
+            Assert.That(recovered.state.pieceInstance.location.x, Is.EqualTo(6));
+            Assert.That(recovered.head.generation, Is.EqualTo(0));
+            Assert.That(File.Exists(store.HeadPath), Is.False);
+        }
+
+        [Test]
+        public void CorruptHeadRecoversNewestValidImmutableRevisionWithoutRewritingHead()
+        {
+            var bus = M1VerticalSlice.CreateDemoBus();
+            var store = new M2ProjectStore(root);
+            store.Save(bus.State, "stream-test", 0);
+            bus.Execute(new M1MovePieceCommand("newest", bus.State.revision, 7, 0));
+            var newest = store.Save(bus.State, "stream-test", 1);
+            const string corruptHead = "{\"formatVersion\":";
+            File.WriteAllText(store.HeadPath, corruptHead, new UTF8Encoding(false));
+
+            var recovered = store.LoadBestAvailable();
+
+            Assert.That(recovered.source, Is.EqualTo("RevisionScan"));
+            Assert.That(recovered.manifest.saveRevisionId, Is.EqualTo(newest.saveRevisionId));
+            Assert.That(recovered.state.pieceInstance.location.x, Is.EqualTo(7));
+            Assert.That(File.ReadAllText(store.HeadPath, new UTF8Encoding(false)), Is.EqualTo(corruptHead));
+        }
+
+        [Test]
+        public void ExpectedGenerationConflictDoesNotWriteRevisionOrReplaceHead()
+        {
+            var bus = M1VerticalSlice.CreateDemoBus();
+            var store = new M2ProjectStore(root);
+            var first = store.Save(bus.State, "stream-test", 0);
+            bus.Execute(new M1MovePieceCommand("fresh-writer", bus.State.revision, 6, 0));
+            var second = store.Save(bus.State, "stream-test", 1);
+            var stableHeadJson = File.ReadAllText(store.HeadPath, new UTF8Encoding(false));
+            var revisionCount = Directory.GetDirectories(store.RevisionsPath).Length;
+            bus.Execute(new M1MovePieceCommand("stale-writer", bus.State.revision, 8, 0));
+
+            var conflict = Assert.Throws<M2GenerationConflictException>(() =>
+                store.Save(bus.State, "stream-test", 2, first.generation));
+
+            Assert.That(conflict.ExpectedGeneration, Is.EqualTo(first.generation));
+            Assert.That(conflict.ActualGeneration, Is.EqualTo(second.generation));
+            Assert.That(Directory.GetDirectories(store.RevisionsPath).Length, Is.EqualTo(revisionCount));
+            Assert.That(File.ReadAllText(store.HeadPath, new UTF8Encoding(false)), Is.EqualTo(stableHeadJson));
+            Assert.That(store.LoadActive().state.pieceInstance.location.x, Is.EqualTo(6));
         }
 
         [Test]
