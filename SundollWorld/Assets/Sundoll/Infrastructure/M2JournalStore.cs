@@ -17,6 +17,11 @@ namespace Sundoll.Infrastructure
     {
         private readonly string streamPath;
         private readonly int maxEntriesPerSegment;
+        private readonly object syncRoot = new object();
+        private bool cacheInitialized;
+        private long cachedLastSequence;
+        private int cachedSegmentIndex;
+        private int cachedSegmentEntryCount;
 
         public M2JournalStore(string projectRoot, string streamId, int maxEntriesPerSegment = 25)
         {
@@ -40,7 +45,17 @@ namespace Sundoll.Infrastructure
         public string StreamId { get; }
         public string StreamPath => streamPath;
 
-        public long LastSequence => FindLatestSequence();
+        public long LastSequence
+        {
+            get
+            {
+                lock (syncRoot)
+                {
+                    EnsureCacheInitialized();
+                    return cachedLastSequence;
+                }
+            }
+        }
 
         public long Append(string commandId, string description, M1WorldState state, string operationType = "StateMutation")
         {
@@ -49,35 +64,41 @@ namespace Sundoll.Infrastructure
                 throw new ArgumentNullException(nameof(state));
             }
 
-            var sequence = FindLatestSequence() + 1;
-            var batch = new M2AcceptedOperationBatch
+            lock (syncRoot)
             {
-                commandId = commandId,
-                description = description,
-                operationType = operationType,
-                worldRevision = state.revision,
-                operationSequence = sequence,
-                stateJson = JsonUtility.ToJson(state, false),
-                canonicalStateHash = M2CanonicalStateHasher.Compute(state)
-            };
-            var payloadJson = JsonUtility.ToJson(batch, false);
-            var record = new M2JournalRecord
-            {
-                operationSequence = sequence,
-                payloadJson = payloadJson,
-                payloadSha256 = M2FileIO.Sha256Utf8(payloadJson)
-            };
+                EnsureCacheInitialized();
+                var sequence = checked(cachedLastSequence + 1);
+                var batch = new M2AcceptedOperationBatch
+                {
+                    commandId = commandId,
+                    description = description,
+                    operationType = operationType,
+                    worldRevision = state.revision,
+                    operationSequence = sequence,
+                    stateJson = JsonUtility.ToJson(state, false),
+                    canonicalStateHash = M2CanonicalStateHasher.Compute(state)
+                };
+                var payloadJson = JsonUtility.ToJson(batch, false);
+                var record = new M2JournalRecord
+                {
+                    operationSequence = sequence,
+                    payloadJson = payloadJson,
+                    payloadSha256 = M2FileIO.Sha256Utf8(payloadJson)
+                };
 
-            var line = JsonUtility.ToJson(record, false) + "\n";
-            var segmentPath = FindWritableSegmentPath();
-            using (var stream = new FileStream(segmentPath, FileMode.Append, FileAccess.Write, FileShare.Read))
-            {
-                var bytes = new UTF8Encoding(false).GetBytes(line);
-                stream.Write(bytes, 0, bytes.Length);
-                stream.Flush(true);
+                var line = JsonUtility.ToJson(record, false) + "\n";
+                var segmentPath = GetWritableSegmentPath();
+                using (var stream = new FileStream(segmentPath, FileMode.Append, FileAccess.Write, FileShare.Read))
+                {
+                    var bytes = new UTF8Encoding(false).GetBytes(line);
+                    stream.Write(bytes, 0, bytes.Length);
+                    stream.Flush(true);
+                }
+
+                cachedLastSequence = sequence;
+                cachedSegmentEntryCount++;
+                return sequence;
             }
-
-            return sequence;
         }
 
         public void AppendCorruptTail(string rawText)
@@ -87,20 +108,48 @@ namespace Sundoll.Infrastructure
                 throw new ArgumentNullException(nameof(rawText));
             }
 
-            var path = FindWritableSegmentPath();
-            using (var stream = new FileStream(path, FileMode.Append, FileAccess.Write, FileShare.Read))
+            lock (syncRoot)
             {
-                var bytes = new UTF8Encoding(false).GetBytes(rawText);
-                stream.Write(bytes, 0, bytes.Length);
-                stream.Flush(true);
+                EnsureCacheInitialized();
+                var path = GetWritableSegmentPath();
+                using (var stream = new FileStream(path, FileMode.Append, FileAccess.Write, FileShare.Read))
+                {
+                    var bytes = new UTF8Encoding(false).GetBytes(rawText);
+                    stream.Write(bytes, 0, bytes.Length);
+                    stream.Flush(true);
+                }
+
+                if (rawText.Length > 0)
+                {
+                    // A fault may leave the tail without a newline. Seal this segment so a later
+                    // valid record can never be concatenated onto the corrupt bytes.
+                    cachedSegmentEntryCount = maxEntriesPerSegment;
+                }
             }
         }
 
         public bool TryLoadLatest(out M2JournalRecovery recovery)
         {
+            lock (syncRoot)
+            {
+                return ScanSegments(out recovery);
+            }
+        }
+
+        private void EnsureCacheInitialized()
+        {
+            if (!cacheInitialized)
+            {
+                ScanSegments(out _);
+            }
+        }
+
+        private bool ScanSegments(out M2JournalRecovery recovery)
+        {
             recovery = null;
-            var latestSequence = -1L;
-            foreach (var path in GetSegmentPaths())
+            var latestSequence = 0L;
+            var paths = GetSegmentPaths();
+            foreach (var path in paths)
             {
                 string[] lines;
                 try
@@ -114,17 +163,8 @@ namespace Sundoll.Infrastructure
 
                 foreach (var line in lines)
                 {
-                    if (string.IsNullOrWhiteSpace(line))
-                    {
-                        continue;
-                    }
-
-                    if (!TryParse(line, out var candidate))
-                    {
-                        continue;
-                    }
-
-                    if (candidate.batch.operationSequence <= latestSequence)
+                    if (string.IsNullOrWhiteSpace(line) || !TryParse(line, out var candidate) ||
+                        candidate.batch.operationSequence <= latestSequence)
                     {
                         continue;
                     }
@@ -134,53 +174,27 @@ namespace Sundoll.Infrastructure
                 }
             }
 
+            cachedLastSequence = latestSequence;
+            cachedSegmentIndex = paths.Count == 0 ? 0 : ParseSegmentIndex(paths[paths.Count - 1]);
+            cachedSegmentEntryCount = paths.Count == 0 ? 0 : CountLines(paths[paths.Count - 1]);
+            if (paths.Count > 0 && !EndsWithNewline(paths[paths.Count - 1]))
+            {
+                cachedSegmentEntryCount = maxEntriesPerSegment;
+            }
+
+            cacheInitialized = true;
             return recovery != null;
         }
 
-        private string FindWritableSegmentPath()
+        private string GetWritableSegmentPath()
         {
-            var segments = GetSegmentPaths();
-            if (segments.Count == 0)
+            if (cachedSegmentEntryCount >= maxEntriesPerSegment)
             {
-                return Path.Combine(streamPath, "segment-000000.log");
+                cachedSegmentIndex = checked(cachedSegmentIndex + 1);
+                cachedSegmentEntryCount = 0;
             }
 
-            var last = segments[segments.Count - 1];
-            var count = CountLines(last);
-            if (count < maxEntriesPerSegment)
-            {
-                return last;
-            }
-
-            var nextIndex = ParseSegmentIndex(last) + 1;
-            return Path.Combine(streamPath, "segment-" + nextIndex.ToString("D6") + ".log");
-        }
-
-        private long FindLatestSequence()
-        {
-            var latest = 0L;
-            foreach (var path in GetSegmentPaths())
-            {
-                string[] lines;
-                try
-                {
-                    lines = File.ReadAllLines(path, new UTF8Encoding(false));
-                }
-                catch (IOException)
-                {
-                    continue;
-                }
-
-                foreach (var line in lines)
-                {
-                    if (TryParse(line, out var candidate) && candidate.batch.operationSequence > latest)
-                    {
-                        latest = candidate.batch.operationSequence;
-                    }
-                }
-            }
-
-            return latest;
+            return Path.Combine(streamPath, "segment-" + cachedSegmentIndex.ToString("D6") + ".log");
         }
 
         private bool TryParse(string line, out M2JournalRecovery recovery)
@@ -242,6 +256,27 @@ namespace Sundoll.Infrastructure
             catch (IOException)
             {
                 return 0;
+            }
+        }
+
+        private static bool EndsWithNewline(string path)
+        {
+            try
+            {
+                using (var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+                {
+                    if (stream.Length == 0)
+                    {
+                        return true;
+                    }
+
+                    stream.Seek(-1, SeekOrigin.End);
+                    return stream.ReadByte() == '\n';
+                }
+            }
+            catch (IOException)
+            {
+                return false;
             }
         }
 

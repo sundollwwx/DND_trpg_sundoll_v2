@@ -98,6 +98,45 @@ namespace Sundoll.Tests.EditMode
         }
 
         [Test]
+        public void JournalSequenceAndSegmentsStayContinuousAcrossRolloverAndReopen()
+        {
+            var state = M1VerticalSlice.CreateDemoBus().State;
+            var journal = new M2JournalStore(root, "stream-test", 2);
+
+            for (var sequence = 1; sequence <= 5; sequence++)
+            {
+                Assert.That(journal.Append("command-" + sequence, "batch", state), Is.EqualTo(sequence));
+            }
+
+            Assert.That(journal.LastSequence, Is.EqualTo(5));
+            Assert.That(Directory.GetFiles(journal.StreamPath, "segment-*.log").Length, Is.EqualTo(3));
+
+            var reopened = new M2JournalStore(root, "stream-test", 2);
+            Assert.That(reopened.LastSequence, Is.EqualTo(5));
+            Assert.That(reopened.Append("command-6", "batch", state), Is.EqualTo(6));
+            Assert.That(reopened.TryLoadLatest(out var recovery), Is.True);
+            Assert.That(recovery.batch.operationSequence, Is.EqualTo(6));
+        }
+
+        [Test]
+        public void JournalAppendAfterUnterminatedCorruptTailStartsANewSegment()
+        {
+            var bus = M1VerticalSlice.CreateDemoBus();
+            var journal = new M2JournalStore(root, "stream-test", 3);
+            journal.Append("first", "first", bus.State);
+            journal.AppendCorruptTail("{\"formatVersion\":1,\"payloadJson\":");
+
+            bus.Execute(new M1MovePieceCommand("second", bus.State.revision, 7, 0));
+            var reopened = new M2JournalStore(root, "stream-test", 3);
+            Assert.That(reopened.Append("second", "second", bus.State), Is.EqualTo(2));
+
+            Assert.That(reopened.TryLoadLatest(out var recovery), Is.True);
+            Assert.That(recovery.batch.operationSequence, Is.EqualTo(2));
+            Assert.That(recovery.state.pieceInstance.location.x, Is.EqualTo(7));
+            Assert.That(Directory.GetFiles(reopened.StreamPath, "segment-*.log").Length, Is.EqualTo(2));
+        }
+
+        [Test]
         public void ContentBlobsAreAddressedByHashAndVerifiedOnRead()
         {
             var blobs = new M2ContentBlobStore(root);
