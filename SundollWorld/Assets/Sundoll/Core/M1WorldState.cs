@@ -32,10 +32,115 @@ namespace Sundoll.Core
     [Serializable]
     public sealed class M1MapDocument
     {
+        [NonSerialized] private Dictionary<M3MapCellKey, int> runtimeCellIndex;
+        [NonSerialized] private int runtimeIndexedCellCount = -1;
+        [NonSerialized] private int runtimeIndexBuildCount;
+
         public string id;
         public int width;
         public int height;
         public List<M1MapCell> cells = new List<M1MapCell>();
+
+        public int RuntimeIndexBuildCount => runtimeIndexBuildCount;
+
+        internal bool TryGetRuntimeCell(M3MapCellKey key, out M1MapCell cell)
+        {
+            EnsureRuntimeIndex();
+            if (runtimeCellIndex.TryGetValue(key, out var index))
+            {
+                cell = cells[index];
+                return true;
+            }
+
+            cell = null;
+            return false;
+        }
+
+        internal void SetRuntimeCell(M3MapCellKey key, string contentId)
+        {
+            EnsureRuntimeIndex();
+            if (runtimeCellIndex.TryGetValue(key, out var index))
+            {
+                cells[index].layerId = key.layerId;
+                cells[index].contentId = contentId;
+                return;
+            }
+
+            cells.Add(new M1MapCell
+            {
+                x = key.x,
+                y = key.y,
+                layerId = key.layerId,
+                contentId = contentId
+            });
+            runtimeCellIndex.Add(key, cells.Count - 1);
+            runtimeIndexedCellCount = cells.Count;
+        }
+
+        internal void RemoveRuntimeCell(M3MapCellKey key)
+        {
+            EnsureRuntimeIndex();
+            if (!runtimeCellIndex.TryGetValue(key, out var index))
+            {
+                return;
+            }
+
+            var lastIndex = cells.Count - 1;
+            if (index != lastIndex)
+            {
+                var movedCell = cells[lastIndex];
+                cells[index] = movedCell;
+                var movedKey = new M3MapCellKey(
+                    movedCell.x,
+                    movedCell.y,
+                    M3MapLayerIds.NormalizeLayerId(movedCell.layerId, movedCell.contentId));
+                runtimeCellIndex[movedKey] = index;
+            }
+
+            cells.RemoveAt(lastIndex);
+            runtimeCellIndex.Remove(key);
+            runtimeIndexedCellCount = cells.Count;
+        }
+
+        private void EnsureRuntimeIndex()
+        {
+            if (cells == null)
+            {
+                cells = new List<M1MapCell>();
+            }
+
+            if (runtimeCellIndex != null && runtimeIndexedCellCount == cells.Count)
+            {
+                return;
+            }
+
+            runtimeCellIndex = new Dictionary<M3MapCellKey, int>();
+            var canonicalCells = new List<M1MapCell>(cells.Count);
+            foreach (var cell in cells)
+            {
+                if (cell == null)
+                {
+                    continue;
+                }
+
+                cell.layerId = M3MapLayerIds.NormalizeLayerId(cell.layerId, cell.contentId);
+                var key = new M3MapCellKey(cell.x, cell.y, cell.layerId);
+                if (runtimeCellIndex.TryGetValue(key, out var existingIndex))
+                {
+                    canonicalCells[existingIndex] = cell;
+                }
+                else
+                {
+                    runtimeCellIndex.Add(key, canonicalCells.Count);
+                    canonicalCells.Add(cell);
+                }
+            }
+
+            cells.Clear();
+            cells.AddRange(canonicalCells);
+            runtimeIndexedCellCount = cells.Count;
+            runtimeIndexBuildCount++;
+        }
     }
 
     [Serializable]

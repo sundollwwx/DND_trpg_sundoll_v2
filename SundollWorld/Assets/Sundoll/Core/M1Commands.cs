@@ -2,6 +2,11 @@ using System;
 
 namespace Sundoll.Core
 {
+    public interface IWorldChangeSetCommand
+    {
+        WorldChangeSet CreateChangeSet(M1WorldState state);
+    }
+
     public abstract class M1Command
     {
         protected M1Command(string commandId, int baseRevision)

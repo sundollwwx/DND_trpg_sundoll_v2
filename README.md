@@ -39,4 +39,4 @@
 - M2 存档格式为 pre-v1；Windows、跨平台互开、正式 Workbench、选择/复制旋转、门箱对象和性能门槛尚未完成。
 - 未复制任何旧项目素材。
 
-M0 已正式接受并保留 Windows/Finder 限制；正式工程已完成 M1、M2 核心切片和 M3 的已列明切片。2026-08-25 重启失效的 Unity 版本专用 Licensing Client 后，完整 EditMode 已刷新为 38/38 通过，M2 Persistence 定向为 13/13。当前没有 Windows 环境，M3 继续在 macOS 上推进。
+M0 已正式接受并保留 Windows/Finder 限制；正式工程已完成 M1、M2 核心切片和 M3 的已列明切片。2026-08-25 重启失效的 Unity 版本专用 Licensing Client 后，完整 EditMode 已刷新为 39/39 通过；M2 Persistence 定向为 13/13，M3 定向为 22/22。当前没有 Windows 环境，M3 继续在 macOS 上推进。

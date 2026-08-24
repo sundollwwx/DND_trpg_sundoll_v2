@@ -71,15 +71,9 @@ namespace Sundoll.Application
                 commandBus.State.revision,
                 mutations));
 
-            if (receipt.accepted)
+            if (receipt.accepted && !receipt.duplicate)
             {
-                var dirtyRegion = new M3DirtyRegion();
-                foreach (var mutation in mutations)
-                {
-                    dirtyRegion.Include(mutation.x, mutation.y);
-                }
-
-                LastDirtyBounds = dirtyRegion.Bounds.ClampToMap(State.map.width, State.map.height);
+                UpdateDirtyBoundsFromLastChangeSet();
             }
 
             return receipt;
@@ -98,7 +92,7 @@ namespace Sundoll.Application
             var undone = commandBus.Undo();
             if (undone)
             {
-                LastDirtyBounds = M3GridViewport.FullMapBounds(State.map.width, State.map.height);
+                UpdateDirtyBoundsFromLastChangeSet();
             }
 
             return undone;
@@ -109,10 +103,24 @@ namespace Sundoll.Application
             var redone = commandBus.Redo();
             if (redone)
             {
-                LastDirtyBounds = M3GridViewport.FullMapBounds(State.map.width, State.map.height);
+                UpdateDirtyBoundsFromLastChangeSet();
             }
 
             return redone;
+        }
+
+        private void UpdateDirtyBoundsFromLastChangeSet()
+        {
+            var changeSet = commandBus.LastChangeSet;
+            if (changeSet == null || !changeSet.HasMapBounds)
+            {
+                LastDirtyBounds = M3GridViewport.FullMapBounds(State.map.width, State.map.height);
+                return;
+            }
+
+            changeSet.GetMapBounds(out var minX, out var minY, out var maxX, out var maxY);
+            LastDirtyBounds = new M3GridBounds(minX, minY, maxX, maxY)
+                .ClampToMap(State.map.width, State.map.height);
         }
     }
 }

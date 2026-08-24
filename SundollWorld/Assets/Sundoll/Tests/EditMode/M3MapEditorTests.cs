@@ -6,6 +6,7 @@ using NUnit.Framework;
 using Sundoll.Application;
 using Sundoll.Core;
 using Sundoll.Infrastructure;
+using UnityEngine;
 
 namespace Sundoll.Tests.EditMode
 {
@@ -181,10 +182,12 @@ namespace Sundoll.Tests.EditMode
         }
 
         [Test]
-        public void DirtyRegionTracksBatchAndUndoInvalidatesTheMap()
+        public void DirtyRegionAndDeltaUndoStayScopedToTheChangedCells()
         {
             var bus = M1VerticalSlice.CreateDemoBus();
             var editor = new M3MapEditorFacade(bus);
+            var mapReference = bus.State.map;
+            var publishedReference = bus.State.publishedMap;
 
             editor.PaintCells(new List<M3CellMutation>
             {
@@ -197,9 +200,54 @@ namespace Sundoll.Tests.EditMode
             Assert.That(editor.LastDirtyBounds.MinY, Is.EqualTo(2));
             Assert.That(editor.LastDirtyBounds.MaxX, Is.EqualTo(4));
             Assert.That(editor.LastDirtyBounds.MaxY, Is.EqualTo(5));
+            Assert.That(bus.LastChangeSet.formatVersion, Is.EqualTo(1));
+            Assert.That(bus.LastChangeSet.MapCellDeltaCount, Is.EqualTo(2));
+            Assert.That(bus.State.map.RuntimeIndexBuildCount, Is.EqualTo(1));
 
             Assert.That(editor.Undo(), Is.True);
-            Assert.That(editor.LastDirtyBounds, Is.EqualTo(M3GridViewport.FullMapBounds(8, 8)));
+            Assert.That(bus.State.map, Is.SameAs(mapReference));
+            Assert.That(bus.State.publishedMap, Is.SameAs(publishedReference));
+            Assert.That(editor.LastDirtyBounds.MinX, Is.EqualTo(1));
+            Assert.That(editor.LastDirtyBounds.MinY, Is.EqualTo(2));
+            Assert.That(editor.LastDirtyBounds.MaxX, Is.EqualTo(4));
+            Assert.That(editor.LastDirtyBounds.MaxY, Is.EqualTo(5));
+            Assert.That(bus.State.map.RuntimeIndexBuildCount, Is.EqualTo(1));
+
+            Assert.That(editor.Redo(), Is.True);
+            Assert.That(bus.State.map, Is.SameAs(mapReference));
+            Assert.That(bus.State.publishedMap, Is.SameAs(publishedReference));
+            Assert.That(editor.LastDirtyBounds.MinX, Is.EqualTo(1));
+            Assert.That(editor.LastDirtyBounds.MaxX, Is.EqualTo(4));
+            Assert.That(bus.State.map.RuntimeIndexBuildCount, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void WorldChangeSetJsonRoundTripAppliesForwardAndInverse()
+        {
+            var bus = M1VerticalSlice.CreateDemoBus();
+            var beforeHash = M2CanonicalStateHasher.Compute(bus.State);
+            var command = new M3PaintCellsCommand(
+                "round-trip-delta",
+                bus.State.revision,
+                new[]
+                {
+                    new M3CellMutation(2, 3, M3MapLayerIds.Terrain, "terrain-water", false),
+                    new M3CellMutation(4, 5, M3MapLayerIds.Wall, "wall-solid", false)
+                });
+
+            var serialized = JsonUtility.ToJson(command.CreateChangeSet(bus.State), false);
+            var changeSet = JsonUtility.FromJson<WorldChangeSet>(serialized);
+
+            Assert.That(changeSet.formatVersion, Is.EqualTo(1));
+            Assert.That(changeSet.MapCellDeltaCount, Is.EqualTo(2));
+            changeSet.ApplyForward(bus.State);
+            Assert.That(FindCell(bus.State.map, 2, 3, M3MapLayerIds.Terrain).contentId, Is.EqualTo("terrain-water"));
+            Assert.That(FindCell(bus.State.map, 4, 5, M3MapLayerIds.Wall).contentId, Is.EqualTo("wall-solid"));
+
+            changeSet.ApplyInverse(bus.State);
+            Assert.That(FindCell(bus.State.map, 2, 3, M3MapLayerIds.Terrain).contentId, Is.EqualTo("placeholder-ground"));
+            Assert.That(FindCell(bus.State.map, 4, 5, M3MapLayerIds.Wall), Is.Null);
+            Assert.That(M2CanonicalStateHasher.Compute(bus.State), Is.EqualTo(beforeHash));
         }
 
         [Test]
@@ -416,6 +464,7 @@ namespace Sundoll.Tests.EditMode
 
             Assert.That(receipt.accepted, Is.True);
             Assert.That(bus.State.map.cells.Count, Is.EqualTo(256 * 256));
+            Assert.That(bus.State.map.RuntimeIndexBuildCount, Is.EqualTo(1));
             Assert.That(FindCell(bus.State.map, 0, 0).contentId, Is.EqualTo("terrain-ground"));
             Assert.That(FindCell(bus.State.map, 255, 255).contentId, Is.EqualTo("terrain-ground"));
 

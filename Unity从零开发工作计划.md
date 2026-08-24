@@ -11,7 +11,7 @@
 | M0 | 数据验证、Unity Editor 验证、macOS IL2CPP、Windows Mono 构建 | Finder 到 Unity 的真实跨窗口拖放 | Windows IL2CPP 与 Windows 原子写盘 |
 | M1 | 纵向领域闭环、纯数据重建、4/4 测试、macOS universal build | 当前正式构建仍为 Mono | Windows Smoke |
 | M2 | Revision、HEAD/Revision 扫描恢复、generation 冲突保护、Journal、blob、便携包；M2 定向 13/13 | 异步保存、真实无权限/磁盘满测试 | Windows 强制退出、原子写盘与跨平台互开矩阵 |
-| M3 | 批量绘制、几何工具、五图层、Dirty Region、缓存；最新全量证据为 38/38 EditMode | 正式 Workbench、选择/复制旋转、门箱对象、性能门槛 | Windows 性能与构建矩阵 |
+| M3 | 批量绘制、几何工具、五图层、运行时索引、Delta Undo、Dirty Region、缓存；最新全量证据为 39/39 EditMode | 正式 Workbench、选择/复制旋转、门箱对象、性能门槛 | Windows 性能与构建矩阵 |
 
 详细执行证据与限制见 [v0.3 实施状态](./SundollWorld/Docs/v0.3-实施状态.md)。状态为 Partial 或 Blocked 的项目不得被解释为对应里程碑已经完整关闭。
 
@@ -853,7 +853,7 @@ Loopback 通过后再专项比较 Unity Multiplayer/Transport、Mirror、FishNet
 
 ### M3：地图制作器 MVP（3–4 周）
 
-当前进度：已完成 M3 首轮批量格子编辑、原子校验、擦除、Undo/Redo、发布内容版本、M2 保存接入、运行时视口、连续笔画、直线/矩形/填充切片、正式五图层数据模型、Dirty Region 跟踪、脏区局部内容缓存、可见区遍历、运行时图层显示/锁定状态和 Workspace State 持久化；最新完整 Unity EditMode 验证为 38/38 通过，并包含 256×256 保存重载基准测试。Texture/Tilemap 局部像素重绘、人工缩放/平移体验、真正的 2D Workbench 视口和性能 Chunk/门槛仍未完成，详见 [M3 结果报告](./SundollWorld/Docs/M3-结果报告.md)。
+当前进度：已完成 M3 首轮批量格子编辑、原子校验、擦除、Delta Undo/Redo、版本化 `WorldChangeSet`、运行时格子索引、发布内容版本、M2 保存接入、运行时视口、连续笔画、直线/矩形/填充切片、正式五图层数据模型、Dirty Region 跟踪、脏区局部内容缓存、可见区遍历、运行时图层显示/锁定状态和 Workspace State 持久化；最新完整 Unity EditMode 验证为 39/39 通过，并包含 256×256 保存重载基准测试。Texture/Tilemap 局部像素重绘、人工缩放/平移体验、真正的 2D Workbench 视口和性能门槛仍未完成，详见 [M3 结果报告](./SundollWorld/Docs/M3-结果报告.md)。
 
 工作：
 

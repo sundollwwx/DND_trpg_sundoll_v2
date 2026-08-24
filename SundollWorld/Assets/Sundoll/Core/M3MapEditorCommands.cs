@@ -125,7 +125,120 @@ namespace Sundoll.Core
         }
     }
 
-    public sealed class M3PaintCellsCommand : M1Command
+    [Serializable]
+    public sealed class M3MapCellDelta
+    {
+        public int x;
+        public int y;
+        public string layerId;
+        public bool beforeExists;
+        public string beforeContentId;
+        public bool afterExists;
+        public string afterContentId;
+
+        public M3MapCellKey Key => new M3MapCellKey(x, y, layerId);
+    }
+
+    [Serializable]
+    public sealed class WorldChangeSet
+    {
+        public int formatVersion = 1;
+        public List<M3MapCellDelta> mapCellDeltas = new List<M3MapCellDelta>();
+
+        public WorldChangeSet()
+        {
+        }
+
+        public WorldChangeSet(IEnumerable<M3MapCellDelta> deltas)
+        {
+            if (deltas == null)
+            {
+                throw new ArgumentNullException(nameof(deltas));
+            }
+
+            foreach (var delta in deltas)
+            {
+                if (delta == null)
+                {
+                    throw new ArgumentException("World change set cannot contain a null delta.", nameof(deltas));
+                }
+
+                mapCellDeltas.Add(new M3MapCellDelta
+                {
+                    x = delta.x,
+                    y = delta.y,
+                    layerId = delta.layerId,
+                    beforeExists = delta.beforeExists,
+                    beforeContentId = delta.beforeContentId,
+                    afterExists = delta.afterExists,
+                    afterContentId = delta.afterContentId
+                });
+            }
+        }
+
+        public int MapCellDeltaCount => mapCellDeltas.Count;
+        public bool HasMapBounds => mapCellDeltas.Count > 0;
+
+        public void GetMapBounds(out int minX, out int minY, out int maxX, out int maxY)
+        {
+            if (!HasMapBounds)
+            {
+                throw new InvalidOperationException("World change set has no map bounds.");
+            }
+
+            minX = maxX = mapCellDeltas[0].x;
+            minY = maxY = mapCellDeltas[0].y;
+            for (var index = 1; index < mapCellDeltas.Count; index++)
+            {
+                var delta = mapCellDeltas[index];
+                minX = Math.Min(minX, delta.x);
+                minY = Math.Min(minY, delta.y);
+                maxX = Math.Max(maxX, delta.x);
+                maxY = Math.Max(maxY, delta.y);
+            }
+        }
+
+        public void ApplyForward(M1WorldState state)
+        {
+            Apply(state, true);
+        }
+
+        public void ApplyInverse(M1WorldState state)
+        {
+            Apply(state, false);
+        }
+
+        private void Apply(M1WorldState state, bool forward)
+        {
+            if (state == null)
+            {
+                throw new ArgumentNullException(nameof(state));
+            }
+
+            if (state.map == null)
+            {
+                throw new InvalidOperationException("Map does not exist.");
+            }
+
+            for (var offset = 0; offset < mapCellDeltas.Count; offset++)
+            {
+                var index = forward ? offset : mapCellDeltas.Count - 1 - offset;
+                var delta = mapCellDeltas[index];
+                var exists = forward ? delta.afterExists : delta.beforeExists;
+                var contentId = forward ? delta.afterContentId : delta.beforeContentId;
+                if (exists)
+                {
+                    state.map.SetRuntimeCell(delta.Key, contentId);
+                }
+                else
+                {
+                    state.map.RemoveRuntimeCell(delta.Key);
+                }
+            }
+        }
+    }
+
+    public sealed class M3PaintCellsCommand : M1Command, IWorldChangeSetCommand
     {
         private readonly List<M3CellMutation> mutations;
 
@@ -163,6 +276,16 @@ namespace Sundoll.Core
 
         public override void Apply(M1WorldState state)
         {
+            CreateChangeSet(state).ApplyForward(state);
+        }
+
+        public WorldChangeSet CreateChangeSet(M1WorldState state)
+        {
+            if (state == null)
+            {
+                throw new ArgumentNullException(nameof(state));
+            }
+
             if (state.map == null)
             {
                 throw new InvalidOperationException("Map does not exist.");
@@ -170,48 +293,31 @@ namespace Sundoll.Core
 
             ValidateMutations(state.map);
 
-            var cellsByKey = new Dictionary<M3MapCellKey, M1MapCell>();
-            foreach (var cell in state.map.cells)
-            {
-                if (cell != null)
-                {
-                    cell.layerId = M3MapLayerIds.NormalizeLayerId(cell.layerId, cell.contentId);
-                    cellsByKey[new M3MapCellKey(cell.x, cell.y, cell.layerId)] = cell;
-                }
-            }
-
+            var deltasByKey = new Dictionary<M3MapCellKey, M3MapCellDelta>();
+            var orderedDeltas = new List<M3MapCellDelta>();
             foreach (var mutation in mutations)
             {
                 var key = new M3MapCellKey(mutation.x, mutation.y, mutation.layerId);
-                if (mutation.erase)
+                if (!deltasByKey.TryGetValue(key, out var delta))
                 {
-                    cellsByKey.Remove(key);
-                }
-                else
-                {
-                    if (!cellsByKey.TryGetValue(key, out var cell))
+                    var beforeExists = state.map.TryGetRuntimeCell(key, out var beforeCell);
+                    delta = new M3MapCellDelta
                     {
-                        cell = new M1MapCell
-                        {
-                            x = mutation.x,
-                            y = mutation.y,
-                            layerId = mutation.layerId
-                        };
-                        cellsByKey.Add(key, cell);
-                    }
-
-                    cell.layerId = mutation.layerId;
-                    cell.contentId = mutation.contentId;
+                        x = mutation.x,
+                        y = mutation.y,
+                        layerId = mutation.layerId,
+                        beforeExists = beforeExists,
+                        beforeContentId = beforeExists ? beforeCell.contentId : null
+                    };
+                    deltasByKey.Add(key, delta);
+                    orderedDeltas.Add(delta);
                 }
+
+                delta.afterExists = !mutation.erase;
+                delta.afterContentId = mutation.erase ? null : mutation.contentId;
             }
 
-            state.map.cells.Clear();
-            var sortedCells = new List<M1MapCell>(cellsByKey.Values);
-            sortedCells.Sort(CompareCells);
-            foreach (var cell in sortedCells)
-            {
-                state.map.cells.Add(cell);
-            }
+            return new WorldChangeSet(orderedDeltas);
         }
 
         private void ValidateMutations(M1MapDocument map)
@@ -235,27 +341,5 @@ namespace Sundoll.Core
             }
         }
 
-        private static int CompareCells(M1MapCell left, M1MapCell right)
-        {
-            var result = left.x.CompareTo(right.x);
-            if (result != 0)
-            {
-                return result;
-            }
-
-            result = left.y.CompareTo(right.y);
-            if (result != 0)
-            {
-                return result;
-            }
-
-            result = string.CompareOrdinal(left.layerId, right.layerId);
-            if (result != 0)
-            {
-                return result;
-            }
-
-            return string.CompareOrdinal(left.contentId, right.contentId);
-        }
     }
 }

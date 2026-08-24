@@ -55,6 +55,16 @@ namespace Sundoll.Application
 
         public M1CommandReceipt Execute(M1WorldState state, M1Command command)
         {
+            return Execute(state, command, () => command.Apply(state));
+        }
+
+        internal M1CommandReceipt Execute(M1WorldState state, M1Command command, Action apply)
+        {
+            if (apply == null)
+            {
+                throw new ArgumentNullException(nameof(apply));
+            }
+
             if (receipts.TryGetValue(command.CommandId, out var existing))
             {
                 return existing.CloneForDuplicate();
@@ -83,7 +93,7 @@ namespace Sundoll.Application
                 return receipt;
             }
 
-            command.Apply(state);
+            apply();
             state.revision++;
             receipt.accepted = true;
             receipt.revisionAfter = state.revision;
@@ -98,6 +108,7 @@ namespace Sundoll.Application
         {
             public M1WorldState before;
             public M1WorldState after;
+            public WorldChangeSet changeSet;
             public string description;
         }
 
@@ -114,25 +125,41 @@ namespace Sundoll.Application
 
         public M1WorldState State => state;
         public string LastAction { get; private set; } = "尚未执行操作";
+        public WorldChangeSet LastChangeSet { get; private set; }
 
         public M1CommandReceipt Execute(M1Command command)
         {
-            var before = state.DeepClone();
-            var receipt = authority.Execute(state, command);
+            var changeSetCommand = command as IWorldChangeSetCommand;
+            var before = changeSetCommand == null ? state.DeepClone() : null;
+            WorldChangeSet changeSet = null;
+            var receipt = changeSetCommand == null
+                ? authority.Execute(state, command)
+                : authority.Execute(state, command, () =>
+                {
+                    changeSet = changeSetCommand.CreateChangeSet(state);
+                    changeSet.ApplyForward(state);
+                });
             if (receipt.accepted && !receipt.duplicate)
             {
                 undoHistory.Add(new HistoryEntry
                 {
                     before = before,
-                    after = state.DeepClone(),
+                    after = changeSet == null ? state.DeepClone() : null,
+                    changeSet = changeSet,
                     description = command.Description
                 });
                 redoHistory.Clear();
+                LastChangeSet = changeSet;
                 LastAction = command.Description;
             }
             else if (!receipt.accepted)
             {
+                LastChangeSet = null;
                 LastAction = receipt.message;
+            }
+            else
+            {
+                LastChangeSet = null;
             }
 
             return receipt;
@@ -150,8 +177,17 @@ namespace Sundoll.Application
             undoHistory.RemoveAt(undoHistory.Count - 1);
             redoHistory.Add(entry);
             var nextRevision = state.revision + 1;
-            state.CopyFrom(entry.before);
+            if (entry.changeSet == null)
+            {
+                state.CopyFrom(entry.before);
+            }
+            else
+            {
+                entry.changeSet.ApplyInverse(state);
+            }
+
             state.revision = nextRevision;
+            LastChangeSet = entry.changeSet;
             LastAction = "撤销：" + entry.description;
             return true;
         }
@@ -168,8 +204,17 @@ namespace Sundoll.Application
             redoHistory.RemoveAt(redoHistory.Count - 1);
             undoHistory.Add(entry);
             var nextRevision = state.revision + 1;
-            state.CopyFrom(entry.after);
+            if (entry.changeSet == null)
+            {
+                state.CopyFrom(entry.after);
+            }
+            else
+            {
+                entry.changeSet.ApplyForward(state);
+            }
+
             state.revision = nextRevision;
+            LastChangeSet = entry.changeSet;
             LastAction = "重做：" + entry.description;
             return true;
         }
