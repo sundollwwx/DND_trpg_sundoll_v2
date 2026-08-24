@@ -1,0 +1,33 @@
+# Unity generated state
+**/[Ll]ibrary/
+**/[Tt]emp/
+**/[Ll]ogs/
+**/[Uu]ser[Ss]ettings/
+**/[Bb]uild/
+**/[Bb]uilds/
+**/[Oo]bj/
+**/[Mm]emoryCaptures/
+
+# IDE and OS metadata
+.idea/
+.vs/
+.vscode/
+.DS_Store
+*.user
+*.suo
+*.csproj
+*.sln
+*.slnx
+*.pidb
+*.booproj
+*.svd
+*.pdb
+
+# Unity generated solution metadata
+sysinfo.txt
+*.pidb.meta
+
+# Local test/build output
+TestResults/
+*.tmp
+*.bak

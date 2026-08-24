@@ -1,0 +1,16 @@
+{
+  "name": "Sundoll.Infrastructure",
+  "rootNamespace": "Sundoll.Infrastructure",
+  "references": [
+    "Sundoll.Core",
+    "Sundoll.Application"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": []
+}

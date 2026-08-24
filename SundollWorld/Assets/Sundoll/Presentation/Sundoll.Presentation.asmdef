@@ -1,0 +1,17 @@
+{
+  "name": "Sundoll.Presentation",
+  "rootNamespace": "Sundoll.Presentation",
+  "references": [
+    "Sundoll.Core",
+    "Sundoll.Application",
+    "Sundoll.Infrastructure"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": []
+}

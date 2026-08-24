@@ -1,0 +1,73 @@
+using NUnit.Framework;
+using Sundoll.Application;
+using Sundoll.Core;
+
+namespace Sundoll.Tests.EditMode
+{
+    public sealed class M1VerticalSliceTests
+    {
+        [Test]
+        public void VerticalSliceCreatesPublishedMapBoardAndOnBoardPiece()
+        {
+            var bus = M1VerticalSlice.CreateDemoBus();
+
+            Assert.That(bus.State.HasCompleteVerticalSlice(), Is.True);
+            Assert.That(bus.State.publishedMap.sourceMapId, Is.EqualTo(bus.State.map.id));
+            Assert.That(bus.State.scenario.publishedMapContentId, Is.EqualTo(bus.State.publishedMap.id));
+            Assert.That(bus.State.board.scenarioId, Is.EqualTo(bus.State.scenario.id));
+            Assert.That(bus.State.pieceInstance.location.kind, Is.EqualTo(M1PieceLocationKind.OnBoard));
+            Assert.That(bus.State.pieceInstance.location.x, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void UndoAndRedoRestorePiecePosition()
+        {
+            var bus = M1VerticalSlice.CreateDemoBus();
+            var beforeMove = bus.State.pieceInstance.location.x;
+
+            var receipt = bus.Execute(new M1MovePieceCommand("test-move", bus.State.revision, 3, 0));
+            Assert.That(receipt.accepted, Is.True);
+            Assert.That(bus.State.pieceInstance.location.x, Is.EqualTo(3));
+
+            Assert.That(bus.Undo(), Is.True);
+            Assert.That(bus.State.pieceInstance.location.x, Is.EqualTo(beforeMove));
+            Assert.That(bus.Redo(), Is.True);
+            Assert.That(bus.State.pieceInstance.location.x, Is.EqualTo(3));
+        }
+
+        [Test]
+        public void LocalAuthorityIsIdempotentAndRejectsStaleCommand()
+        {
+            var state = M1WorldState.CreateEmpty();
+            var authority = new M1LocalAuthority(new AllowAllRulePolicy());
+            var create = new M1CreateProjectCommand("same-command", 0, "project", "Test", "map");
+
+            var first = authority.Execute(state, create);
+            var retry = authority.Execute(state, create);
+            var stale = authority.Execute(state, new M1PaintCellCommand("stale", 0, 0, 0, "ground"));
+
+            Assert.That(first.accepted, Is.True);
+            Assert.That(retry.accepted, Is.True);
+            Assert.That(retry.duplicate, Is.True);
+            Assert.That(state.revision, Is.EqualTo(1));
+            Assert.That(stale.conflict, Is.True);
+            Assert.That(state.map.cells, Is.Empty);
+        }
+
+        [Test]
+        public void SnapshotRoundTripRebuildsOnlyFromPureData()
+        {
+            var bus = M1VerticalSlice.CreateDemoBus();
+            var store = new M1MemorySnapshotStore();
+            store.Save(bus.State);
+
+            var loaded = store.Load();
+
+            Assert.That(loaded.HasCompleteVerticalSlice(), Is.True);
+            Assert.That(loaded.project.id, Is.EqualTo(bus.State.project.id));
+            Assert.That(loaded.pieceInstance.location.x, Is.EqualTo(bus.State.pieceInstance.location.x));
+            Assert.That(loaded, Is.Not.SameAs(bus.State));
+            Assert.That(loaded.pieceInstance, Is.Not.SameAs(bus.State.pieceInstance));
+        }
+    }
+}

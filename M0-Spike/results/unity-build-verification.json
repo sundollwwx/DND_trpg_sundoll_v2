@@ -1,0 +1,24 @@
+{
+  "editorVersion": "6000.3.22f1",
+  "macOS": {
+    "backend": "IL2CPP",
+    "result": "Succeeded",
+    "errors": 0,
+    "warnings": 1,
+    "artifact": "/private/var/folders/dh/xp4l4nx10llfk2dbrg2p8v5m0000gn/T/SundollUnity-M0-MacIL2CPP/M0Smoke.app",
+    "architectures": ["arm64", "x86_64"],
+    "evidence": "Mach-O universal binary"
+  },
+  "windows": {
+    "backend": "Mono2x",
+    "result": "Succeeded",
+    "errors": 0,
+    "warnings": 19,
+    "artifact": "/private/var/folders/dh/xp4l4nx10llfk2dbrg2p8v5m0000gn/T/SundollUnity-M0-WindowsMono/M0Smoke.exe",
+    "evidence": "PE32+ executable (GUI) x86-64"
+  },
+  "windowsIL2CPP": {
+    "result": "not-run",
+    "reason": "Unity 6.3 installation contains WindowsStandaloneSupport but no Windows IL2CPP module; requires Windows machine or CI."
+  }
+}

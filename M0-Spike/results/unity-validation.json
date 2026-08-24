@@ -1,0 +1,38 @@
+{
+    "generatedUtc": "2026-08-24T03:02:01.3212120Z",
+    "unityVersion": "6000.3.22f1",
+    "projectPath": "/Users/sundoll/Desktop/SundollUnity/M0-Spike/UnityProjectFresh",
+    "passed": true,
+    "checks": [
+        {
+            "name": "project-and-serialization",
+            "passed": true,
+            "detail": "ProjectVersion and JsonUtility round trip passed; UTF-8 state is stable.",
+            "durationMs": 1.171
+        },
+        {
+            "name": "ui-toolkit-workbench",
+            "passed": true,
+            "detail": "VisualElement workbench, Chinese labels, inspector binding, and headless drag payload adapter passed.",
+            "durationMs": 28.0901
+        },
+        {
+            "name": "tilemap-vs-visible-grid",
+            "passed": true,
+            "detail": "Tilemap 64x64: 2.87 ms; visible custom grid: 104 points in 0.00 ms.",
+            "durationMs": 5.0949
+        },
+        {
+            "name": "runtime-image-import",
+            "passed": true,
+            "detail": "Runtime LoadImage, 32x32 thumbnail, 68-byte limit, release, and SHA-256 passed.",
+            "durationMs": 2.9241
+        },
+        {
+            "name": "atomic-replace-and-durable-flush",
+            "passed": true,
+            "detail": "UTF-8 Chinese path, Flush(true), revision replace, and interrupted temp-write recovery passed on macOS.",
+            "durationMs": 1.3369
+        }
+    ]
+}

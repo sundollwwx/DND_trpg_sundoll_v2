@@ -1,0 +1,40 @@
+# 桑哆尔的世界 · Unity
+
+> 状态：**M3 地图制作器 MVP 最小切片已开始；M2 Windows/跨平台验收待补**
+> 更新日期：2026-08-24
+
+这是“桑哆尔的世界”Unity 原生桌面产品的规划容器。目前包含方案文档、一次性 M0 Spike，以及正在推进的正式 Unity 工程 `SundollWorld`。
+
+## 文档
+
+- [Unity 从零开发工作计划](./Unity从零开发工作计划.md)
+- [简明汇报](./简明汇报.md)
+- [M0 一次性技术验证](./M0-Spike/README.md)
+- [正式工程上下文](./SundollWorld/Docs/AI/UnityProjectContext.md)
+- [M1 结果报告](./SundollWorld/Docs/M1-结果报告.md)
+- [M2 结果报告](./SundollWorld/Docs/M2-结果报告.md)
+- [M3 结果报告](./SundollWorld/Docs/M3-结果报告.md)
+
+## 产品目标
+
+制作一个本地优先、规则无关的 2D 桌面棋盘工作台，包含：
+
+- 地图制作器
+- 主控台
+- 项目棋子库
+- 棋子和场景的通用交互
+- 可靠的新格式存档与恢复
+- 后续规则模块和联机系统的清晰接入口
+
+## Greenfield 边界
+
+历史网页项目只作为产品思想和交互经验参考。新 Unity 项目不会读取或复制其代码、地图、棋子、存档、图片或音乐，不开发旧格式导入器，也不承担旧数据备份与兼容任务。
+
+## 正式工程当前状态
+
+- 正式产品代码位于 `SundollWorld/Assets/Sundoll/`，当前已包含 M1 最小纵向闭环、M2 存档基础设施和 M3 地图编辑最小切片。
+- 启动场景为 `Assets/Sundoll/Scenes/M1Bootstrap.unity`；当前运行时面板仍是诊断用 UI。
+- M2 存档格式为 pre-v1；Windows、跨平台互开、地图编辑完整工具、性能和最终工作台 UI 尚未完成。
+- 未复制任何旧项目素材。
+
+M0 Spike 已建立并完成独立数据层与 Unity Editor 验证；正式工程已完成 M1、M2 核心切片，并已开始 M3。由于当前没有 Windows 环境，M2 的跨平台限制保留在文档中，M3 先在 macOS 上推进。
