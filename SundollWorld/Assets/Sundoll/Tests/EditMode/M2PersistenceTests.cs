@@ -42,6 +42,48 @@ namespace Sundoll.Tests.EditMode
         }
 
         [Test]
+        public void VersionedCommandEnvelopeRoundTripsM3CommandAndPayload()
+        {
+            var bus = M1VerticalSlice.CreateDemoBus();
+            var command = new M3PaintCellsCommand(
+                "envelope-m3-paint",
+                bus.State.revision,
+                new[] { new M3CellMutation(4, 4, M3MapLayerIds.Wall, "wall-solid", false) });
+
+            var envelope = M2CommandEnvelopeCodec.Encode(command);
+            var roundTripEnvelope = JsonUtility.FromJson<M1CommandEnvelope>(JsonUtility.ToJson(envelope, false));
+            var decoded = M2CommandEnvelopeCodec.Decode(roundTripEnvelope);
+            var receipt = bus.Execute(decoded);
+
+            Assert.That(roundTripEnvelope.formatVersion, Is.EqualTo(1));
+            Assert.That(roundTripEnvelope.commandType, Is.EqualTo("M3.PaintCells"));
+            Assert.That(roundTripEnvelope.payloadVersion, Is.EqualTo(1));
+            Assert.That(receipt.accepted, Is.True);
+            Assert.That(bus.State.map.cells.Exists(cell => cell.x == 4 && cell.y == 4 && cell.contentId == "wall-solid"), Is.True);
+        }
+
+        [Test]
+        public void AcceptedOperationBatchCarriesEnvelopeAndWorldChangeSet()
+        {
+            var bus = M1VerticalSlice.CreateDemoBus();
+            var command = new M3PaintCellsCommand(
+                "accepted-batch-m3-paint",
+                bus.State.revision,
+                new[] { new M3CellMutation(5, 5, M3MapLayerIds.Object, "object-marker", false) });
+            var receipt = bus.Execute(command);
+
+            var batch = M2CommandEnvelopeCodec.CreateAcceptedBatch(receipt);
+            var roundTrip = JsonUtility.FromJson<AcceptedOperationBatch>(JsonUtility.ToJson(batch, false));
+
+            Assert.That(roundTrip.formatVersion, Is.EqualTo(1));
+            Assert.That(roundTrip.commandEnvelope.commandType, Is.EqualTo("M3.PaintCells"));
+            Assert.That(roundTrip.changeSet.formatVersion, Is.EqualTo(1));
+            Assert.That(roundTrip.changeSet.MapCellDeltaCount, Is.EqualTo(1));
+            Assert.That(roundTrip.revisionAfter, Is.EqualTo(roundTrip.revisionBefore + 1));
+            Assert.That(M2CommandEnvelopeCodec.Decode(roundTrip.commandEnvelope).CommandId, Is.EqualTo(command.CommandId));
+        }
+
+        [Test]
         public void ProjectStoreKeepsImmutableRevisionsAndValidHead()
         {
             var bus = M1VerticalSlice.CreateDemoBus();

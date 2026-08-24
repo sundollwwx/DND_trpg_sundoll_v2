@@ -22,6 +22,9 @@ namespace Sundoll.Core
 
         public string CommandId { get; }
         public int BaseRevision { get; }
+        public virtual string CommandType => null;
+        public virtual int PayloadVersion => 0;
+        public virtual object CreatePayload() => null;
         public abstract string Description { get; }
         public abstract void Apply(M1WorldState state);
     }
@@ -41,6 +44,14 @@ namespace Sundoll.Core
         }
 
         public override string Description => "创建项目与空白地图";
+        public override string CommandType => "M1.CreateProject";
+        public override int PayloadVersion => 1;
+        public override object CreatePayload() => new M1CreateProjectCommandPayload
+        {
+            projectId = projectId,
+            projectName = projectName,
+            mapId = mapId
+        };
 
         public override void Apply(M1WorldState state)
         {
@@ -69,6 +80,14 @@ namespace Sundoll.Core
         }
 
         public override string Description => $"绘制格子 ({x}, {y})";
+        public override string CommandType => "M1.PaintCell";
+        public override int PayloadVersion => 1;
+        public override object CreatePayload() => new M1PaintCellCommandPayload
+        {
+            x = x,
+            y = y,
+            contentId = contentId
+        };
 
         public override void Apply(M1WorldState state)
         {
@@ -120,6 +139,12 @@ namespace Sundoll.Core
         }
 
         public override string Description => "发布地图内容版本";
+        public override string CommandType => "M1.PublishMapContent";
+        public override int PayloadVersion => 1;
+        public override object CreatePayload() => new M1PublishMapContentCommandPayload
+        {
+            contentVersionId = contentVersionId
+        };
 
         public override void Apply(M1WorldState state)
         {
@@ -162,6 +187,13 @@ namespace Sundoll.Core
         }
 
         public override string Description => "创建场景与棋盘实例";
+        public override string CommandType => "M1.CreateScenario";
+        public override int PayloadVersion => 1;
+        public override object CreatePayload() => new M1CreateScenarioCommandPayload
+        {
+            scenarioId = scenarioId,
+            boardId = boardId
+        };
 
         public override void Apply(M1WorldState state)
         {
@@ -208,6 +240,15 @@ namespace Sundoll.Core
         }
 
         public override string Description => "创建几何占位棋子";
+        public override string CommandType => "M1.CreatePiece";
+        public override int PayloadVersion => 1;
+        public override object CreatePayload() => new M1CreatePieceCommandPayload
+        {
+            definitionId = definitionId,
+            instanceId = instanceId,
+            displayName = displayName,
+            visualKey = visualKey
+        };
 
         public override void Apply(M1WorldState state)
         {
@@ -244,6 +285,9 @@ namespace Sundoll.Core
         }
 
         public override string Description => $"放置棋子到 ({x}, {y})";
+        public override string CommandType => "M1.PlacePiece";
+        public override int PayloadVersion => 1;
+        public override object CreatePayload() => new M1PlacePieceCommandPayload { x = x, y = y };
 
         public override void Apply(M1WorldState state)
         {
@@ -275,6 +319,9 @@ namespace Sundoll.Core
         }
 
         public override string Description => $"移动棋子到 ({x}, {y})";
+        public override string CommandType => "M1.MovePiece";
+        public override int PayloadVersion => 1;
+        public override object CreatePayload() => new M1MovePieceCommandPayload { x = x, y = y };
 
         public override void Apply(M1WorldState state)
         {

@@ -273,6 +273,23 @@ namespace Sundoll.Core
         }
 
         public override string Description => $"编辑 {mutations.Count} 个格子";
+        public override string CommandType => "M3.PaintCells";
+        public override int PayloadVersion => 1;
+        public override object CreatePayload()
+        {
+            var payload = new M3PaintCellsCommandPayload();
+            foreach (var mutation in mutations)
+            {
+                payload.mutations.Add(new M3CellMutation(
+                    mutation.x,
+                    mutation.y,
+                    mutation.layerId,
+                    mutation.contentId,
+                    mutation.erase));
+            }
+
+            return payload;
+        }
 
         public override void Apply(M1WorldState state)
         {

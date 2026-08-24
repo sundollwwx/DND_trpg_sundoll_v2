@@ -27,6 +27,8 @@ namespace Sundoll.Application
         public int revisionBefore;
         public int revisionAfter;
         public string message;
+        public M1Command command;
+        public WorldChangeSet changeSet;
 
         public M1CommandReceipt CloneForDuplicate()
         {
@@ -38,7 +40,9 @@ namespace Sundoll.Application
                 conflict = conflict,
                 revisionBefore = revisionBefore,
                 revisionAfter = revisionAfter,
-                message = message
+                message = message,
+                command = command,
+                changeSet = changeSet
             };
         }
     }
@@ -75,7 +79,8 @@ namespace Sundoll.Application
                 commandId = command.CommandId,
                 revisionBefore = state.revision,
                 revisionAfter = state.revision,
-                message = command.Description
+                message = command.Description,
+                command = command
             };
 
             if (command.BaseRevision != state.revision)
@@ -141,6 +146,7 @@ namespace Sundoll.Application
                 });
             if (receipt.accepted && !receipt.duplicate)
             {
+                receipt.changeSet = changeSet;
                 undoHistory.Add(new HistoryEntry
                 {
                     before = before,
