@@ -9,7 +9,7 @@ namespace Sundoll.Infrastructure
     public sealed class M2Head
     {
         public int formatVersion = 1;
-        public int worldSchemaVersion = 1;
+        public int worldSchemaVersion = 2;
         public string activeSaveRevisionId;
         public string activeJournalStreamId;
         public long generation;
@@ -28,7 +28,7 @@ namespace Sundoll.Infrastructure
     public sealed class M2RevisionManifest
     {
         public int formatVersion = 1;
-        public int worldSchemaVersion = 1;
+        public int worldSchemaVersion = 2;
         public string saveRevisionId;
         public string parentRevisionId;
         public string journalStreamId;

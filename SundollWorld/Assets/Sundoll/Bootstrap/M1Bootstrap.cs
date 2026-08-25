@@ -3,15 +3,21 @@ using Sundoll.Application;
 using Sundoll.Infrastructure;
 using Sundoll.Presentation;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace Sundoll.Bootstrap
 {
     public sealed class M1Bootstrap : MonoBehaviour
     {
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void EnsureBootstrap()
         {
-            if (FindFirstObjectByType<M1Bootstrap>() != null)
+            if (SceneManager.GetActiveScene().name == "M3Workbench")
+            {
+                return;
+            }
+
+            if (FindFirstObjectByType<M1Bootstrap>() != null ||
+                FindFirstObjectByType<M3WorkbenchRoot>() != null)
             {
                 return;
             }

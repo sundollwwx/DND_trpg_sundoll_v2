@@ -1,0 +1,334 @@
+using System;
+using System.Collections.Generic;
+using Sundoll.Application;
+using Sundoll.Core;
+using UnityEngine;
+using UnityEngine.Tilemaps;
+
+namespace Sundoll.Presentation
+{
+    /// <summary>
+    /// Projects the authoritative map DTO into one Tilemap per content layer.
+    /// The Tilemaps are a disposable view; they never become a second state store.
+    /// </summary>
+    public sealed class M3WorkbenchMapProjection : MonoBehaviour
+    {
+        private static readonly string[] LayerIds =
+        {
+            M3MapLayerIds.Terrain,
+            M3MapLayerIds.Wall,
+            M3MapLayerIds.Object,
+            M3MapLayerIds.Interaction,
+            M3MapLayerIds.StaticAnnotation
+        };
+
+        private readonly Dictionary<string, Tilemap> tilemaps = new Dictionary<string, Tilemap>(StringComparer.Ordinal);
+        private readonly Dictionary<string, Tile> tiles = new Dictionary<string, Tile>(StringComparer.Ordinal);
+        private M3MapEditorFacade editor;
+        private M3LayerEditState layerEditState;
+        private Tilemap mapObjectTilemap;
+        private Tile mapObjectTile;
+        private Texture2D tileTexture;
+        private Sprite tileSprite;
+
+        public IReadOnlyDictionary<string, Tilemap> Tilemaps => tilemaps;
+
+        public void Bind(M3MapEditorFacade nextEditor, M3LayerEditState nextLayerEditState)
+        {
+            editor = nextEditor ?? throw new ArgumentNullException(nameof(nextEditor));
+            layerEditState = nextLayerEditState ?? throw new ArgumentNullException(nameof(nextLayerEditState));
+            DiscoverTilemaps();
+            EnsureTileResources();
+            RefreshAll();
+        }
+
+        public void RefreshAll()
+        {
+            if (editor == null || editor.State == null || editor.State.map == null)
+            {
+                return;
+            }
+
+            DiscoverTilemaps();
+            EnsureTileResources();
+            foreach (var tilemap in tilemaps.Values)
+            {
+                tilemap.ClearAllTiles();
+            }
+            if (mapObjectTilemap != null)
+            {
+                mapObjectTilemap.ClearAllTiles();
+            }
+
+            foreach (var cell in editor.State.map.cells)
+            {
+                if (cell == null || string.IsNullOrWhiteSpace(cell.contentId))
+                {
+                    continue;
+                }
+
+                var layerId = M3MapLayerIds.NormalizeLayerId(cell.layerId, cell.contentId);
+                if (!tilemaps.TryGetValue(layerId, out var tilemap))
+                {
+                    continue;
+                }
+
+                tilemap.SetTile(new Vector3Int(cell.x, cell.y, 0), tiles[layerId]);
+            }
+
+            if (mapObjectTilemap != null && editor.State.map.objects != null)
+            {
+                foreach (var mapObject in editor.State.map.objects)
+                {
+                    if (mapObject != null)
+                    {
+                        mapObjectTilemap.SetTile(new Vector3Int(mapObject.x, mapObject.y, 0), mapObjectTile);
+                    }
+                }
+            }
+
+            ApplyLayerState();
+        }
+
+        public void RefreshRegion(M3GridBounds region)
+        {
+            if (region.IsEmpty)
+            {
+                RefreshAll();
+                return;
+            }
+
+            if (editor == null || editor.State == null || editor.State.map == null)
+            {
+                return;
+            }
+
+            DiscoverTilemaps();
+            EnsureTileResources();
+            var bounds = new BoundsInt(
+                region.MinX,
+                region.MinY,
+                0,
+                region.Width,
+                region.Height,
+                1);
+            foreach (var tilemap in tilemaps.Values)
+            {
+                ClearRegion(tilemap, bounds);
+            }
+
+            if (mapObjectTilemap != null)
+            {
+                ClearRegion(mapObjectTilemap, bounds);
+            }
+
+            foreach (var cell in editor.State.map.cells)
+            {
+                if (cell == null || !region.Contains(cell.x, cell.y))
+                {
+                    continue;
+                }
+
+                var layerId = M3MapLayerIds.NormalizeLayerId(cell.layerId, cell.contentId);
+                if (tilemaps.TryGetValue(layerId, out var tilemap))
+                {
+                    tilemap.SetTile(new Vector3Int(cell.x, cell.y, 0), tiles[layerId]);
+                }
+            }
+
+            if (mapObjectTilemap != null && editor.State.map.objects != null)
+            {
+                foreach (var mapObject in editor.State.map.objects)
+                {
+                    if (mapObject != null && region.Contains(mapObject.x, mapObject.y))
+                    {
+                        mapObjectTilemap.SetTile(new Vector3Int(mapObject.x, mapObject.y, 0), mapObjectTile);
+                    }
+                }
+            }
+
+            ApplyLayerState();
+        }
+
+        private static void ClearRegion(Tilemap tilemap, BoundsInt bounds)
+        {
+            for (var x = bounds.xMin; x < bounds.xMax; x++)
+            {
+                for (var y = bounds.yMin; y < bounds.yMax; y++)
+                {
+                    tilemap.SetTile(new Vector3Int(x, y, 0), null);
+                }
+            }
+        }
+
+        public void ApplyLayerState()
+        {
+            if (layerEditState == null)
+            {
+                return;
+            }
+
+            foreach (var layerId in LayerIds)
+            {
+                if (!tilemaps.TryGetValue(layerId, out var tilemap))
+                {
+                    continue;
+                }
+
+                var renderer = tilemap.GetComponent<TilemapRenderer>();
+                if (renderer != null)
+                {
+                    renderer.enabled = layerEditState.IsVisible(layerId);
+                }
+            }
+
+            if (mapObjectTilemap != null)
+            {
+                var renderer = mapObjectTilemap.GetComponent<TilemapRenderer>();
+                if (renderer != null)
+                {
+                    renderer.enabled = layerEditState.IsVisible(M3MapLayerIds.Object);
+                }
+            }
+        }
+
+        private void DiscoverTilemaps()
+        {
+            foreach (var layerId in LayerIds)
+            {
+                var child = transform.Find(layerId);
+                if (child == null)
+                {
+                    var layerObject = new GameObject(layerId);
+                    layerObject.transform.SetParent(transform, false);
+                    layerObject.AddComponent<TilemapRenderer>();
+                    layerObject.AddComponent<Tilemap>();
+                    child = layerObject.transform;
+                }
+
+                var tilemap = child.GetComponent<Tilemap>();
+                if (tilemap == null)
+                {
+                    tilemap = child.gameObject.AddComponent<Tilemap>();
+                }
+
+                var renderer = child.GetComponent<TilemapRenderer>();
+                if (renderer == null)
+                {
+                    renderer = child.gameObject.AddComponent<TilemapRenderer>();
+                }
+
+                renderer.sortingOrder = M3MapLayerIds.RenderPriority(layerId) * 10;
+                tilemap.color = LayerColor(layerId);
+                tilemaps[layerId] = tilemap;
+            }
+
+            var objectChild = transform.Find("map-objects");
+            if (objectChild == null)
+            {
+                var objectLayer = new GameObject("map-objects");
+                objectLayer.transform.SetParent(transform, false);
+                objectChild = objectLayer.transform;
+            }
+
+            mapObjectTilemap = objectChild.GetComponent<Tilemap>();
+            if (mapObjectTilemap == null)
+            {
+                mapObjectTilemap = objectChild.gameObject.AddComponent<Tilemap>();
+            }
+
+            var objectRenderer = objectChild.GetComponent<TilemapRenderer>();
+            if (objectRenderer == null)
+            {
+                objectRenderer = objectChild.gameObject.AddComponent<TilemapRenderer>();
+            }
+
+            objectRenderer.sortingOrder = 60;
+            mapObjectTilemap.color = new Color(0.92f, 0.76f, 0.25f, 1f);
+        }
+
+        private void EnsureTileResources()
+        {
+            if (tileSprite == null)
+            {
+                tileTexture = new Texture2D(1, 1, TextureFormat.RGBA32, false)
+                {
+                    name = "SundollWorld.WorkbenchTileTexture",
+                    filterMode = FilterMode.Point,
+                    wrapMode = TextureWrapMode.Clamp
+                };
+                tileTexture.SetPixel(0, 0, Color.white);
+                tileTexture.Apply(false, true);
+                tileSprite = Sprite.Create(
+                    tileTexture,
+                    new Rect(0f, 0f, 1f, 1f),
+                    new Vector2(0.5f, 0.5f),
+                    1f);
+                tileSprite.name = "SundollWorld.WorkbenchTileSprite";
+            }
+
+            foreach (var layerId in LayerIds)
+            {
+                if (tiles.ContainsKey(layerId))
+                {
+                    continue;
+                }
+
+                var tile = ScriptableObject.CreateInstance<Tile>();
+                tile.name = "SundollWorld.WorkbenchTile." + layerId;
+                tile.sprite = tileSprite;
+                tiles.Add(layerId, tile);
+            }
+
+            if (mapObjectTile == null)
+            {
+                mapObjectTile = ScriptableObject.CreateInstance<Tile>();
+                mapObjectTile.name = "SundollWorld.WorkbenchTile.MapObject";
+                mapObjectTile.sprite = tileSprite;
+            }
+        }
+
+        private static Color LayerColor(string layerId)
+        {
+            switch (layerId)
+            {
+                case M3MapLayerIds.Terrain:
+                    return new Color(0.28f, 0.62f, 0.38f, 1f);
+                case M3MapLayerIds.Wall:
+                    return new Color(0.72f, 0.32f, 0.24f, 1f);
+                case M3MapLayerIds.Object:
+                    return new Color(0.28f, 0.46f, 0.78f, 1f);
+                case M3MapLayerIds.Interaction:
+                    return new Color(0.82f, 0.66f, 0.22f, 1f);
+                default:
+                    return new Color(0.72f, 0.42f, 0.76f, 1f);
+            }
+        }
+
+        private void OnDestroy()
+        {
+            foreach (var tile in tiles.Values)
+            {
+                if (tile != null)
+                {
+                    Destroy(tile);
+                }
+            }
+
+            if (mapObjectTile != null)
+            {
+                Destroy(mapObjectTile);
+            }
+
+            if (tileSprite != null)
+            {
+                Destroy(tileSprite);
+            }
+
+            if (tileTexture != null)
+            {
+                Destroy(tileTexture);
+            }
+        }
+    }
+}

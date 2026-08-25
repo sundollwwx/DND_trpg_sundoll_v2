@@ -116,6 +116,19 @@ namespace Sundoll.Infrastructure
                         envelope.baseRevision,
                         payload.mutations);
                 }
+                case "M3.MapObject":
+                {
+                    var payload = ReadPayload<M3MapObjectCommandPayload>(envelope);
+                    return new M3MapObjectCommand(
+                        envelope.commandId,
+                        envelope.baseRevision,
+                        payload.objectId,
+                        (M3MapObjectKind)payload.kind,
+                        payload.x,
+                        payload.y,
+                        payload.rotation,
+                        (M3MapObjectAction)payload.action);
+                }
                 default:
                     throw new InvalidDataException("Unknown command type: " + envelope.commandType);
             }

@@ -510,6 +510,143 @@ namespace Sundoll.Tests.EditMode
             Assert.That(ContainsPoint(filled, 2, 1), Is.False);
         }
 
+        [Test]
+        public void ClipboardUsesSelectionOriginAndRejectsOutOfBoundsAsOneBatch()
+        {
+            var bus = M1VerticalSlice.CreateDemoBus();
+            var editor = new M3MapEditorFacade(bus);
+            var layers = new M3LayerEditState(new[]
+            {
+                M3MapLayerIds.Terrain,
+                M3MapLayerIds.Wall,
+                M3MapLayerIds.Object,
+                M3MapLayerIds.Interaction,
+                M3MapLayerIds.StaticAnnotation
+            });
+            editor.PaintCells(new[]
+            {
+                new M3CellMutation(2, 2, M3MapLayerIds.Wall, "wall-solid", false),
+                new M3CellMutation(3, 3, M3MapLayerIds.Object, "object-marker", false)
+            });
+
+            var clipboard = editor.CopySelection(new M3GridBounds(2, 2, 3, 3), layers);
+            Assert.That(clipboard.width, Is.EqualTo(2));
+            Assert.That(clipboard.height, Is.EqualTo(2));
+            // The demo's legacy placeholder at (2,3) is also inside the
+            // selection; all visible layers are intentionally copied.
+            Assert.That(clipboard.cells.Count, Is.EqualTo(3));
+            Assert.That(clipboard.cells.Exists(cell => cell.offsetX == 0 && cell.offsetY == 0), Is.True);
+
+            var revisionBefore = bus.State.revision;
+            var rejected = editor.PasteClipboard(clipboard, 7, 7, layers);
+            Assert.That(rejected.accepted, Is.False);
+            Assert.That(bus.State.revision, Is.EqualTo(revisionBefore));
+            Assert.That(FindCell(bus.State.map, 7, 7, M3MapLayerIds.Wall), Is.Null);
+
+            var pasted = editor.PasteClipboard(clipboard, 4, 4, layers);
+            Assert.That(pasted.accepted, Is.True);
+            Assert.That(FindCell(bus.State.map, 4, 4, M3MapLayerIds.Wall).contentId, Is.EqualTo("wall-solid"));
+            Assert.That(clipboard.RotateClockwise().width, Is.EqualTo(2));
+        }
+
+        [Test]
+        public void PickUsesTopmostVisibleLayerAndLockedLayerRemainsPickable()
+        {
+            var bus = M1VerticalSlice.CreateDemoBus();
+            var editor = new M3MapEditorFacade(bus);
+            editor.PaintCells(new[]
+            {
+                new M3CellMutation(2, 2, M3MapLayerIds.Terrain, "terrain-ground", false),
+                new M3CellMutation(2, 2, M3MapLayerIds.Wall, "wall-solid", false),
+                new M3CellMutation(2, 2, M3MapLayerIds.Object, "object-marker", false)
+            });
+            var layers = new M3LayerEditState(new[]
+            {
+                M3MapLayerIds.Terrain,
+                M3MapLayerIds.Wall,
+                M3MapLayerIds.Object,
+                M3MapLayerIds.Interaction,
+                M3MapLayerIds.StaticAnnotation
+            });
+            layers.SetLocked(M3MapLayerIds.Object, true);
+
+            Assert.That(editor.TryPickTopmost(2, 2, layers, out var picked), Is.True);
+            Assert.That(picked.contentId, Is.EqualTo("object-marker"));
+            Assert.That(layers.CanEdit(M3MapLayerIds.Object), Is.False);
+        }
+
+        [Test]
+        public void MapObjectActionIsVersionedUndoableAndPublishedByDeepCopy()
+        {
+            var bus = M1VerticalSlice.CreateDemoBus();
+            var editor = new M3MapEditorFacade(bus);
+            var added = editor.AddMapObject("door-entrance", M3MapObjectKind.Door, 3, 3, 90);
+            Assert.That(added.accepted, Is.True);
+            Assert.That(editor.FindMapObject("door-entrance").rotation, Is.EqualTo(90));
+
+            var toggle = editor.ToggleMapObject("door-entrance");
+            Assert.That(toggle.accepted, Is.True);
+            Assert.That(editor.FindMapObject("door-entrance").state, Is.EqualTo(M3MapObjectOpenState.Open));
+            Assert.That(editor.RotateMapObjectClockwise("door-entrance").accepted, Is.True);
+            Assert.That(editor.FindMapObject("door-entrance").rotation, Is.EqualTo(180));
+
+            var envelope = M2CommandEnvelopeCodec.Encode(new M3MapObjectCommand(
+                "door-close-envelope",
+                bus.State.revision,
+                "door-entrance",
+                M3MapObjectKind.Door,
+                0,
+                0,
+                0,
+                M3MapObjectAction.Close));
+            Assert.That(M2CommandEnvelopeCodec.Decode(envelope).CommandType, Is.EqualTo("M3.MapObject"));
+
+            Assert.That(editor.PublishMapContent().accepted, Is.True);
+            Assert.That(bus.State.publishedMap.objects.Count, Is.EqualTo(1));
+            bus.State.map.objects[0].rotation = 270;
+            Assert.That(bus.State.publishedMap.objects[0].rotation, Is.EqualTo(180));
+            Assert.That(editor.Undo(), Is.True);
+        }
+
+        [Test]
+        public void LegacySchemaReadSuppliesSchema2ObjectDefaults()
+        {
+            var legacy = JsonUtility.FromJson<M1WorldState>(
+                "{\"schemaVersion\":1,\"map\":{\"id\":\"legacy-map\",\"width\":8,\"height\":8}}" );
+            Assert.That(legacy, Is.Not.Null);
+            Assert.That(legacy.schemaVersion, Is.EqualTo(1));
+            legacy.EnsureSchema2Defaults();
+            Assert.That(legacy.map.cells, Is.Not.Null);
+            Assert.That(legacy.map.objects, Is.Not.Null);
+            Assert.That(legacy.publishedMap, Is.Not.Null);
+            Assert.That(legacy.publishedMap.objects, Is.Not.Null);
+        }
+
+        [Test]
+        public void WorkspaceStateFormat2RestoresOrderToolAndView()
+        {
+            var layerIds = new[]
+            {
+                M3MapLayerIds.Terrain,
+                M3MapLayerIds.Wall,
+                M3MapLayerIds.Object,
+                M3MapLayerIds.Interaction,
+                M3MapLayerIds.StaticAnnotation
+            };
+            var state = new M3LayerEditState(layerIds);
+            state.MoveLayer(M3MapLayerIds.Terrain, 1);
+            var store = new M3WorkspaceStateStore(root);
+            store.Save("map-m3", state, layerIds, "选择", M3MapLayerIds.Object, 12.5f, 4f, 5f);
+
+            var loaded = store.Load("map-m3", layerIds);
+            Assert.That(loaded.loaded, Is.True);
+            Assert.That(loaded.currentTool, Is.EqualTo("选择"));
+            Assert.That(loaded.currentLayerId, Is.EqualTo(M3MapLayerIds.Object));
+            Assert.That(loaded.zoom, Is.EqualTo(12.5f));
+            Assert.That(loaded.panX, Is.EqualTo(4f));
+            Assert.That(loaded.state.LayerOrder[1], Is.EqualTo(M3MapLayerIds.Terrain));
+        }
+
         private static M1MapCell FindCell(M1MapDocument map, int x, int y)
         {
             foreach (var cell in map.cells)

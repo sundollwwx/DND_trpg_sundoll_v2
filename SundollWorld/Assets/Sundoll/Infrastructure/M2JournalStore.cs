@@ -219,7 +219,8 @@ namespace Sundoll.Infrastructure
                         if (!string.Equals(
                                 candidate.batch.canonicalStateHash,
                                 M2CanonicalStateHasher.Compute(nextState),
-                                StringComparison.OrdinalIgnoreCase))
+                                StringComparison.OrdinalIgnoreCase) &&
+                            !M2CanonicalStateHasher.MatchesStoredHash(nextState, candidate.batch.canonicalStateHash))
                         {
                             throw new InvalidDataException("Journal operation hash does not match replayed state.");
                         }
@@ -354,7 +355,7 @@ namespace Sundoll.Infrastructure
                     }
 
                     var state = JsonUtility.FromJson<M1WorldState>(batch.stateJson);
-                    if (state == null || !string.Equals(batch.canonicalStateHash, M2CanonicalStateHasher.Compute(state), StringComparison.OrdinalIgnoreCase))
+                    if (state == null || !M2CanonicalStateHasher.MatchesStoredHash(state, batch.canonicalStateHash))
                     {
                         return false;
                     }

@@ -2,7 +2,8 @@
   "name": "Sundoll.Editor",
   "rootNamespace": "Sundoll.Editor",
   "references": [
-    "Sundoll.Bootstrap"
+    "Sundoll.Bootstrap",
+    "Sundoll.Presentation"
   ],
   "includePlatforms": [
     "Editor"

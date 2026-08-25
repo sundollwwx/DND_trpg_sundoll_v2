@@ -16,7 +16,7 @@ namespace Sundoll.Core
     {
         public string id;
         public string displayName;
-        public int schemaVersion = 1;
+        public int schemaVersion = 2;
     }
 
     [Serializable]
@@ -40,8 +40,16 @@ namespace Sundoll.Core
         public int width;
         public int height;
         public List<M1MapCell> cells = new List<M1MapCell>();
+        // Added in world schema 2. Legacy schema 1 JSON may omit this field.
+        public List<M3MapObject> objects = new List<M3MapObject>();
 
         public int RuntimeIndexBuildCount => runtimeIndexBuildCount;
+
+        public bool TryGetCell(int x, int y, string layerId, out M1MapCell cell)
+        {
+            var key = new M3MapCellKey(x, y, M3MapLayerIds.NormalizeLayerId(layerId, null));
+            return TryGetRuntimeCell(key, out cell);
+        }
 
         internal bool TryGetRuntimeCell(M3MapCellKey key, out M1MapCell cell)
         {
@@ -150,6 +158,61 @@ namespace Sundoll.Core
         public string sourceMapId;
         public int contentRevision;
         public List<M1MapCell> cells = new List<M1MapCell>();
+        public List<M3MapObject> objects = new List<M3MapObject>();
+    }
+
+    public enum M3MapObjectKind
+    {
+        Door = 0,
+        Chest = 1
+    }
+
+    public enum M3MapObjectOpenState
+    {
+        Closed = 0,
+        Open = 1
+    }
+
+    [Serializable]
+    public sealed class M3MapObject
+    {
+        public string id;
+        public M3MapObjectKind kind;
+        public int x;
+        public int y;
+        // Only 0, 90, 180 and 270 are valid. The value is kept as an int for
+        // stable JSON and simple input binding.
+        public int rotation;
+        public M3MapObjectOpenState state = M3MapObjectOpenState.Closed;
+
+        public M3MapObject DeepClone()
+        {
+            return new M3MapObject
+            {
+                id = id,
+                kind = kind,
+                x = x,
+                y = y,
+                rotation = NormalizeRotation(rotation),
+                state = state
+            };
+        }
+
+        public static int NormalizeRotation(int value)
+        {
+            var normalized = value % 360;
+            if (normalized < 0)
+            {
+                normalized += 360;
+            }
+
+            if (normalized != 0 && normalized != 90 && normalized != 180 && normalized != 270)
+            {
+                return 0;
+            }
+
+            return normalized;
+        }
     }
 
     [Serializable]
@@ -196,7 +259,7 @@ namespace Sundoll.Core
     [Serializable]
     public sealed class M1WorldState
     {
-        public int schemaVersion = 1;
+        public int schemaVersion = 2;
         public int revision;
         public M1ProjectDocument project;
         public M1MapDocument map;
@@ -237,14 +300,16 @@ namespace Sundoll.Core
                     id = map.id,
                     width = map.width,
                     height = map.height,
-                    cells = CloneCells(map.cells)
+                    cells = CloneCells(map.cells),
+                    objects = CloneObjects(map.objects)
                 },
                 publishedMap = publishedMap == null ? null : new M1MapContentVersion
                 {
                     id = publishedMap.id,
                     sourceMapId = publishedMap.sourceMapId,
                     contentRevision = publishedMap.contentRevision,
-                    cells = CloneCells(publishedMap.cells)
+                    cells = CloneCells(publishedMap.cells),
+                    objects = CloneObjects(publishedMap.objects)
                 },
                 scenario = scenario == null ? null : new M1ScenarioDocument
                 {
@@ -299,6 +364,46 @@ namespace Sundoll.Core
             pieceInstance = clone.pieceInstance;
         }
 
+        /// <summary>
+        /// Supplies the schema-2 defaults when a legacy schema-1 JSON document
+        /// omitted newly introduced lists. This deliberately does not rewrite
+        /// the schema marker; callers that migrate a file can opt into that
+        /// explicit decision after integrity checks have completed.
+        /// </summary>
+        public void EnsureSchema2Defaults()
+        {
+            if (project != null && project.schemaVersion <= 0)
+            {
+                project.schemaVersion = 2;
+            }
+
+            if (map != null)
+            {
+                if (map.cells == null)
+                {
+                    map.cells = new List<M1MapCell>();
+                }
+
+                if (map.objects == null)
+                {
+                    map.objects = new List<M3MapObject>();
+                }
+            }
+
+            if (publishedMap != null)
+            {
+                if (publishedMap.cells == null)
+                {
+                    publishedMap.cells = new List<M1MapCell>();
+                }
+
+                if (publishedMap.objects == null)
+                {
+                    publishedMap.objects = new List<M3MapObject>();
+                }
+            }
+        }
+
         private static List<M1MapCell> CloneCells(List<M1MapCell> source)
         {
             var result = new List<M1MapCell>();
@@ -321,6 +426,25 @@ namespace Sundoll.Core
                     layerId = cell.layerId,
                     contentId = cell.contentId
                 });
+            }
+
+            return result;
+        }
+
+        private static List<M3MapObject> CloneObjects(List<M3MapObject> source)
+        {
+            var result = new List<M3MapObject>();
+            if (source == null)
+            {
+                return result;
+            }
+
+            foreach (var mapObject in source)
+            {
+                if (mapObject != null)
+                {
+                    result.Add(mapObject.DeepClone());
+                }
             }
 
             return result;

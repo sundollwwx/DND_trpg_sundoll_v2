@@ -4,7 +4,8 @@
   "references": [
     "Sundoll.Core",
     "Sundoll.Application",
-    "Sundoll.Infrastructure"
+    "Sundoll.Infrastructure",
+    "Unity.InputSystem"
   ],
   "includePlatforms": [],
   "excludePlatforms": [],

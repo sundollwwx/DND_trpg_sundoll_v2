@@ -9,10 +9,16 @@ namespace Sundoll.Infrastructure
     [Serializable]
     internal sealed class M3WorkspaceStateDocument
     {
-        public int formatVersion = 1;
+        public int formatVersion = 2;
         public string mapId;
         public List<string> hiddenLayerIds = new List<string>();
         public List<string> lockedLayerIds = new List<string>();
+        public List<string> layerOrder = new List<string>();
+        public string currentTool;
+        public string currentLayerId;
+        public float zoom = 1f;
+        public float panX;
+        public float panY;
     }
 
     public sealed class M3WorkspaceStateLoadResult
@@ -20,11 +26,16 @@ namespace Sundoll.Infrastructure
         public M3LayerEditState state;
         public bool loaded;
         public string diagnostic;
+        public string currentTool;
+        public string currentLayerId;
+        public float zoom = 1f;
+        public float panX;
+        public float panY;
     }
 
     public sealed class M3WorkspaceStateStore
     {
-        private const int CurrentFormatVersion = 1;
+        private const int CurrentFormatVersion = 2;
 
         public M3WorkspaceStateStore(string projectRoot)
         {
@@ -50,32 +61,62 @@ namespace Sundoll.Infrastructure
                 return new M3WorkspaceStateLoadResult
                 {
                     state = defaultState,
-                    loaded = false
+                    loaded = false,
+                    currentTool = "画笔",
+                    currentLayerId = knownLayerIds[0]
                 };
             }
 
             try
             {
                 var document = JsonUtility.FromJson<M3WorkspaceStateDocument>(File.ReadAllText(StatePath));
-                if (document == null || document.formatVersion != CurrentFormatVersion ||
+                if (document == null || (document.formatVersion != 1 && document.formatVersion != CurrentFormatVersion) ||
                     !string.Equals(document.mapId, mapId, StringComparison.Ordinal))
                 {
                     return new M3WorkspaceStateLoadResult
                     {
                         state = defaultState,
                         loaded = false,
-                        diagnostic = "Workspace 状态版本或地图 ID 不匹配，已使用默认状态。"
+                        diagnostic = "Workspace 状态版本或地图 ID 不匹配，已使用默认状态。",
+                        currentTool = "画笔",
+                        currentLayerId = knownLayerIds[0]
                     };
                 }
 
                 var diagnostics = new List<string>();
                 ApplyVisibility(document.hiddenLayerIds, defaultState, false, diagnostics);
                 ApplyLocks(document.lockedLayerIds, defaultState, true, diagnostics);
+                if (document.formatVersion >= 2 && document.layerOrder != null && document.layerOrder.Count > 0)
+                {
+                    try
+                    {
+                        defaultState.SetLayerOrder(document.layerOrder);
+                    }
+                    catch (ArgumentException)
+                    {
+                        diagnostics.Add("图层顺序无效，已使用默认顺序。");
+                    }
+                }
+
+                var currentLayerId = string.IsNullOrWhiteSpace(document.currentLayerId)
+                    ? knownLayerIds[0]
+                    : document.currentLayerId;
+                if (!knownLayerIds.Contains(currentLayerId))
+                {
+                    diagnostics.Add("当前图层无效，已使用默认图层。");
+                    currentLayerId = knownLayerIds[0];
+                }
+
                 return new M3WorkspaceStateLoadResult
                 {
                     state = defaultState,
                     loaded = true,
-                    diagnostic = diagnostics.Count == 0 ? null : string.Join(" ", diagnostics.ToArray())
+                    diagnostic = diagnostics.Count == 0 ? null : string.Join(" ", diagnostics.ToArray()),
+                    currentTool = string.IsNullOrWhiteSpace(document.currentTool) ? "画笔" : document.currentTool,
+                    currentLayerId = currentLayerId,
+                    zoom = document.formatVersion >= 2 && document.zoom > 0f ? document.zoom : 1f,
+                    panX = document.formatVersion >= 2 ? document.panX : 0f,
+                    panY = document.formatVersion >= 2 ? document.panY : 0f
                 };
             }
             catch (Exception exception)
@@ -84,7 +125,9 @@ namespace Sundoll.Infrastructure
                 {
                     state = defaultState,
                     loaded = false,
-                    diagnostic = "Workspace 状态读取失败，已使用默认状态：" + exception.Message
+                    diagnostic = "Workspace 状态读取失败，已使用默认状态：" + exception.Message,
+                    currentTool = "画笔",
+                    currentLayerId = knownLayerIds[0]
                 };
             }
         }
@@ -97,11 +140,47 @@ namespace Sundoll.Infrastructure
                 throw new ArgumentNullException(nameof(state));
             }
 
+            Save(mapId, state, layerIds, "画笔", null, 1f, 0f, 0f);
+        }
+
+        public void Save(
+            string mapId,
+            M3LayerEditState state,
+            IEnumerable<string> layerIds,
+            string currentTool,
+            string currentLayerId,
+            float zoom,
+            float panX,
+            float panY)
+        {
+            ValidateMapId(mapId);
+            if (state == null)
+            {
+                throw new ArgumentNullException(nameof(state));
+            }
+
             var knownLayerIds = CopyLayerIds(layerIds);
+            if (knownLayerIds.Count == 0)
+            {
+                throw new ArgumentException("At least one layer ID is required.", nameof(layerIds));
+            }
+
+            currentLayerId = string.IsNullOrWhiteSpace(currentLayerId) ? knownLayerIds[0] : currentLayerId;
+            if (!knownLayerIds.Contains(currentLayerId))
+            {
+                throw new ArgumentException("Current layer is not part of the workspace.", nameof(currentLayerId));
+            }
+
             var document = new M3WorkspaceStateDocument
             {
                 formatVersion = CurrentFormatVersion,
-                mapId = mapId
+                mapId = mapId,
+                layerOrder = new List<string>(state.LayerOrder),
+                currentTool = string.IsNullOrWhiteSpace(currentTool) ? "画笔" : currentTool,
+                currentLayerId = currentLayerId,
+                zoom = zoom > 0f ? zoom : 1f,
+                panX = panX,
+                panY = panY
             };
             foreach (var layerId in knownLayerIds)
             {

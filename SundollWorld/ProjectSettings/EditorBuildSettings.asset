@@ -6,6 +6,9 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
+    path: Assets/Sundoll/Scenes/M3Workbench.unity
+    guid: 80ecbab1063ce4cb58b20c5a45f84800
+  - enabled: 1
     path: Assets/Sundoll/Scenes/M1Bootstrap.unity
     guid: 0be88966f65144a649d4d9dad45e6cfe
   m_configObjects:

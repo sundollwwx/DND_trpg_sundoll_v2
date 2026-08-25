@@ -54,10 +54,12 @@ namespace Sundoll.Infrastructure
 
             var json = File.ReadAllText(path, new UTF8Encoding(false));
             var state = JsonUtility.FromJson<M1WorldState>(json);
-            if (state == null || state.schemaVersion != 1)
+            if (state == null || (state.schemaVersion != 1 && state.schemaVersion != 2))
             {
                 throw new InvalidDataException("M1 snapshot schema is invalid.");
             }
+
+            state.EnsureSchema2Defaults();
 
             return state;
         }

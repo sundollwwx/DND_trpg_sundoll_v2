@@ -2,7 +2,7 @@
 
 > 文档状态：v0.3，执行跟踪稿
 > 更新日期：2026-08-25
-> 当前状态：**M3 最小切片已验证，完整退出条件未关闭；M2 Windows 与跨平台矩阵阻塞**
+> 当前状态：**M3 功能范围已实现并通过自动化验证；性能/正式 macOS IL2CPP 与 Windows 矩阵仍未关闭**
 
 ## 里程碑状态矩阵
 
@@ -11,7 +11,7 @@
 | M0 | 数据验证、Unity Editor 验证、macOS IL2CPP、Windows Mono 构建 | Finder 到 Unity 的真实跨窗口拖放 | Windows IL2CPP 与 Windows 原子写盘 |
 | M1 | 纵向领域闭环、纯数据重建、4/4 测试、macOS universal build | 当前正式构建仍为 Mono | Windows Smoke |
 | M2 | Revision、HEAD/Revision 扫描恢复、generation 冲突保护、Journal、blob、便携包、命令契约、Journal v2 Payload 重放、单写入后台保存队列、保存状态、OS 文件写锁与故障注入；完整证据含 M2 26/26 | 真实磁盘满/权限、独立进程强制退出与跨平台验证 | Windows 强制退出、原子写盘与跨平台互开矩阵 |
-| M3 | 批量绘制、几何工具、五图层、运行时索引、Delta Undo、Dirty Region、缓存；最新全量证据为 52/52 EditMode | 正式 Workbench、选择/复制旋转、门箱对象、性能门槛 | Windows 性能与构建矩阵 |
+| M3 | 正式 Workbench、UI Toolkit 固定布局、Tilemap 五层投影、Input System 绘制/视口、选择/复制/剪切/粘贴/旋转、五层 Workspace State 2、门箱对象、Schema 2；57/57 EditMode、1/1 PlayMode、macOS universal IL2CPP 构建与 Smoke | 性能 p95、真实鼠标视觉复验 | Windows 性能与构建、跨平台互开矩阵 |
 
 详细执行证据与限制见 [v0.3 实施状态](./SundollWorld/Docs/v0.3-实施状态.md)。状态为 Partial 或 Blocked 的项目不得被解释为对应里程碑已经完整关闭。
 
@@ -853,7 +853,7 @@ Loopback 通过后再专项比较 Unity Multiplayer/Transport、Mirror、FishNet
 
 ### M3：地图制作器 MVP（3–4 周）
 
-当前进度：已完成 M3 首轮批量格子编辑、原子校验、擦除、Delta Undo/Redo、版本化 `WorldChangeSet`、运行时格子索引、发布内容版本、M2 保存接入、运行时视口、连续笔画、直线/矩形/填充切片、正式五图层数据模型、Dirty Region 跟踪、脏区局部内容缓存、可见区遍历、运行时图层显示/锁定状态和 Workspace State 持久化；最新完整 Unity EditMode 验证为 52/52 通过，其中 M3 为 22/22，并包含命令 Envelope/Accepted Operation Batch 编解码、Journal v2 Payload 重放、后台保存队列、OS 写锁并发保护、锁超时和 256×256 保存重载基准测试。Texture/Tilemap 局部像素重绘、人工缩放/平移体验、真正的 2D Workbench 视口和性能门槛仍未完成，详见 [M3 结果报告](./SundollWorld/Docs/M3-结果报告.md)。
+当前进度：M3 功能范围已实现：正式 Workbench Scene、UI Toolkit 固定布局、正交 Camera、五个 Tilemap 内容层、Input System 画笔/橡皮擦/直线/矩形/填充、光标中心缩放、中键平移、Esc 与 Cmd/Ctrl 快捷键、拾取/框选/多选剪贴板、复制/剪切/粘贴/旋转、五层显隐/锁定/排序 Workspace State 2、稳定 ID 门箱对象、Schema 2 读取默认值与不可变发布；最新 Unity EditMode 为 57/57，PlayMode 为 1/1，macOS universal IL2CPP 构建与 Smoke 已通过。p95 性能/60 FPS 实测、真实鼠标视觉复验和 Windows/跨平台矩阵仍未关闭，详见 [M3 结果报告](./SundollWorld/Docs/M3-结果报告.md)。
 
 工作：
 

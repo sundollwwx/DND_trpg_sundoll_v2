@@ -388,7 +388,7 @@ namespace Sundoll.Infrastructure
             }
 
             var state = JsonUtility.FromJson<M1WorldState>(File.ReadAllText(Path.Combine(directory, "project.json"), new UTF8Encoding(false)));
-            if (state == null || !string.Equals(M2CanonicalStateHasher.Compute(state), manifest.canonicalStateHash, StringComparison.OrdinalIgnoreCase))
+            if (state == null || !M2CanonicalStateHasher.MatchesStoredHash(state, manifest.canonicalStateHash))
             {
                 throw new InvalidDataException("New revision canonical state hash does not match.");
             }
@@ -421,7 +421,7 @@ namespace Sundoll.Infrastructure
             var projectPath = Path.Combine(directory, "project.json");
             var state = JsonUtility.FromJson<M1WorldState>(File.ReadAllText(projectPath, new UTF8Encoding(false)));
             if (state == null || state.schemaVersion != manifest.worldSchemaVersion ||
-                !string.Equals(M2CanonicalStateHasher.Compute(state), manifest.canonicalStateHash, StringComparison.OrdinalIgnoreCase))
+                !M2CanonicalStateHasher.MatchesStoredHash(state, manifest.canonicalStateHash))
             {
                 throw new InvalidDataException("Revision canonical state hash does not match.");
             }

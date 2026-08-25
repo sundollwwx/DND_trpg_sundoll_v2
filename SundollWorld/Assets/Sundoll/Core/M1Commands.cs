@@ -158,7 +158,8 @@ namespace Sundoll.Core
                 id = contentVersionId,
                 sourceMapId = state.map.id,
                 contentRevision = state.revision + 1,
-                cells = new System.Collections.Generic.List<M1MapCell>()
+                cells = new System.Collections.Generic.List<M1MapCell>(),
+                objects = new System.Collections.Generic.List<M3MapObject>()
             };
 
             foreach (var cell in state.map.cells)
@@ -170,6 +171,17 @@ namespace Sundoll.Core
                     layerId = M3MapLayerIds.NormalizeLayerId(cell.layerId, cell.contentId),
                     contentId = cell.contentId
                 });
+            }
+
+            if (state.map.objects != null)
+            {
+                foreach (var mapObject in state.map.objects)
+                {
+                    if (mapObject != null)
+                    {
+                        state.publishedMap.objects.Add(mapObject.DeepClone());
+                    }
+                }
             }
         }
     }
