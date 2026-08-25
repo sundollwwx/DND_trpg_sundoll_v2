@@ -98,17 +98,8 @@ namespace Sundoll.Infrastructure
             session.ActiveGeneration = loaded.head.generation;
             session.journalStreamId = loaded.head.activeJournalStreamId;
             session.journalStore = new M2JournalStore(projectRoot, session.journalStreamId);
-            if (session.journalStore.TryLoadLatest(out var recovery) && recovery.batch.worldRevision > session.currentState.revision)
-            {
-                session.currentState = recovery.state;
-                session.LastAction = "已从 Journal 恢复 Revision " + recovery.batch.worldRevision;
-            }
-            else
-            {
-                session.LastAction = "已从 " + loaded.source + " 加载 Revision";
-            }
-
             session.ActiveRevisionId = loaded.manifest.saveRevisionId;
+            session.RestoreJournalAfterSnapshot(loaded, "已从 " + loaded.source + " 加载 Revision");
             return session;
         }
 
@@ -119,7 +110,37 @@ namespace Sundoll.Infrastructure
                 throw new ArgumentNullException(nameof(receipt));
             }
 
-            RecordMutation(receipt.commandId, receipt.message, state, "DomainCommand", true);
+            if (!receipt.accepted)
+            {
+                throw new InvalidOperationException("Only an accepted command can be recorded in the Journal.");
+            }
+
+            if (state == null)
+            {
+                throw new ArgumentNullException(nameof(state));
+            }
+
+            currentState = state.DeepClone();
+            if (receipt.command == null)
+            {
+                // Keep the old state-based path for pre-envelope callers and test
+                // fixtures. Real command receipts always use the v2 path below.
+                journalStore.Append(receipt.commandId, receipt.message, currentState, "DomainCommand");
+            }
+            else
+            {
+                journalStore.Append(
+                    M2CommandEnvelopeCodec.CreateAcceptedBatch(receipt),
+                    receipt.message,
+                    currentState,
+                    "DomainCommand");
+            }
+
+            LastAction = receipt.message;
+            if (autosavePolicy.NotifyAccepted())
+            {
+                SaveCurrent("达到事务数量阈值，自动保存");
+            }
         }
 
         public void RecordMutation(string commandId, string description, M1WorldState state)
@@ -149,15 +170,9 @@ namespace Sundoll.Infrastructure
             currentState = loaded.state;
             ActiveRevisionId = loaded.manifest.saveRevisionId;
             ActiveGeneration = loaded.head.generation;
-            if (journalStore.TryLoadLatest(out var recovery) && recovery.batch.worldRevision > currentState.revision)
-            {
-                currentState = recovery.state;
-                LastAction = "已从 Journal 恢复未写入 Snapshot 的完整 Batch";
-            }
-            else
-            {
-                LastAction = "已重新加载 " + loaded.source;
-            }
+            journalStreamId = loaded.head.activeJournalStreamId;
+            journalStore = new M2JournalStore(projectStore.RootPath, journalStreamId);
+            RestoreJournalAfterSnapshot(loaded, "已重新加载 " + loaded.source);
 
             autosavePolicy.MarkSaved();
             return new M2LoadResult
@@ -218,5 +233,24 @@ namespace Sundoll.Infrastructure
             LastAction = reason + "：" + ActiveRevisionId;
             return LastSave;
         }
+
+        private void RestoreJournalAfterSnapshot(M2LoadResult loaded, string snapshotAction)
+        {
+            if (journalStore.TryReplay(currentState, loaded.manifest.journalOperationSequence, out var replay))
+            {
+                if (replay.complete)
+                {
+                    currentState = replay.state;
+                    LastAction = "已从 Journal 重放 " + replay.appliedCount + " 个未写入 Snapshot 的操作";
+                    return;
+                }
+
+                LastAction = snapshotAction + "；Journal 重放未完成，已保留 Snapshot（" + replay.diagnostic + "）";
+                return;
+            }
+
+            LastAction = snapshotAction;
+        }
+
     }
 }

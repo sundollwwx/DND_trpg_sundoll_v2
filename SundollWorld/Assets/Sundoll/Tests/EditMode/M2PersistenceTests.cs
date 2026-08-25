@@ -84,6 +84,90 @@ namespace Sundoll.Tests.EditMode
         }
 
         [Test]
+        public void VersionedJournalReplaysCommandWithoutPersistingFullStateJson()
+        {
+            var bus = M1VerticalSlice.CreateDemoBus();
+            var snapshot = bus.State.DeepClone();
+            var journal = new M2JournalStore(root, "stream-test");
+            var receipt = bus.Execute(new M1MovePieceCommand("journal-v2-move", bus.State.revision, 6, 0));
+
+            var sequence = journal.Append(
+                M2CommandEnvelopeCodec.CreateAcceptedBatch(receipt),
+                receipt.message,
+                bus.State);
+
+            Assert.That(sequence, Is.EqualTo(1));
+            var line = File.ReadAllText(Path.Combine(journal.StreamPath, "segment-000000.log"), new UTF8Encoding(false));
+            // Unity JsonUtility may emit an empty compatibility field, but a v2
+            // record must never contain the nested full-world JSON object.
+            Assert.That(line, Does.Not.Contain("\\\"stateJson\\\":\\\"{"));
+            Assert.That(line, Does.Not.Contain("schemaVersion"));
+
+            Assert.That(journal.TryReplay(snapshot, 0, out var replay), Is.True);
+            Assert.That(replay.complete, Is.True);
+            Assert.That(replay.appliedCount, Is.EqualTo(1));
+            Assert.That(replay.state.pieceInstance.location.x, Is.EqualTo(6));
+            Assert.That(M2CanonicalStateHasher.Compute(replay.state), Is.EqualTo(M2CanonicalStateHasher.Compute(bus.State)));
+        }
+
+        [Test]
+        public void JournalReplaySupportsMixedLegacyAndVersionedBatches()
+        {
+            var bus = M1VerticalSlice.CreateDemoBus();
+            var snapshot = bus.State.DeepClone();
+            var journal = new M2JournalStore(root, "stream-test");
+
+            bus.Execute(new M1MovePieceCommand("journal-v1-move", bus.State.revision, 5, 0));
+            journal.Append("journal-v1-move", "legacy move", bus.State);
+
+            var receipt = bus.Execute(new M1MovePieceCommand("journal-v2-move", bus.State.revision, 6, 0));
+            journal.Append(M2CommandEnvelopeCodec.CreateAcceptedBatch(receipt), receipt.message, bus.State);
+
+            Assert.That(journal.TryReplay(snapshot, 0, out var replay), Is.True);
+            Assert.That(replay.complete, Is.True);
+            Assert.That(replay.appliedCount, Is.EqualTo(2));
+            Assert.That(replay.state.pieceInstance.location.x, Is.EqualTo(6));
+            Assert.That(M2CanonicalStateHasher.Compute(replay.state), Is.EqualTo(M2CanonicalStateHasher.Compute(bus.State)));
+        }
+
+        [Test]
+        public void SaveSessionReplaysUnsavedVersionedCommandAfterSnapshot()
+        {
+            var bus = M1VerticalSlice.CreateDemoBus();
+            var session = M2SaveSession.Open(root, bus.State, new M2AutosavePolicy(25, 999f));
+            var snapshotRevisionId = session.ActiveRevisionId;
+            var editor = new M3MapEditorFacade(bus);
+            var receipt = editor.PaintCell(6, 6, "wall-solid");
+
+            Assert.That(receipt.accepted, Is.True);
+            session.RecordAccepted(receipt, bus.State);
+            Assert.That(session.ActiveRevisionId, Is.EqualTo(snapshotRevisionId));
+
+            var reopened = M2SaveSession.Open(root, bus.State, new M2AutosavePolicy(25, 999f));
+
+            Assert.That(reopened.State.map.cells.Exists(cell =>
+                cell.x == 6 && cell.y == 6 && cell.contentId == "wall-solid"), Is.True);
+            Assert.That(reopened.LastAction, Does.Contain("Journal"));
+            Assert.That(M2CanonicalStateHasher.Compute(reopened.State), Is.EqualTo(M2CanonicalStateHasher.Compute(bus.State)));
+        }
+
+        [Test]
+        public void VersionedJournalReplaysValidEntriesBeforeCorruptTail()
+        {
+            var bus = M1VerticalSlice.CreateDemoBus();
+            var snapshot = bus.State.DeepClone();
+            var journal = new M2JournalStore(root, "stream-test", 3);
+            var receipt = bus.Execute(new M1MovePieceCommand("journal-tail-move", bus.State.revision, 7, 0));
+            journal.Append(M2CommandEnvelopeCodec.CreateAcceptedBatch(receipt), receipt.message, bus.State);
+            journal.AppendCorruptTail("{\"formatVersion\":2,\"payloadJson\":");
+
+            Assert.That(journal.TryReplay(snapshot, 0, out var replay), Is.True);
+            Assert.That(replay.complete, Is.True);
+            Assert.That(replay.appliedCount, Is.EqualTo(1));
+            Assert.That(replay.state.pieceInstance.location.x, Is.EqualTo(7));
+        }
+
+        [Test]
         public void ProjectStoreKeepsImmutableRevisionsAndValidHead()
         {
             var bus = M1VerticalSlice.CreateDemoBus();

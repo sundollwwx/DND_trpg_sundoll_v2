@@ -61,13 +61,21 @@ namespace Sundoll.Infrastructure
     [Serializable]
     public sealed class M2AcceptedOperationBatch
     {
-        public int formatVersion = 1;
+        // Version 1 stored the entire post-operation world in stateJson. Version 2
+        // stores the accepted command and its optional delta so the world can be
+        // reconstructed from the last immutable Revision snapshot.
+        public int formatVersion = 2;
         public string commandId;
         public string operationType;
         public string description;
         public string actorId = "local";
+        public int revisionBefore;
+        public int revisionAfter;
         public int worldRevision;
         public long operationSequence;
+        public M1CommandEnvelope commandEnvelope;
+        public WorldChangeSet changeSet;
+        // Kept only for v1 journal compatibility. New v2 records must leave it null.
         public string stateJson;
         public string canonicalStateHash;
     }
@@ -75,7 +83,7 @@ namespace Sundoll.Infrastructure
     [Serializable]
     internal sealed class M2JournalRecord
     {
-        public int formatVersion = 1;
+        public int formatVersion = 2;
         public long operationSequence;
         public string payloadJson;
         public string payloadSha256;

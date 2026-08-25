@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
+using Sundoll.Application;
 using Sundoll.Core;
 using UnityEngine;
 
@@ -11,6 +12,16 @@ namespace Sundoll.Infrastructure
     {
         public M2AcceptedOperationBatch batch;
         public M1WorldState state;
+    }
+
+    public sealed class M2JournalReplayResult
+    {
+        public M1WorldState state;
+        public M2AcceptedOperationBatch lastBatch;
+        public long lastSequence;
+        public int appliedCount;
+        public bool complete;
+        public string diagnostic;
     }
 
     public sealed class M2JournalStore
@@ -64,41 +75,58 @@ namespace Sundoll.Infrastructure
                 throw new ArgumentNullException(nameof(state));
             }
 
-            lock (syncRoot)
+            return AppendBatch(new M2AcceptedOperationBatch
             {
-                EnsureCacheInitialized();
-                var sequence = checked(cachedLastSequence + 1);
-                var batch = new M2AcceptedOperationBatch
-                {
-                    commandId = commandId,
-                    description = description,
-                    operationType = operationType,
-                    worldRevision = state.revision,
-                    operationSequence = sequence,
-                    stateJson = JsonUtility.ToJson(state, false),
-                    canonicalStateHash = M2CanonicalStateHasher.Compute(state)
-                };
-                var payloadJson = JsonUtility.ToJson(batch, false);
-                var record = new M2JournalRecord
-                {
-                    operationSequence = sequence,
-                    payloadJson = payloadJson,
-                    payloadSha256 = M2FileIO.Sha256Utf8(payloadJson)
-                };
+                formatVersion = 1,
+                commandId = commandId,
+                description = description,
+                operationType = operationType,
+                worldRevision = state.revision,
+                stateJson = JsonUtility.ToJson(state, false),
+                canonicalStateHash = M2CanonicalStateHasher.Compute(state)
+            });
+        }
 
-                var line = JsonUtility.ToJson(record, false) + "\n";
-                var segmentPath = GetWritableSegmentPath();
-                using (var stream = new FileStream(segmentPath, FileMode.Append, FileAccess.Write, FileShare.Read))
-                {
-                    var bytes = new UTF8Encoding(false).GetBytes(line);
-                    stream.Write(bytes, 0, bytes.Length);
-                    stream.Flush(true);
-                }
-
-                cachedLastSequence = sequence;
-                cachedSegmentEntryCount++;
-                return sequence;
+        public long Append(
+            AcceptedOperationBatch operationBatch,
+            string description,
+            M1WorldState state,
+            string operationType = "DomainCommand")
+        {
+            if (operationBatch == null)
+            {
+                throw new ArgumentNullException(nameof(operationBatch));
             }
+
+            if (state == null)
+            {
+                throw new ArgumentNullException(nameof(state));
+            }
+
+            if (operationBatch.formatVersion != 1 || operationBatch.commandEnvelope == null ||
+                operationBatch.revisionAfter != state.revision ||
+                operationBatch.revisionAfter != operationBatch.revisionBefore + 1)
+            {
+                throw new InvalidDataException("Accepted operation batch is invalid.");
+            }
+
+            // Decode once at the persistence boundary so a malformed command can never
+            // become an apparently valid Journal record.
+            M2CommandEnvelopeCodec.Decode(operationBatch.commandEnvelope);
+            return AppendBatch(new M2AcceptedOperationBatch
+            {
+                formatVersion = 2,
+                commandId = operationBatch.commandEnvelope.commandId,
+                description = description,
+                operationType = operationType,
+                actorId = operationBatch.actorId,
+                revisionBefore = operationBatch.revisionBefore,
+                revisionAfter = operationBatch.revisionAfter,
+                worldRevision = state.revision,
+                commandEnvelope = operationBatch.commandEnvelope,
+                changeSet = operationBatch.changeSet,
+                canonicalStateHash = M2CanonicalStateHasher.Compute(state)
+            });
         }
 
         public void AppendCorruptTail(string rawText)
@@ -136,6 +164,91 @@ namespace Sundoll.Infrastructure
             }
         }
 
+        public bool TryReplay(M1WorldState snapshot, long afterSequence, out M2JournalReplayResult replay)
+        {
+            if (snapshot == null)
+            {
+                throw new ArgumentNullException(nameof(snapshot));
+            }
+
+            if (afterSequence < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(afterSequence));
+            }
+
+            lock (syncRoot)
+            {
+                var candidates = ReadValidRecoveries(GetSegmentPaths());
+                candidates.Sort((left, right) => left.batch.operationSequence.CompareTo(right.batch.operationSequence));
+                replay = new M2JournalReplayResult
+                {
+                    state = snapshot.DeepClone(),
+                    lastSequence = afterSequence,
+                    complete = true,
+                    diagnostic = "Journal 没有需要重放的操作"
+                };
+
+                var expectedSequence = checked(afterSequence + 1);
+                foreach (var candidate in candidates)
+                {
+                    var sequence = candidate.batch.operationSequence;
+                    if (sequence <= afterSequence || sequence < expectedSequence)
+                    {
+                        continue;
+                    }
+
+                    if (sequence > expectedSequence)
+                    {
+                        replay.complete = false;
+                        replay.diagnostic = "Journal sequence gap: expected " + expectedSequence + ", found " + sequence;
+                        break;
+                    }
+
+                    var nextState = replay.state.DeepClone();
+                    try
+                    {
+                        if (candidate.batch.formatVersion == 1)
+                        {
+                            nextState = candidate.state.DeepClone();
+                        }
+                        else
+                        {
+                            ApplyVersionedBatch(candidate.batch, nextState);
+                        }
+
+                        if (!string.Equals(
+                                candidate.batch.canonicalStateHash,
+                                M2CanonicalStateHasher.Compute(nextState),
+                                StringComparison.OrdinalIgnoreCase))
+                        {
+                            throw new InvalidDataException("Journal operation hash does not match replayed state.");
+                        }
+                    }
+                    catch (Exception exception)
+                    {
+                        replay.complete = false;
+                        replay.diagnostic = "Journal replay stopped at sequence " + sequence + ": " + exception.Message;
+                        break;
+                    }
+
+                    replay.state = nextState;
+                    replay.lastBatch = candidate.batch;
+                    replay.lastSequence = sequence;
+                    replay.appliedCount++;
+                    expectedSequence = checked(sequence + 1);
+                }
+
+                if (replay.appliedCount > 0)
+                {
+                    replay.diagnostic = replay.complete
+                        ? "Journal 已重放 " + replay.appliedCount + " 个操作"
+                        : replay.diagnostic;
+                }
+
+                return replay.appliedCount > 0;
+            }
+        }
+
         private void EnsureCacheInitialized()
         {
             if (!cacheInitialized)
@@ -149,26 +262,10 @@ namespace Sundoll.Infrastructure
             recovery = null;
             var latestSequence = 0L;
             var paths = GetSegmentPaths();
-            foreach (var path in paths)
+            foreach (var candidate in ReadValidRecoveries(paths))
             {
-                string[] lines;
-                try
+                if (candidate.batch.operationSequence > latestSequence)
                 {
-                    lines = File.ReadAllLines(path, new UTF8Encoding(false));
-                }
-                catch (IOException)
-                {
-                    continue;
-                }
-
-                foreach (var line in lines)
-                {
-                    if (string.IsNullOrWhiteSpace(line) || !TryParse(line, out var candidate) ||
-                        candidate.batch.operationSequence <= latestSequence)
-                    {
-                        continue;
-                    }
-
                     latestSequence = candidate.batch.operationSequence;
                     recovery = candidate;
                 }
@@ -186,6 +283,37 @@ namespace Sundoll.Infrastructure
             return recovery != null;
         }
 
+        private long AppendBatch(M2AcceptedOperationBatch batch)
+        {
+            lock (syncRoot)
+            {
+                EnsureCacheInitialized();
+                var sequence = checked(cachedLastSequence + 1);
+                batch.operationSequence = sequence;
+                var payloadJson = JsonUtility.ToJson(batch, false);
+                var record = new M2JournalRecord
+                {
+                    formatVersion = batch.formatVersion,
+                    operationSequence = sequence,
+                    payloadJson = payloadJson,
+                    payloadSha256 = M2FileIO.Sha256Utf8(payloadJson)
+                };
+
+                var line = JsonUtility.ToJson(record, false) + "\n";
+                var segmentPath = GetWritableSegmentPath();
+                using (var stream = new FileStream(segmentPath, FileMode.Append, FileAccess.Write, FileShare.Read))
+                {
+                    var bytes = new UTF8Encoding(false).GetBytes(line);
+                    stream.Write(bytes, 0, bytes.Length);
+                    stream.Flush(true);
+                }
+
+                cachedLastSequence = sequence;
+                cachedSegmentEntryCount++;
+                return sequence;
+            }
+        }
+
         private string GetWritableSegmentPath()
         {
             if (cachedSegmentEntryCount >= maxEntriesPerSegment)
@@ -197,37 +325,103 @@ namespace Sundoll.Infrastructure
             return Path.Combine(streamPath, "segment-" + cachedSegmentIndex.ToString("D6") + ".log");
         }
 
-        private bool TryParse(string line, out M2JournalRecovery recovery)
+        private static bool TryParse(string line, out M2JournalRecovery recovery)
         {
             recovery = null;
             try
             {
                 var record = JsonUtility.FromJson<M2JournalRecord>(line);
-                if (record == null || string.IsNullOrEmpty(record.payloadJson) ||
+                if (record == null || (record.formatVersion != 1 && record.formatVersion != 2) ||
+                    record.operationSequence < 1 || string.IsNullOrEmpty(record.payloadJson) ||
                     !string.Equals(record.payloadSha256, M2FileIO.Sha256Utf8(record.payloadJson), StringComparison.OrdinalIgnoreCase))
                 {
                     return false;
                 }
 
                 var batch = JsonUtility.FromJson<M2AcceptedOperationBatch>(record.payloadJson);
-                if (batch == null || batch.operationSequence != record.operationSequence || string.IsNullOrEmpty(batch.stateJson))
+                if (batch == null || (batch.formatVersion != 1 && batch.formatVersion != 2) ||
+                    batch.operationSequence != record.operationSequence ||
+                    batch.canonicalStateHash == null)
                 {
                     return false;
                 }
 
-                var state = JsonUtility.FromJson<M1WorldState>(batch.stateJson);
-                if (state == null || !string.Equals(batch.canonicalStateHash, M2CanonicalStateHasher.Compute(state), StringComparison.OrdinalIgnoreCase))
+                if (batch.formatVersion == 1)
+                {
+                    if (string.IsNullOrEmpty(batch.stateJson))
+                    {
+                        return false;
+                    }
+
+                    var state = JsonUtility.FromJson<M1WorldState>(batch.stateJson);
+                    if (state == null || !string.Equals(batch.canonicalStateHash, M2CanonicalStateHasher.Compute(state), StringComparison.OrdinalIgnoreCase))
+                    {
+                        return false;
+                    }
+
+                    recovery = new M2JournalRecovery { batch = batch, state = state };
+                    return true;
+                }
+
+                if (record.formatVersion != 2 || batch.commandEnvelope == null ||
+                    batch.revisionAfter != batch.revisionBefore + 1 ||
+                    batch.commandEnvelope.commandId != batch.commandId)
                 {
                     return false;
                 }
 
-                recovery = new M2JournalRecovery { batch = batch, state = state };
+                M2CommandEnvelopeCodec.Decode(batch.commandEnvelope);
+                recovery = new M2JournalRecovery { batch = batch };
                 return true;
             }
             catch (Exception)
             {
                 return false;
             }
+        }
+
+        private static void ApplyVersionedBatch(M2AcceptedOperationBatch batch, M1WorldState state)
+        {
+            if (batch.commandEnvelope == null || batch.revisionBefore != state.revision)
+            {
+                throw new InvalidDataException("Journal command base Revision does not match snapshot state.");
+            }
+
+            var command = M2CommandEnvelopeCodec.Decode(batch.commandEnvelope);
+            if (command.BaseRevision != state.revision || command.CommandId != batch.commandId)
+            {
+                throw new InvalidDataException("Journal command envelope does not match its batch metadata.");
+            }
+
+            command.Apply(state);
+            state.revision = batch.revisionAfter;
+        }
+
+        private static List<M2JournalRecovery> ReadValidRecoveries(List<string> paths)
+        {
+            var recoveries = new List<M2JournalRecovery>();
+            foreach (var path in paths)
+            {
+                string[] lines;
+                try
+                {
+                    lines = File.ReadAllLines(path, new UTF8Encoding(false));
+                }
+                catch (IOException)
+                {
+                    continue;
+                }
+
+                foreach (var line in lines)
+                {
+                    if (!string.IsNullOrWhiteSpace(line) && TryParse(line, out var candidate))
+                    {
+                        recoveries.Add(candidate);
+                    }
+                }
+            }
+
+            return recoveries;
         }
 
         private List<string> GetSegmentPaths()
