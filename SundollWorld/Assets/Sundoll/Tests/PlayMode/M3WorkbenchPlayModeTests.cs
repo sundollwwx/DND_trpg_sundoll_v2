@@ -30,6 +30,10 @@ namespace Sundoll.Tests.PlayMode
             Assert.That(document, Is.Not.Null);
             Assert.That(document.rootVisualElement.Q<TextField>("PieceSearch"), Is.Not.Null);
             Assert.That(document.rootVisualElement.Q<VisualElement>("PieceLibraryList"), Is.Not.Null);
+            Assert.That(document.rootVisualElement.Q<VisualElement>("HostMapList"), Is.Not.Null);
+            Assert.That(document.rootVisualElement.Q<TextField>("FogX"), Is.Not.Null);
+            Assert.That(document.rootVisualElement.Q<TextField>("AnnotationText"), Is.Not.Null);
+            Assert.That(document.rootVisualElement.Q<TextField>("InteractionObjectId"), Is.Not.Null);
             // The real Workbench deliberately restores local visibility state;
             // normalize the shared test profile before exercising projection.
             root.LayerEditState.SetVisible("terrain", true);

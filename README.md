@@ -43,4 +43,4 @@
 - M2/M3/M4/M5 存档仍为 pre-v1；M7 已提供 save v1/schema 2 冻结、Schema 1→2 迁移注册表、Golden Save 校验、可复用 View Pool 和引用计数纹理缓存。M4 当前通过路径导入完成图片闭环，原生桌面文件选择器仍未接入；真实窗口视觉、p95 性能、Windows 与跨平台互开仍未验证。
 - 未复制任何旧项目素材。
 
-M0 已正式接受并保留 Windows/Finder 限制；Unity `6000.3.22f1` 本轮 EditMode 为 76/76，PlayMode 为 4/4，macOS universal IL2CPP 构建与启动 Smoke 仍沿用已通过的 M3 证据。测试证据见 [EditMode XML](./SundollWorld/TestResults_EditMode_20260825_m5m6m7.xml)、[PlayMode XML](./SundollWorld/TestResults_PlayMode_20260825_m5m6m7.xml) 和 [构建摘要](./SundollWorld/Docs/M3-构建摘要.md)。M4 使用新的 `SundollWorld_M4` 本地开发存档根目录，旧 M1/M2/M3 样本原地保留。当前没有 Windows 环境，Windows IL2CPP、原子写盘、跨平台互开和正式性能 p95 继续登记为发布阻塞/未验证项。
+M0 已正式接受并保留 Windows/Finder 限制；Unity `6000.3.22f1` 本轮 EditMode 为 76/76，PlayMode 为 4/4，macOS universal IL2CPP 构建与启动 Smoke 已基于 M7 代码重建通过。测试证据见 [EditMode XML](./SundollWorld/TestResults_EditMode_20260825_m5m6m7_ui.xml)、[PlayMode XML](./SundollWorld/TestResults_PlayMode_20260825_m5m6m7_ui.xml) 和 [M7 结果报告](./SundollWorld/Docs/M7-结果报告.md)。M4 使用新的 `SundollWorld_M4` 本地开发存档根目录，旧 M1/M2/M3 样本原地保留。当前没有 Windows 环境，Windows IL2CPP、原子写盘、跨平台互开和正式性能 p95 继续登记为发布阻塞/未验证项。

@@ -73,6 +73,12 @@ namespace Sundoll.Presentation
         private string selectedPieceInstanceId;
         private TextField mapIdField;
         private TextField mapNameField;
+        private TextField fogXField;
+        private TextField fogYField;
+        private TextField annotationIdField;
+        private TextField annotationTextField;
+        private TextField interactionObjectField;
+        private VisualElement mapListContainer;
         private Label consoleLabel;
 
         public M3MapEditorFacade Editor => editor;
@@ -362,6 +368,47 @@ namespace Sundoll.Presentation
             consoleLabel.style.marginTop = 6f;
             consoleLabel.style.whiteSpace = WhiteSpace.Normal;
             panel.Add(consoleLabel);
+            mapListContainer = new ScrollView(ScrollViewMode.Vertical) { name = "HostMapList" };
+            mapListContainer.style.marginTop = 5f;
+            mapListContainer.style.maxHeight = 100f;
+            panel.Add(mapListContainer);
+
+            var fogTitle = new Label("迷雾 / 标注 / 交互");
+            fogTitle.style.marginTop = 10f;
+            panel.Add(fogTitle);
+            fogXField = new TextField("格子 X") { name = "FogX" };
+            fogXField.style.marginTop = 4f;
+            panel.Add(fogXField);
+            fogYField = new TextField("格子 Y") { name = "FogY" };
+            fogYField.style.marginTop = 4f;
+            panel.Add(fogYField);
+            var hideFogButton = new Button(() => SetFogFromUi(false)) { text = "隐藏格子" };
+            hideFogButton.style.marginTop = 4f;
+            panel.Add(hideFogButton);
+            var revealFogButton = new Button(() => SetFogFromUi(true)) { text = "揭示格子" };
+            revealFogButton.style.marginTop = 4f;
+            panel.Add(revealFogButton);
+            annotationIdField = new TextField("标注 ID") { name = "AnnotationId" };
+            annotationIdField.style.marginTop = 5f;
+            panel.Add(annotationIdField);
+            annotationTextField = new TextField("标注文本") { name = "AnnotationText" };
+            annotationTextField.style.marginTop = 4f;
+            panel.Add(annotationTextField);
+            var upsertAnnotationButton = new Button(UpsertAnnotationFromUi) { text = "保存动态标注" };
+            upsertAnnotationButton.style.marginTop = 4f;
+            panel.Add(upsertAnnotationButton);
+            var removeAnnotationButton = new Button(RemoveAnnotationFromUi) { text = "删除动态标注" };
+            removeAnnotationButton.style.marginTop = 4f;
+            panel.Add(removeAnnotationButton);
+            interactionObjectField = new TextField("对象 ID") { name = "InteractionObjectId" };
+            interactionObjectField.style.marginTop = 5f;
+            panel.Add(interactionObjectField);
+            var openInteractionButton = new Button(() => SetInteractionFromUi(true)) { text = "打开对象" };
+            openInteractionButton.style.marginTop = 4f;
+            panel.Add(openInteractionButton);
+            var closeInteractionButton = new Button(() => SetInteractionFromUi(false)) { text = "关闭对象" };
+            closeInteractionButton.style.marginTop = 4f;
+            panel.Add(closeInteractionButton);
             return panel;
         }
 
@@ -468,6 +515,78 @@ namespace Sundoll.Presentation
             CommitConsoleReceipt(receipt);
             status = receipt.accepted ? "已切换主持地图：" + mapIdField.value.Trim() : receipt.message;
             RefreshUiState();
+        }
+
+        private void SetFogFromUi(bool revealed)
+        {
+            if (!TryReadIntField(fogXField, out var x) || !TryReadIntField(fogYField, out var y))
+            {
+                status = "迷雾格坐标必须是整数";
+                RefreshUiState();
+                return;
+            }
+
+            var console = M5ConsoleQueries.Ensure(commandBus.State);
+            var receipt = consoleFacade.SetFog(console.activeMapId, x, y, revealed);
+            CommitConsoleReceipt(receipt);
+            status = receipt.accepted ? (revealed ? "已揭示迷雾格" : "已隐藏迷雾格") : receipt.message;
+            RefreshUiState();
+        }
+
+        private void UpsertAnnotationFromUi()
+        {
+            var console = M5ConsoleQueries.Ensure(commandBus.State);
+            var id = annotationIdField == null ? string.Empty : annotationIdField.value;
+            var text = annotationTextField == null ? string.Empty : annotationTextField.value;
+            if (string.IsNullOrWhiteSpace(id))
+            {
+                status = "标注 ID 不能为空";
+                RefreshUiState();
+                return;
+            }
+
+            var cell = selection.IsEmpty ? new Vector2Int(1, 1) : new Vector2Int(selection.MinX, selection.MinY);
+            var receipt = consoleFacade.UpsertAnnotation(id.Trim(), console.activeMapId, cell.x, cell.y, text ?? string.Empty);
+            CommitConsoleReceipt(receipt);
+            status = receipt.accepted ? "动态标注已保存" : receipt.message;
+            RefreshUiState();
+        }
+
+        private void RemoveAnnotationFromUi()
+        {
+            var id = annotationIdField == null ? string.Empty : annotationIdField.value;
+            if (string.IsNullOrWhiteSpace(id))
+            {
+                status = "请输入标注 ID";
+                RefreshUiState();
+                return;
+            }
+
+            var receipt = consoleFacade.RemoveAnnotation(id.Trim());
+            CommitConsoleReceipt(receipt);
+            status = receipt.accepted ? "动态标注已删除" : receipt.message;
+            RefreshUiState();
+        }
+
+        private void SetInteractionFromUi(bool open)
+        {
+            var id = interactionObjectField == null ? string.Empty : interactionObjectField.value;
+            if (string.IsNullOrWhiteSpace(id))
+            {
+                status = "请输入交互对象 ID";
+                RefreshUiState();
+                return;
+            }
+
+            var receipt = consoleFacade.SetInteractionState(id.Trim(), open);
+            CommitConsoleReceipt(receipt);
+            status = receipt.accepted ? (open ? "对象已打开" : "对象已关闭") : receipt.message;
+            RefreshUiState();
+        }
+
+        private static bool TryReadIntField(TextField field, out int value)
+        {
+            return int.TryParse(field == null ? string.Empty : field.value, out value);
         }
 
         private void CommitConsoleReceipt(M1CommandReceipt receipt)
@@ -1527,6 +1646,36 @@ namespace Sundoll.Presentation
                                     " · 当前 " + (console == null ? "无" : console.activeMapId) +
                                     "\n迷雾记录 " + (console == null ? 0 : console.fogCells.Count) +
                                     " · 动态标注 " + (console == null ? 0 : console.annotations.Count);
+            }
+
+            if (mapListContainer != null)
+            {
+                mapListContainer.Clear();
+                var console = commandBus.State.m5Console;
+                if (console != null && console.maps != null)
+                {
+                    foreach (var mapSlot in console.maps)
+                    {
+                        if (mapSlot == null)
+                        {
+                            continue;
+                        }
+
+                        var mapId = mapSlot.id;
+                        var mapButton = new Button(() =>
+                        {
+                            var receipt = consoleFacade.SwitchMap(mapId);
+                            CommitConsoleReceipt(receipt);
+                            status = receipt.accepted ? "已切换主持地图：" + mapId : receipt.message;
+                            RefreshUiState();
+                        })
+                        {
+                            text = (console.activeMapId == mapId ? "▶ " : "") + mapSlot.displayName + " [" + mapId + "]"
+                        };
+                        mapButton.style.marginTop = 2f;
+                        mapListContainer.Add(mapButton);
+                    }
+                }
             }
 
             RefreshPieceLibraryList();
