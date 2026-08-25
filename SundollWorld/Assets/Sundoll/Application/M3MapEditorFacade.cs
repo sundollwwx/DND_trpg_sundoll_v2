@@ -265,6 +265,11 @@ namespace Sundoll.Application
             return ExecuteObjectCommand(objectId, M3MapObjectKind.Door, 0, 0, 0, M3MapObjectAction.RotateClockwise);
         }
 
+        public M1CommandReceipt RemoveMapObject(string objectId)
+        {
+            return ExecuteObjectCommand(objectId, M3MapObjectKind.Door, 0, 0, 0, M3MapObjectAction.Remove);
+        }
+
         public M3MapObject FindMapObject(string objectId)
         {
             if (State.map == null || State.map.objects == null)

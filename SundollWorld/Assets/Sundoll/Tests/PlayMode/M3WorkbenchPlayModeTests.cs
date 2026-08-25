@@ -31,6 +31,9 @@ namespace Sundoll.Tests.PlayMode
             Assert.That(document.rootVisualElement.Q<TextField>("PieceSearch"), Is.Not.Null);
             Assert.That(document.rootVisualElement.Q<VisualElement>("PieceLibraryList"), Is.Not.Null);
             Assert.That(document.rootVisualElement.Q<VisualElement>("HostMapList"), Is.Not.Null);
+            Assert.That(document.rootVisualElement.Q<VisualElement>("HostHierarchy"), Is.Not.Null);
+            Assert.That(document.rootVisualElement.Q<VisualElement>("HostContextMenu"), Is.Not.Null);
+            Assert.That(document.rootVisualElement.Q<Button>("RenameHostMap"), Is.Not.Null);
             Assert.That(document.rootVisualElement.Q<TextField>("FogX"), Is.Not.Null);
             Assert.That(document.rootVisualElement.Q<TextField>("AnnotationText"), Is.Not.Null);
             Assert.That(document.rootVisualElement.Q<TextField>("InteractionObjectId"), Is.Not.Null);
@@ -58,6 +61,13 @@ namespace Sundoll.Tests.PlayMode
             Assert.That(projection.Tilemaps["terrain"].GetComponent<TilemapRenderer>().enabled, Is.False);
             root.LayerEditState.SetLocked("wall", true);
             Assert.That(root.LayerEditState.CanEdit("wall"), Is.False);
+
+            root.AddMapObjectAt(new Vector2Int(4, 4), M3MapObjectKind.Door);
+            root.ShowMapContextMenu(new Vector2Int(4, 4), new Vector2(200f, 200f));
+            Assert.That(root.IsContextMenuVisible, Is.True);
+            Assert.That(document.rootVisualElement.Q<Button>("ContextToggle"), Is.Not.Null);
+            root.DismissContextMenu();
+            Assert.That(root.IsContextMenuVisible, Is.False);
 
             Object.Destroy(root.gameObject);
             yield return null;

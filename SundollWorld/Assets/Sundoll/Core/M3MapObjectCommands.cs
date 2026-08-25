@@ -9,7 +9,8 @@ namespace Sundoll.Core
         Open = 1,
         Close = 2,
         Toggle = 3,
-        RotateClockwise = 4
+        RotateClockwise = 4,
+        Remove = 5
     }
 
     [Serializable]
@@ -74,6 +75,8 @@ namespace Sundoll.Core
                         return "关闭对象 " + objectId;
                     case M3MapObjectAction.Toggle:
                         return "切换对象 " + objectId;
+                    case M3MapObjectAction.Remove:
+                        return "删除对象 " + objectId;
                     default:
                         return "旋转对象 " + objectId;
                 }
@@ -132,6 +135,12 @@ namespace Sundoll.Core
             if (mapObject == null)
             {
                 throw new InvalidOperationException("Map object was not found: " + objectId);
+            }
+
+            if (action == M3MapObjectAction.Remove)
+            {
+                state.map.objects.Remove(mapObject);
+                return;
             }
 
             switch (action)

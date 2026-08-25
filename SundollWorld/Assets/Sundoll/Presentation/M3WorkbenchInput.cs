@@ -37,6 +37,13 @@ namespace Sundoll.Presentation
             var position = mouse.position.ReadValue();
             HandleShortcuts(keyboard);
 
+            if (mouse.rightButton.wasPressedThisFrame && root.IsPointerOverMap(position) &&
+                root.TryScreenToCell(position, out var contextCell))
+            {
+                root.ShowMapContextMenu(contextCell, position);
+                pointerAction = false;
+            }
+
             var scroll = mouse.scroll.ReadValue();
             if (root.IsPointerOverMap(position) && Mathf.Abs(scroll.y) > 0.01f)
             {
@@ -62,6 +69,7 @@ namespace Sundoll.Presentation
 
             if (mouse.leftButton.wasPressedThisFrame && !panning && root.IsPointerOverMap(position))
             {
+                root.DismissContextMenu();
                 if (keyboard != null && (keyboard.leftAltKey.isPressed || keyboard.rightAltKey.isPressed) &&
                     root.TryScreenToCell(position, out var pickedCell))
                 {
@@ -131,6 +139,7 @@ namespace Sundoll.Presentation
             {
                 pointerAction = false;
                 root.CancelPointerAction();
+                root.DismissContextMenu();
             }
 
             if (keyboard.rKey.wasPressedThisFrame && !command)

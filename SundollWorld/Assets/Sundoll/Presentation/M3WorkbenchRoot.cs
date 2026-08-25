@@ -81,6 +81,12 @@ namespace Sundoll.Presentation
         private TextField interactionObjectField;
         private VisualElement mapListContainer;
         private Label consoleLabel;
+        private VisualElement hierarchyContainer;
+        private VisualElement contextMenuContainer;
+        private Label hostModeLabel;
+        private bool hostPreviewMode;
+        private Vector2Int contextMenuCell;
+        private string selectedMapObjectId;
 
         public M3MapEditorFacade Editor => editor;
         public M2SaveSession SaveSession => saveSession;
@@ -268,6 +274,14 @@ namespace Sundoll.Presentation
             var consoleButton = new Button(CreateHostMap) { text = "新建主持地图" };
             consoleButton.style.marginLeft = 10f;
             topBar.Add(consoleButton);
+            hostModeLabel = new Label { name = "HostMode" };
+            hostModeLabel.style.marginLeft = 14f;
+            topBar.Add(hostModeLabel);
+            var hostModeButton = new Button(ToggleHostPreviewMode) { text = "切换主持预览" };
+            hostModeButton.name = "ToggleHostMode";
+            hostModeButton.style.marginLeft = 8f;
+            hostModeButton.style.marginRight = 12f;
+            topBar.Add(hostModeButton);
             root.Add(topBar);
 
             var body = new VisualElement { name = "WorkbenchBody" };
@@ -287,6 +301,8 @@ namespace Sundoll.Presentation
             historyLabel = new Label { name = "History" };
             bottomBar.Add(historyLabel);
             root.Add(bottomBar);
+            contextMenuContainer = BuildContextMenu();
+            root.Add(contextMenuContainer);
             RefreshUiState();
         }
 
@@ -374,6 +390,10 @@ namespace Sundoll.Presentation
             var switchMapButton = new Button(SwitchHostMap) { text = "切换主持地图" };
             switchMapButton.style.marginTop = 4f;
             panel.Add(switchMapButton);
+            var renameMapButton = new Button(RenameHostMap) { text = "重命名当前地图" };
+            renameMapButton.name = "RenameHostMap";
+            renameMapButton.style.marginTop = 4f;
+            panel.Add(renameMapButton);
             consoleLabel = new Label { name = "HostConsoleBody" };
             consoleLabel.style.marginTop = 6f;
             consoleLabel.style.whiteSpace = WhiteSpace.Normal;
@@ -382,6 +402,14 @@ namespace Sundoll.Presentation
             mapListContainer.style.marginTop = 5f;
             mapListContainer.style.maxHeight = 100f;
             panel.Add(mapListContainer);
+
+            var hierarchyTitle = new Label("Hierarchy") { name = "HierarchyTitle" };
+            hierarchyTitle.style.marginTop = 10f;
+            panel.Add(hierarchyTitle);
+            hierarchyContainer = new ScrollView(ScrollViewMode.Vertical) { name = "HostHierarchy" };
+            hierarchyContainer.style.marginTop = 5f;
+            hierarchyContainer.style.maxHeight = 220f;
+            panel.Add(hierarchyContainer);
 
             var fogTitle = new Label("迷雾 / 标注 / 交互");
             fogTitle.style.marginTop = 10f;
@@ -524,6 +552,200 @@ namespace Sundoll.Presentation
             var receipt = consoleFacade.SwitchMap(mapIdField.value.Trim());
             CommitConsoleReceipt(receipt);
             status = receipt.accepted ? "已切换主持地图：" + mapIdField.value.Trim() : receipt.message;
+            RefreshUiState();
+        }
+
+        private void RenameHostMap()
+        {
+            if (consoleFacade == null || mapNameField == null)
+            {
+                return;
+            }
+
+            var console = M5ConsoleQueries.Ensure(commandBus.State);
+            var name = mapNameField.value == null ? string.Empty : mapNameField.value.Trim();
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                status = "地图名称不能为空";
+                RefreshUiState();
+                return;
+            }
+
+            var receipt = consoleFacade.RenameMap(console.activeMapId, name);
+            CommitConsoleReceipt(receipt);
+            status = receipt.accepted ? "当前主持地图已重命名" : receipt.message;
+            RefreshUiState();
+        }
+
+        private void ToggleHostPreviewMode()
+        {
+            hostPreviewMode = !hostPreviewMode;
+            status = hostPreviewMode ? "已进入主持预览：迷雾与动态标注可直接检查" : "已回到地图编辑模式";
+            RefreshUiState();
+        }
+
+        private VisualElement BuildContextMenu()
+        {
+            var menu = new VisualElement { name = "HostContextMenu" };
+            menu.style.position = Position.Absolute;
+            menu.style.width = 246f;
+            menu.style.paddingLeft = 8f;
+            menu.style.paddingRight = 8f;
+            menu.style.paddingTop = 8f;
+            menu.style.paddingBottom = 8f;
+            menu.style.backgroundColor = new Color(0.04f, 0.05f, 0.07f, 0.98f);
+            menu.style.borderTopWidth = 1f;
+            menu.style.borderBottomWidth = 1f;
+            menu.style.borderLeftWidth = 1f;
+            menu.style.borderRightWidth = 1f;
+            menu.style.borderTopColor = new Color(0.35f, 0.42f, 0.55f, 1f);
+            menu.style.borderBottomColor = new Color(0.35f, 0.42f, 0.55f, 1f);
+            menu.style.borderLeftColor = new Color(0.35f, 0.42f, 0.55f, 1f);
+            menu.style.borderRightColor = new Color(0.35f, 0.42f, 0.55f, 1f);
+            menu.style.display = DisplayStyle.None;
+            return menu;
+        }
+
+        public bool IsContextMenuVisible => contextMenuVisible;
+
+        private bool contextMenuVisible;
+
+        public void ShowMapContextMenu(Vector2Int cell, Vector2 screenPosition)
+        {
+            if (contextMenuContainer == null)
+            {
+                return;
+            }
+
+            contextMenuCell = cell;
+            var mapObject = FindObjectAt(cell);
+            contextMenuContainer.Clear();
+            var title = new Label("格子 " + cell.x + ", " + cell.y);
+            title.style.unityFontStyleAndWeight = FontStyle.Bold;
+            title.style.marginBottom = 5f;
+            contextMenuContainer.Add(title);
+
+            AddContextAction("ContextPick", "拾取当前格内容", () => PickAt(cell));
+            if (mapObject != null)
+            {
+                selectedMapObjectId = mapObject.id;
+                AddContextAction("ContextOpen", "打开 " + mapObject.id, () => OpenObjectAt(cell));
+                AddContextAction("ContextClose", "关闭 " + mapObject.id, () => CloseObjectAt(cell));
+                AddContextAction("ContextToggle", "切换 " + mapObject.id, () => ToggleObjectAt(cell));
+                AddContextAction("ContextRotate", "顺时针旋转 90°", () => RotateObjectAt(cell));
+                AddContextAction("ContextRemove", "删除 " + mapObject.id, () => RemoveObjectAt(cell));
+            }
+            else
+            {
+                AddContextAction("ContextAddDoor", "添加门", () => AddMapObjectAt(cell, M3MapObjectKind.Door));
+                AddContextAction("ContextAddChest", "添加箱子", () => AddMapObjectAt(cell, M3MapObjectKind.Chest));
+            }
+
+            var console = M5ConsoleQueries.Ensure(commandBus.State);
+            var revealed = console.IsRevealed(console.activeMapId, cell.x, cell.y);
+            AddContextAction("ContextFog", revealed ? "隐藏此格迷雾" : "揭示此格迷雾", () => SetFogAt(cell, !revealed));
+            AddContextAction("ContextAnnotation", "在此格新建动态标注", () => CreateAnnotationAt(cell));
+            AddContextAction("ContextDismiss", "取消", DismissContextMenu);
+
+            var top = Mathf.Clamp(Screen.height - screenPosition.y, 60f, Mathf.Max(60f, Screen.height - 300f));
+            var left = Mathf.Clamp(screenPosition.x, 8f, Mathf.Max(8f, Screen.width - 260f));
+            contextMenuContainer.style.left = left;
+            contextMenuContainer.style.top = top;
+            contextMenuContainer.style.display = DisplayStyle.Flex;
+            contextMenuVisible = true;
+        }
+
+        public void DismissContextMenu()
+        {
+            if (contextMenuContainer != null)
+            {
+                contextMenuContainer.style.display = DisplayStyle.None;
+            }
+
+            contextMenuVisible = false;
+        }
+
+        private void AddContextAction(string name, string text, Action action)
+        {
+            var button = new Button(() =>
+            {
+                if (action != null)
+                {
+                    action();
+                }
+
+                DismissContextMenu();
+            })
+            {
+                name = name,
+                text = text
+            };
+            button.style.marginTop = 3f;
+            button.style.minHeight = 26f;
+            contextMenuContainer.Add(button);
+        }
+
+        public void AddMapObjectAt(Vector2Int cell, M3MapObjectKind kind)
+        {
+            var prefix = kind == M3MapObjectKind.Door ? "door-" : "chest-";
+            var objectId = prefix + Guid.NewGuid().ToString("N").Substring(0, 10);
+            var receipt = editor.AddMapObject(objectId, kind, cell.x, cell.y);
+            if (receipt != null && receipt.accepted)
+            {
+                selectedMapObjectId = objectId;
+            }
+
+            CommitReceipt(receipt);
+        }
+
+        private void RemoveObjectAt(Vector2Int cell)
+        {
+            var mapObject = FindObjectAt(cell);
+            if (mapObject == null)
+            {
+                status = "该格没有可删除的门或箱子对象";
+                RefreshUiState();
+                return;
+            }
+
+            CommitReceipt(editor.RemoveMapObject(mapObject.id));
+            selectedMapObjectId = null;
+        }
+
+        private void SetFogAt(Vector2Int cell, bool revealed)
+        {
+            var console = M5ConsoleQueries.Ensure(commandBus.State);
+            var receipt = consoleFacade.SetFog(console.activeMapId, cell.x, cell.y, revealed);
+            CommitConsoleReceipt(receipt);
+            status = receipt.accepted ? (revealed ? "已揭示此格迷雾" : "已隐藏此格迷雾") : receipt.message;
+            RefreshUiState();
+        }
+
+        private void CreateAnnotationAt(Vector2Int cell)
+        {
+            var console = M5ConsoleQueries.Ensure(commandBus.State);
+            var annotationId = "note-" + Guid.NewGuid().ToString("N").Substring(0, 10);
+            var receipt = consoleFacade.UpsertAnnotation(
+                annotationId,
+                console.activeMapId,
+                cell.x,
+                cell.y,
+                "标注 " + cell.x + "," + cell.y);
+            if (receipt != null && receipt.accepted)
+            {
+                if (annotationIdField != null)
+                {
+                    annotationIdField.SetValueWithoutNotify(annotationId);
+                }
+
+                if (annotationTextField != null)
+                {
+                    annotationTextField.SetValueWithoutNotify("标注 " + cell.x + "," + cell.y);
+                }
+            }
+
+            CommitConsoleReceipt(receipt);
+            status = receipt.accepted ? "已在当前格创建动态标注" : receipt.message;
             RefreshUiState();
         }
 
@@ -1475,6 +1697,157 @@ namespace Sundoll.Presentation
             }
         }
 
+        private void RefreshHierarchy()
+        {
+            if (hierarchyContainer == null || editor == null || editor.State == null)
+            {
+                return;
+            }
+
+            hierarchyContainer.Clear();
+            var map = editor.State.map;
+            var objectHeader = new Label("地图对象") { name = "HierarchyMapObjects" };
+            objectHeader.style.unityFontStyleAndWeight = FontStyle.Bold;
+            hierarchyContainer.Add(objectHeader);
+            if (map == null || map.objects == null || map.objects.Count == 0)
+            {
+                hierarchyContainer.Add(new Label("  （暂无门或箱子）"));
+            }
+            else
+            {
+                foreach (var mapObject in map.objects)
+                {
+                    if (mapObject == null)
+                    {
+                        continue;
+                    }
+
+                    var objectId = mapObject.id;
+                    var objectButton = new Button(() => SelectMapObject(objectId))
+                    {
+                        name = "HierarchyMapObject-" + objectId,
+                        text = (selectedMapObjectId == objectId ? "▶ " : "") +
+                               (mapObject.kind == M3MapObjectKind.Door ? "门" : "箱子") +
+                               " " + objectId + " · " + mapObject.x + "," + mapObject.y +
+                               " · " + (mapObject.state == M3MapObjectOpenState.Open ? "开" : "关")
+                    };
+                    objectButton.style.marginTop = 2f;
+                    hierarchyContainer.Add(objectButton);
+                }
+            }
+
+            var pieceHeader = new Label("棋子实例") { name = "HierarchyPieces" };
+            pieceHeader.style.unityFontStyleAndWeight = FontStyle.Bold;
+            pieceHeader.style.marginTop = 7f;
+            hierarchyContainer.Add(pieceHeader);
+            var instances = editor.State.pieceInstances;
+            if (instances == null || instances.Count == 0)
+            {
+                hierarchyContainer.Add(new Label("  （暂无棋子实例）"));
+            }
+            else
+            {
+                foreach (var instance in instances)
+                {
+                    if (instance == null)
+                    {
+                        continue;
+                    }
+
+                    var instanceId = instance.id;
+                    var location = instance.location == null ? "未知" : instance.location.kind.ToString();
+                    var instanceButton = new Button(() => SelectPieceInstance(instanceId))
+                    {
+                        name = "HierarchyPiece-" + instanceId,
+                        text = (selectedPieceInstanceId == instanceId ? "▶ " : "") + instanceId + " · " + location
+                    };
+                    instanceButton.style.marginTop = 2f;
+                    hierarchyContainer.Add(instanceButton);
+                }
+            }
+
+            var annotationHeader = new Label("动态标注") { name = "HierarchyAnnotations" };
+            annotationHeader.style.unityFontStyleAndWeight = FontStyle.Bold;
+            annotationHeader.style.marginTop = 7f;
+            hierarchyContainer.Add(annotationHeader);
+            var console = commandBus == null ? null : commandBus.State.m5Console;
+            var annotations = console == null ? null : console.annotations;
+            var annotationCount = 0;
+            if (annotations != null)
+            {
+                foreach (var annotation in annotations)
+                {
+                    if (annotation == null || annotation.mapId != console.activeMapId)
+                    {
+                        continue;
+                    }
+
+                    annotationCount++;
+                    var annotationId = annotation.id;
+                    var annotationButton = new Button(() => SelectAnnotation(annotationId))
+                    {
+                        name = "HierarchyAnnotation-" + annotationId,
+                        text = annotationId + " · " + annotation.x + "," + annotation.y +
+                               " · " + (annotation.visible ? "显" : "隐")
+                    };
+                    annotationButton.style.marginTop = 2f;
+                    hierarchyContainer.Add(annotationButton);
+                }
+            }
+
+            if (annotationCount == 0)
+            {
+                hierarchyContainer.Add(new Label("  （暂无动态标注）"));
+            }
+        }
+
+        private void SelectMapObject(string objectId)
+        {
+            var mapObject = editor == null ? null : editor.FindMapObject(objectId);
+            if (mapObject == null)
+            {
+                status = "地图对象不存在：" + objectId;
+                RefreshUiState();
+                return;
+            }
+
+            selectedMapObjectId = objectId;
+            selection = new M3GridBounds(mapObject.x, mapObject.y, mapObject.x, mapObject.y);
+            if (interactionObjectField != null)
+            {
+                interactionObjectField.SetValueWithoutNotify(objectId);
+            }
+
+            status = "已选择地图对象：" + objectId;
+            RefreshUiState();
+        }
+
+        private void SelectAnnotation(string annotationId)
+        {
+            var console = commandBus == null ? null : M5ConsoleQueries.Ensure(commandBus.State);
+            var annotation = console == null ? null : console.FindAnnotation(annotationId);
+            if (annotation == null)
+            {
+                status = "动态标注不存在：" + annotationId;
+                RefreshUiState();
+                return;
+            }
+
+            selection = new M3GridBounds(annotation.x, annotation.y, annotation.x, annotation.y);
+            if (annotationIdField != null)
+            {
+                annotationIdField.SetValueWithoutNotify(annotation.id);
+            }
+
+            if (annotationTextField != null)
+            {
+                annotationTextField.SetValueWithoutNotify(annotation.text ?? string.Empty);
+            }
+
+            status = "已选择动态标注：" + annotation.id;
+            RefreshUiState();
+        }
+
         private static bool MatchesPieceSearch(M4PieceDefinition definition, string search)
         {
             if (string.IsNullOrWhiteSpace(search))
@@ -1612,6 +1985,11 @@ namespace Sundoll.Presentation
                 mapStatusLabel.text = "地图 " + map.id + " · " + map.width + "×" + map.height;
             }
 
+            if (hostModeLabel != null)
+            {
+                hostModeLabel.text = hostPreviewMode ? "主持预览" : "地图编辑";
+            }
+
             foreach (var layerId in LayerIds)
             {
                 if (layerButtons.TryGetValue(layerId, out var button))
@@ -1652,6 +2030,8 @@ namespace Sundoll.Presentation
                                          " · 实例 " + (editor.State.pieceInstances == null ? 0 : editor.State.pieceInstances.Count) + "\n" +
                                          "缺少图片时保留数据并显示占位色块。";
             }
+
+            RefreshHierarchy();
 
             if (consoleLabel != null)
             {

@@ -3,7 +3,8 @@
   "rootNamespace": "Sundoll.Editor",
   "references": [
     "Sundoll.Bootstrap",
-    "Sundoll.Presentation"
+    "Sundoll.Presentation",
+    "UnityEditor.TestRunner"
   ],
   "includePlatforms": [
     "Editor"

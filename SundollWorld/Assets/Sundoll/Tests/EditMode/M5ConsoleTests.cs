@@ -77,6 +77,27 @@ namespace Sundoll.Tests.EditMode
             Assert.That(M5ConsoleQueries.Ensure(bus.State).FindMap("map-second"), Is.Not.Null);
         }
 
+        [Test]
+        public void MapObjectContextOperationsAddToggleRotateRemove()
+        {
+            var bus = M1VerticalSlice.CreateDemoBus();
+            var editor = new M3MapEditorFacade(bus);
+            var added = editor.AddMapObject("door-context", M3MapObjectKind.Door, 4, 5);
+            Assert.That(added.accepted, Is.True, added.message);
+            Assert.That(editor.FindMapObject("door-context"), Is.Not.Null);
+
+            Assert.That(editor.ToggleMapObject("door-context").accepted, Is.True);
+            Assert.That(editor.FindMapObject("door-context").state, Is.EqualTo(M3MapObjectOpenState.Open));
+            Assert.That(editor.RotateMapObjectClockwise("door-context").accepted, Is.True);
+            Assert.That(editor.FindMapObject("door-context").rotation, Is.EqualTo(90));
+
+            var removed = editor.RemoveMapObject("door-context");
+            Assert.That(removed.accepted, Is.True, removed.message);
+            Assert.That(editor.FindMapObject("door-context"), Is.Null);
+            Assert.That(bus.Undo(), Is.True);
+            Assert.That(editor.FindMapObject("door-context"), Is.Not.Null);
+        }
+
         private static void Execute(M1CommandBus bus, M1Command command)
         {
             var receipt = bus.Execute(command);
