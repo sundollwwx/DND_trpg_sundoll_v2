@@ -7,6 +7,7 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.TestTools;
 using UnityEngine.Tilemaps;
+using UnityEngine.UIElements;
 
 namespace Sundoll.Tests.PlayMode
 {
@@ -21,6 +22,10 @@ namespace Sundoll.Tests.PlayMode
             var root = Object.FindFirstObjectByType<M3WorkbenchRoot>();
             Assert.That(root, Is.Not.Null);
             Assert.That(root.Editor, Is.Not.Null);
+            var document = root.GetComponent<UIDocument>();
+            Assert.That(document, Is.Not.Null);
+            Assert.That(document.rootVisualElement.Q<TextField>("PieceSearch"), Is.Not.Null);
+            Assert.That(document.rootVisualElement.Q<VisualElement>("PieceLibraryList"), Is.Not.Null);
             // The real Workbench deliberately restores local visibility state;
             // normalize the shared test profile before exercising projection.
             root.LayerEditState.SetVisible("terrain", true);

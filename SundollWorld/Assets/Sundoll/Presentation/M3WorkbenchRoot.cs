@@ -46,6 +46,8 @@ namespace Sundoll.Presentation
         private M3WorkbenchInput input;
         private M4WorkbenchPieceProjection pieceProjection;
         private Label pieceLibraryLabel;
+        private TextField pieceSearchField;
+        private VisualElement pieceListContainer;
         private string currentTool = "画笔";
         private string currentLayerId = M3MapLayerIds.Terrain;
         private string status = "Workbench 初始化中";
@@ -60,6 +62,8 @@ namespace Sundoll.Presentation
         private float loadedWorkspaceZoom;
         private Vector2 loadedWorkspacePan;
         private bool hasLoadedWorkspaceView;
+        private string selectedPieceDefinitionId;
+        private string selectedPieceInstanceId;
 
         public M3MapEditorFacade Editor => editor;
         public M2SaveSession SaveSession => saveSession;
@@ -296,13 +300,24 @@ namespace Sundoll.Presentation
             var pieceTitle = new Label("棋子库") { name = "PieceLibraryTitle" };
             pieceTitle.style.marginTop = 18f;
             panel.Add(pieceTitle);
-            var createPieceButton = new Button(CreatePlaceholderPiece) { text = "新增占位棋子" };
+            pieceSearchField = new TextField { name = "PieceSearch", tooltip = "按名称、分类或标签搜索" };
+            pieceSearchField.style.marginTop = 5f;
+            pieceSearchField.RegisterValueChangedCallback(_ => RefreshPieceLibraryList());
+            panel.Add(pieceSearchField);
+            var createPieceButton = new Button(CreatePlaceholderPiece) { text = "新增占位定义" };
             createPieceButton.style.marginTop = 5f;
             panel.Add(createPieceButton);
+            var createInstanceButton = new Button(CreateInstanceFromSelectedDefinition) { text = "创建实例并放置" };
+            createInstanceButton.style.marginTop = 5f;
+            panel.Add(createInstanceButton);
             pieceLibraryLabel = new Label { name = "PieceLibraryBody" };
             pieceLibraryLabel.style.marginTop = 8f;
             pieceLibraryLabel.style.whiteSpace = WhiteSpace.Normal;
             panel.Add(pieceLibraryLabel);
+            pieceListContainer = new ScrollView(ScrollViewMode.Vertical) { name = "PieceLibraryList" };
+            pieceListContainer.style.marginTop = 6f;
+            pieceListContainer.style.maxHeight = 250f;
+            panel.Add(pieceListContainer);
             return panel;
         }
 
@@ -333,6 +348,21 @@ namespace Sundoll.Presentation
             inspectorLabel.style.marginTop = 12f;
             panel.Add(inspectorLabel);
             panel.Add(new Label("棋子视图使用可替换的占位色块；图片缺失不会删除实体。"));
+            var placeSelectedButton = new Button(PlaceSelectedPiece) { text = "选中棋子放到选区" };
+            placeSelectedButton.style.marginTop = 10f;
+            panel.Add(placeSelectedButton);
+            var rotateSelectedButton = new Button(RotateSelectedPiece) { text = "旋转选中棋子" };
+            rotateSelectedButton.style.marginTop = 5f;
+            panel.Add(rotateSelectedButton);
+            var flipSelectedButton = new Button(FlipSelectedPiece) { text = "翻面选中棋子" };
+            flipSelectedButton.style.marginTop = 5f;
+            panel.Add(flipSelectedButton);
+            var visibilityButton = new Button(ToggleSelectedPieceVisibility) { text = "切换选中棋子显隐" };
+            visibilityButton.style.marginTop = 5f;
+            panel.Add(visibilityButton);
+            var detachButton = new Button(DetachSelectedPiece) { text = "解除选中棋子关系" };
+            detachButton.style.marginTop = 5f;
+            panel.Add(detachButton);
             return panel;
         }
 
@@ -804,21 +834,236 @@ namespace Sundoll.Presentation
                 }
             }
 
-            var instanceId = "m4-token-" + Guid.NewGuid().ToString("N");
-            var instanceReceipt = pieceLibrary.CreateInstance(definitionId, instanceId);
+            selectedPieceDefinitionId = definitionId;
+            status = "已选择占位棋子定义，可创建多个实例";
+            RefreshUiState();
+        }
+
+        private void CreateInstanceFromSelectedDefinition()
+        {
+            if (pieceLibrary == null)
+            {
+                return;
+            }
+
+            if (M4PieceQueries.FindDefinition(pieceLibrary.State, selectedPieceDefinitionId) == null)
+            {
+                CreatePlaceholderPiece();
+            }
+
+            if (M4PieceQueries.FindDefinition(pieceLibrary.State, selectedPieceDefinitionId) == null)
+            {
+                return;
+            }
+
+            var instanceId = "m4-piece-" + Guid.NewGuid().ToString("N");
+            var instanceReceipt = pieceLibrary.CreateInstance(selectedPieceDefinitionId, instanceId);
             CommitPieceReceipt(instanceReceipt);
             if (!instanceReceipt.accepted)
             {
                 return;
             }
 
-            var placementCell = selection.IsEmpty
+            selectedPieceInstanceId = instanceId;
+            PlaceSelectedPiece();
+        }
+
+        private void SelectPieceDefinition(string definitionId)
+        {
+            selectedPieceDefinitionId = definitionId;
+            status = "已选择棋子定义：" + definitionId;
+            RefreshUiState();
+        }
+
+        private void SelectPieceInstance(string instanceId)
+        {
+            selectedPieceInstanceId = instanceId;
+            var instance = M4PieceQueries.FindInstance(pieceLibrary == null ? null : pieceLibrary.State, instanceId);
+            if (instance != null)
+            {
+                selectedPieceDefinitionId = instance.definitionId;
+                status = "已选择棋子实例：" + instanceId;
+            }
+
+            RefreshUiState();
+        }
+
+        private void PlaceSelectedPiece()
+        {
+            if (pieceLibrary == null || string.IsNullOrWhiteSpace(selectedPieceInstanceId))
+            {
+                status = "请先从棋子库选择一个实例";
+                RefreshUiState();
+                return;
+            }
+
+            var instance = M4PieceQueries.FindInstance(pieceLibrary.State, selectedPieceInstanceId);
+            if (instance == null)
+            {
+                status = "选中的棋子实例不存在";
+                RefreshUiState();
+                return;
+            }
+
+            var cell = selection.IsEmpty
                 ? new Vector2Int(1, 1)
                 : new Vector2Int(selection.MinX, selection.MinY);
-            var placementReceipt = pieceLibrary.Place(instanceId, placementCell.x, placementCell.y);
-            CommitPieceReceipt(placementReceipt);
-            status = placementReceipt.accepted ? "已新增并放置占位棋子" : placementReceipt.message;
+            var receipt = instance.location != null && instance.location.kind == M1PieceLocationKind.OnBoard
+                ? pieceLibrary.Move(instance.id, cell.x, cell.y)
+                : pieceLibrary.Place(instance.id, cell.x, cell.y);
+            CommitPieceReceipt(receipt);
+            status = receipt.accepted ? "选中棋子已放置到选区" : receipt.message;
             RefreshUiState();
+        }
+
+        private void RotateSelectedPiece()
+        {
+            var instance = M4PieceQueries.FindInstance(pieceLibrary == null ? null : pieceLibrary.State, selectedPieceInstanceId);
+            if (instance == null)
+            {
+                status = "请先选择棋子实例";
+                RefreshUiState();
+                return;
+            }
+
+            var receipt = pieceLibrary.SetPresentation(
+                instance.id,
+                (instance.rotation + 90) % 360,
+                instance.flipped,
+                instance.visible);
+            CommitPieceReceipt(receipt);
+            status = receipt.accepted ? "选中棋子已顺时针旋转 90°" : receipt.message;
+            RefreshUiState();
+        }
+
+        private void FlipSelectedPiece()
+        {
+            var instance = M4PieceQueries.FindInstance(pieceLibrary == null ? null : pieceLibrary.State, selectedPieceInstanceId);
+            if (instance == null)
+            {
+                status = "请先选择棋子实例";
+                RefreshUiState();
+                return;
+            }
+
+            var receipt = pieceLibrary.SetPresentation(instance.id, instance.rotation, !instance.flipped, instance.visible);
+            CommitPieceReceipt(receipt);
+            status = receipt.accepted ? "选中棋子已翻面" : receipt.message;
+            RefreshUiState();
+        }
+
+        private void ToggleSelectedPieceVisibility()
+        {
+            var instance = M4PieceQueries.FindInstance(pieceLibrary == null ? null : pieceLibrary.State, selectedPieceInstanceId);
+            if (instance == null)
+            {
+                status = "请先选择棋子实例";
+                RefreshUiState();
+                return;
+            }
+
+            var receipt = pieceLibrary.SetPresentation(instance.id, instance.rotation, instance.flipped, !instance.visible);
+            CommitPieceReceipt(receipt);
+            status = receipt.accepted ? "选中棋子显隐已切换" : receipt.message;
+            RefreshUiState();
+        }
+
+        private void DetachSelectedPiece()
+        {
+            var instance = M4PieceQueries.FindInstance(pieceLibrary == null ? null : pieceLibrary.State, selectedPieceInstanceId);
+            if (instance == null)
+            {
+                status = "请先选择棋子实例";
+                RefreshUiState();
+                return;
+            }
+
+            var receipt = pieceLibrary.Detach(instance.id);
+            CommitPieceReceipt(receipt);
+            status = receipt.accepted ? "选中棋子已解除关系" : receipt.message;
+            RefreshUiState();
+        }
+
+        private void RefreshPieceLibraryList()
+        {
+            if (pieceListContainer == null || pieceLibrary == null)
+            {
+                return;
+            }
+
+            pieceListContainer.Clear();
+            var search = pieceSearchField == null ? string.Empty : pieceSearchField.value ?? string.Empty;
+            var definitions = pieceLibrary.State.pieceDefinitions;
+            if (definitions != null)
+            {
+                foreach (var definition in definitions)
+                {
+                    if (definition == null || !MatchesPieceSearch(definition, search))
+                    {
+                        continue;
+                    }
+
+                    var definitionId = definition.id;
+                    var definitionButton = new Button(() => SelectPieceDefinition(definitionId))
+                    {
+                        text = (definitionId == selectedPieceDefinitionId ? "▶ " : "") +
+                               (string.IsNullOrWhiteSpace(definition.displayName) ? definitionId : definition.displayName)
+                    };
+                    definitionButton.style.marginTop = 3f;
+                    pieceListContainer.Add(definitionButton);
+                }
+            }
+
+            var instanceHeader = new Label("实例") { name = "PieceInstanceHeader" };
+            instanceHeader.style.marginTop = 8f;
+            pieceListContainer.Add(instanceHeader);
+            var instances = pieceLibrary.State.pieceInstances;
+            if (instances != null)
+            {
+                foreach (var instance in instances)
+                {
+                    if (instance == null)
+                    {
+                        continue;
+                    }
+
+                    var instanceId = instance.id;
+                    var instanceButton = new Button(() => SelectPieceInstance(instanceId))
+                    {
+                        text = (instanceId == selectedPieceInstanceId ? "▶ " : "") + instanceId +
+                               " · " + (instance.location == null ? "未知" : instance.location.kind.ToString())
+                    };
+                    instanceButton.style.marginTop = 3f;
+                    pieceListContainer.Add(instanceButton);
+                }
+            }
+        }
+
+        private static bool MatchesPieceSearch(M4PieceDefinition definition, string search)
+        {
+            if (string.IsNullOrWhiteSpace(search))
+            {
+                return true;
+            }
+
+            if ((definition.displayName ?? string.Empty).IndexOf(search, StringComparison.OrdinalIgnoreCase) >= 0 ||
+                (definition.category ?? string.Empty).IndexOf(search, StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                return true;
+            }
+
+            if (definition.tags != null)
+            {
+                foreach (var tag in definition.tags)
+                {
+                    if ((tag ?? string.Empty).IndexOf(search, StringComparison.OrdinalIgnoreCase) >= 0)
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
         }
 
         private void CommitPieceReceipt(M1CommandReceipt receipt)
@@ -958,6 +1203,8 @@ namespace Sundoll.Presentation
                                       "Map Objects：" + (map.objects == null ? 0 : map.objects.Count) + "\n" +
                                       "棋子定义：" + (editor.State.pieceDefinitions == null ? 0 : editor.State.pieceDefinitions.Count) + "\n" +
                                       "棋子实例：" + (editor.State.pieceInstances == null ? 0 : editor.State.pieceInstances.Count) + "\n" +
+                                      "当前定义：" + (selectedPieceDefinitionId ?? "无") + "\n" +
+                                      "当前实例：" + (selectedPieceInstanceId ?? "无") + "\n" +
                                       "选择：" + (selection.IsEmpty ? "无" : selection.ToString()) + "\n" +
                                       "Published：" + (editor.State.publishedMap == null ? "否" : "是") + "\n" +
                                       "拾取可选择最上方可见层；锁定层可拾取但不可修改。";
@@ -969,6 +1216,8 @@ namespace Sundoll.Presentation
                                          " · 实例 " + (editor.State.pieceInstances == null ? 0 : editor.State.pieceInstances.Count) + "\n" +
                                          "缺少图片时保留数据并显示占位色块。";
             }
+
+            RefreshPieceLibraryList();
 
             if (historyLabel != null)
             {
