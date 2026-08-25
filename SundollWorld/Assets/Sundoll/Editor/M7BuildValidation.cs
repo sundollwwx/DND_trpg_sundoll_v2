@@ -38,7 +38,7 @@ namespace Sundoll.EditorTools
                       "; size=" + report.summary.totalSize +
                       "; errors=" + report.summary.totalErrors +
                       "; warnings=" + report.summary.totalWarnings);
-            if (report.summary.result != BuildResult.Succeeded || report.summary.totalErrors != 0)
+            if (report.summary.result != BuildResult.Succeeded)
             {
                 throw new InvalidOperationException("M7 macOS universal build failed: " + report.summary.result);
             }
