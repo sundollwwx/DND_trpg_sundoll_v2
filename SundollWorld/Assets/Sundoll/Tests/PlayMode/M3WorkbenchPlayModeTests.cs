@@ -42,6 +42,7 @@ namespace Sundoll.Tests.PlayMode
 
             var projection = Object.FindFirstObjectByType<M3WorkbenchMapProjection>();
             Assert.That(projection, Is.Not.Null);
+            Assert.That(Object.FindFirstObjectByType<M5WorkbenchConsoleProjection>(), Is.Not.Null);
             Assert.That(projection.Tilemaps.Count, Is.GreaterThanOrEqualTo(5));
             Assert.That(projection.Tilemaps["terrain"].HasTile(new Vector3Int(2, 3, 0)), Is.True);
 
@@ -166,6 +167,36 @@ namespace Sundoll.Tests.PlayMode
                 }
             }
 
+            yield return null;
+        }
+
+        [UnityTest]
+        public IEnumerator M5ConsoleProjectionRebuildsFogAndAnnotationViews()
+        {
+            var bus = M1VerticalSlice.CreateDemoBus();
+            var console = M5ConsoleQueries.Ensure(bus.State);
+            var fog = bus.Execute(new M5SetFogCommand("play-m5-fog", bus.State.revision, console.activeMapId, 1, 1, false));
+            Assert.That(fog.accepted, Is.True, fog.message);
+            var annotation = bus.Execute(new M5UpsertAnnotationCommand(
+                "play-m5-note",
+                bus.State.revision,
+                "note-play",
+                console.activeMapId,
+                1,
+                1,
+                "入口",
+                "#FFFFFF",
+                true));
+            Assert.That(annotation.accepted, Is.True, annotation.message);
+
+            var projectionObject = new GameObject("M5ConsoleProjectionTest");
+            var projection = projectionObject.AddComponent<M5WorkbenchConsoleProjection>();
+            projection.Bind(bus);
+            yield return null;
+
+            Assert.That(projection.FogViews.ContainsKey("fog-1-1"), Is.True);
+            Assert.That(projection.AnnotationViews.ContainsKey("note-play"), Is.True);
+            Object.Destroy(projectionObject);
             yield return null;
         }
     }

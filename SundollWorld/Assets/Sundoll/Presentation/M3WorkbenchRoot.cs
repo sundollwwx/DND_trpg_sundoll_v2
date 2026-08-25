@@ -47,6 +47,7 @@ namespace Sundoll.Presentation
         private VisualElement mapViewport;
         private M3WorkbenchInput input;
         private M4WorkbenchPieceProjection pieceProjection;
+        private M5WorkbenchConsoleProjection consoleProjection;
         private Label pieceLibraryLabel;
         private TextField pieceSearchField;
         private TextField pieceCategoryField;
@@ -113,6 +114,15 @@ namespace Sundoll.Presentation
             }
 
             pieceProjection.Bind(commandBus, pieceAssetCatalog);
+            consoleProjection = GetComponentInChildren<M5WorkbenchConsoleProjection>();
+            if (consoleProjection == null)
+            {
+                var consoleObject = new GameObject("M5ConsoleProjection");
+                consoleObject.transform.SetParent(transform, false);
+                consoleProjection = consoleObject.AddComponent<M5WorkbenchConsoleProjection>();
+            }
+
+            consoleProjection.Bind(commandBus);
             BuildUi();
             input = GetComponent<M3WorkbenchInput>();
             if (input == null)
@@ -600,6 +610,10 @@ namespace Sundoll.Presentation
             {
                 saveSession.RecordAccepted(receipt, consoleFacade.State);
                 projection.RefreshAll();
+                if (consoleProjection != null)
+                {
+                    consoleProjection.RefreshAll();
+                }
                 if (pieceProjection != null)
                 {
                     pieceProjection.RefreshAll();
