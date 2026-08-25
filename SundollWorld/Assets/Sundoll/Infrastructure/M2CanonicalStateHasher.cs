@@ -54,6 +54,10 @@ namespace Sundoll.Infrastructure
             AppendBoard(builder, state.board);
             AppendPieceDefinition(builder, state.pieceDefinition);
             AppendPieceInstance(builder, state.pieceInstance);
+            if (HasM4Data(state))
+            {
+                AppendM4Pieces(builder, state);
+            }
             return M2FileIO.Sha256Utf8(builder.ToString());
         }
 
@@ -126,6 +130,105 @@ namespace Sundoll.Infrastructure
             AppendString(builder, piece.location.boardId);
             AppendInt(builder, piece.location.x);
             AppendInt(builder, piece.location.y);
+        }
+
+        private static bool HasM4Data(M1WorldState state)
+        {
+            return state.pieceAssets != null && state.pieceAssets.Count > 0 ||
+                   state.pieceDefinitions != null && state.pieceDefinitions.Count > 0 ||
+                   state.pieceInstances != null && state.pieceInstances.Count > 0;
+        }
+
+        private static void AppendM4Pieces(StringBuilder builder, M1WorldState state)
+        {
+            var assets = new List<M4PieceAsset>();
+            if (state.pieceAssets != null)
+            {
+                foreach (var asset in state.pieceAssets)
+                {
+                    if (asset != null)
+                    {
+                        assets.Add(asset);
+                    }
+                }
+            }
+
+            assets.Sort((left, right) => string.CompareOrdinal(left.id, right.id));
+            AppendInt(builder, assets.Count);
+            foreach (var asset in assets)
+            {
+                AppendOptionalString(builder, asset.id);
+                AppendOptionalString(builder, asset.sha256);
+                AppendOptionalString(builder, asset.extension);
+                AppendOptionalString(builder, asset.mimeType);
+                AppendLong(builder, asset.byteLength);
+                AppendOptionalString(builder, asset.relativePath);
+                AppendOptionalString(builder, asset.thumbnailSha256);
+                AppendOptionalString(builder, asset.thumbnailRelativePath);
+            }
+
+            var definitions = new List<M4PieceDefinition>();
+            if (state.pieceDefinitions != null)
+            {
+                foreach (var definition in state.pieceDefinitions)
+                {
+                    if (definition != null)
+                    {
+                        definitions.Add(definition);
+                    }
+                }
+            }
+
+            definitions.Sort((left, right) => string.CompareOrdinal(left.id, right.id));
+            AppendInt(builder, definitions.Count);
+            foreach (var definition in definitions)
+            {
+                AppendOptionalString(builder, definition.id);
+                AppendOptionalString(builder, definition.displayName);
+                AppendOptionalString(builder, definition.category);
+                AppendOptionalString(builder, definition.assetId);
+                AppendInt(builder, definition.footprintWidth);
+                AppendInt(builder, definition.footprintHeight);
+                var tags = definition.tags == null ? new List<string>() : new List<string>(definition.tags);
+                tags.Sort(StringComparer.Ordinal);
+                AppendInt(builder, tags.Count);
+                foreach (var tag in tags)
+                {
+                    AppendOptionalString(builder, tag);
+                }
+            }
+
+            var instances = new List<M4PieceInstance>();
+            if (state.pieceInstances != null)
+            {
+                foreach (var instance in state.pieceInstances)
+                {
+                    if (instance != null)
+                    {
+                        instances.Add(instance);
+                    }
+                }
+            }
+
+            instances.Sort((left, right) => string.CompareOrdinal(left.id, right.id));
+            AppendInt(builder, instances.Count);
+            foreach (var instance in instances)
+            {
+                AppendOptionalString(builder, instance.id);
+                AppendOptionalString(builder, instance.definitionId);
+                AppendInt(builder, M4PieceInstance.NormalizeRotation(instance.rotation));
+                AppendInt(builder, instance.flipped ? 1 : 0);
+                AppendInt(builder, instance.visible ? 1 : 0);
+                var location = instance.location;
+                AppendInt(builder, location == null ? -1 : (int)location.kind);
+                AppendOptionalString(builder, location == null ? null : location.boardId);
+                AppendInt(builder, location == null ? 0 : location.x);
+                AppendInt(builder, location == null ? 0 : location.y);
+                AppendOptionalString(builder, location == null ? null : location.containerPieceId);
+                AppendOptionalString(builder, location == null ? null : location.attachedToPieceId);
+                AppendOptionalString(builder, location == null ? null : location.attachmentSlot);
+                AppendInt(builder, location == null ? 0 : location.stackOrder);
+            }
         }
 
         private static void AppendCells(StringBuilder builder, List<M1MapCell> cells, bool layerAware)
@@ -235,6 +338,11 @@ namespace Sundoll.Infrastructure
             builder.Append(value).Append(';');
         }
 
+        private static void AppendLong(StringBuilder builder, long value)
+        {
+            builder.Append(value).Append(';');
+        }
+
         private static void AppendString(StringBuilder builder, string value)
         {
             if (value == null)
@@ -244,6 +352,11 @@ namespace Sundoll.Infrastructure
             }
 
             builder.Append(value.Length).Append(':').Append(value).Append(';');
+        }
+
+        private static void AppendOptionalString(StringBuilder builder, string value)
+        {
+            AppendString(builder, string.IsNullOrEmpty(value) ? null : value);
         }
     }
 }

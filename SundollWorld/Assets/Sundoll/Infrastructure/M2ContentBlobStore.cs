@@ -24,6 +24,7 @@ namespace Sundoll.Infrastructure
 
         public string AssetsPath => Path.Combine(rootPath, "assets");
         public string ThumbnailsPath => Path.Combine(rootPath, "thumbnails");
+        public string RootPath => rootPath;
 
         public M2ContentRef PutAsset(byte[] bytes, string extension, string mimeType)
         {

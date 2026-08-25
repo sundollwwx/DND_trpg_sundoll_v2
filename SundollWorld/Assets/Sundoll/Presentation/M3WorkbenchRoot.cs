@@ -32,6 +32,7 @@ namespace Sundoll.Presentation
         private M1CommandBus commandBus;
         private M2SaveSession saveSession;
         private M3MapEditorFacade editor;
+        private M4PieceLibraryFacade pieceLibrary;
         private M3LayerEditState layerEditState;
         private M3WorkspaceStateStore workspaceStateStore;
         private M3WorkbenchMapProjection projection;
@@ -43,6 +44,8 @@ namespace Sundoll.Presentation
         private Label historyLabel;
         private VisualElement mapViewport;
         private M3WorkbenchInput input;
+        private M4WorkbenchPieceProjection pieceProjection;
+        private Label pieceLibraryLabel;
         private string currentTool = "画笔";
         private string currentLayerId = M3MapLayerIds.Terrain;
         private string status = "Workbench 初始化中";
@@ -81,6 +84,15 @@ namespace Sundoll.Presentation
             }
 
             projection.Bind(editor, layerEditState);
+            pieceProjection = GetComponentInChildren<M4WorkbenchPieceProjection>();
+            if (pieceProjection == null)
+            {
+                var pieceObject = new GameObject("M4PieceProjection");
+                pieceObject.transform.SetParent(transform, false);
+                pieceProjection = pieceObject.AddComponent<M4WorkbenchPieceProjection>();
+            }
+
+            pieceProjection.Bind(commandBus);
             BuildUi();
             input = GetComponent<M3WorkbenchInput>();
             if (input == null)
@@ -135,14 +147,15 @@ namespace Sundoll.Presentation
         private void InitializeDomain()
         {
             var initialBus = M1VerticalSlice.CreateDemoBus();
-            // M3 intentionally uses a new development root. Existing M1/M2
-            // samples remain readable and untouched while schema 2 evolves.
-            var projectRoot = Path.Combine(UnityEngine.Application.persistentDataPath, "SundollWorld_M3");
+            // M4 intentionally uses a new development root. Existing M1/M2/M3
+            // samples remain readable and untouched while piece data evolves.
+            var projectRoot = Path.Combine(UnityEngine.Application.persistentDataPath, "SundollWorld_M4");
             saveSession = M2SaveSession.Open(projectRoot, initialBus.State);
             commandBus = new M1CommandBus(
                 saveSession.State,
                 new M1LocalAuthority(new AllowAllRulePolicy()));
             editor = new M3MapEditorFacade(commandBus);
+            pieceLibrary = new M4PieceLibraryFacade(commandBus);
             workspaceStateStore = new M3WorkspaceStateStore(projectRoot);
             var workspaceLoad = workspaceStateStore.Load(editor.State.map.id, LayerIds);
             layerEditState = workspaceLoad.state;
@@ -280,6 +293,16 @@ namespace Sundoll.Presentation
             var resetButton = new Button(ResetView) { text = "复位视口" };
             resetButton.style.marginTop = 18f;
             panel.Add(resetButton);
+            var pieceTitle = new Label("棋子库") { name = "PieceLibraryTitle" };
+            pieceTitle.style.marginTop = 18f;
+            panel.Add(pieceTitle);
+            var createPieceButton = new Button(CreatePlaceholderPiece) { text = "新增占位棋子" };
+            createPieceButton.style.marginTop = 5f;
+            panel.Add(createPieceButton);
+            pieceLibraryLabel = new Label { name = "PieceLibraryBody" };
+            pieceLibraryLabel.style.marginTop = 8f;
+            pieceLibraryLabel.style.whiteSpace = WhiteSpace.Normal;
+            panel.Add(pieceLibraryLabel);
             return panel;
         }
 
@@ -309,6 +332,7 @@ namespace Sundoll.Presentation
             inspectorLabel.style.whiteSpace = WhiteSpace.Normal;
             inspectorLabel.style.marginTop = 12f;
             panel.Add(inspectorLabel);
+            panel.Add(new Label("棋子视图使用可替换的占位色块；图片缺失不会删除实体。"));
             return panel;
         }
 
@@ -597,6 +621,10 @@ namespace Sundoll.Presentation
             if (editor.Undo())
             {
                 projection.RefreshRegion(editor.LastDirtyBounds);
+                if (pieceProjection != null)
+                {
+                    pieceProjection.RefreshAll();
+                }
                 saveSession.RecordMutation("m3-undo-" + Guid.NewGuid().ToString("N"), "撤销 Workbench 操作", editor.State);
                 status = "已撤销";
             }
@@ -609,6 +637,10 @@ namespace Sundoll.Presentation
             if (editor.Redo())
             {
                 projection.RefreshRegion(editor.LastDirtyBounds);
+                if (pieceProjection != null)
+                {
+                    pieceProjection.RefreshAll();
+                }
                 saveSession.RecordMutation("m3-redo-" + Guid.NewGuid().ToString("N"), "重做 Workbench 操作", editor.State);
                 status = "已重做";
             }
@@ -750,6 +782,66 @@ namespace Sundoll.Presentation
             RefreshUiState();
         }
 
+        private void CreatePlaceholderPiece()
+        {
+            if (pieceLibrary == null)
+            {
+                return;
+            }
+
+            const string definitionId = "m4-placeholder-token";
+            if (M4PieceQueries.FindDefinition(pieceLibrary.State, definitionId) == null)
+            {
+                var definitionReceipt = pieceLibrary.CreateDefinition(
+                    definitionId,
+                    "中性占位棋子",
+                    "Placeholder",
+                    new[] { "中性", "占位" });
+                CommitPieceReceipt(definitionReceipt);
+                if (!definitionReceipt.accepted)
+                {
+                    return;
+                }
+            }
+
+            var instanceId = "m4-token-" + Guid.NewGuid().ToString("N");
+            var instanceReceipt = pieceLibrary.CreateInstance(definitionId, instanceId);
+            CommitPieceReceipt(instanceReceipt);
+            if (!instanceReceipt.accepted)
+            {
+                return;
+            }
+
+            var placementCell = selection.IsEmpty
+                ? new Vector2Int(1, 1)
+                : new Vector2Int(selection.MinX, selection.MinY);
+            var placementReceipt = pieceLibrary.Place(instanceId, placementCell.x, placementCell.y);
+            CommitPieceReceipt(placementReceipt);
+            status = placementReceipt.accepted ? "已新增并放置占位棋子" : placementReceipt.message;
+            RefreshUiState();
+        }
+
+        private void CommitPieceReceipt(M1CommandReceipt receipt)
+        {
+            if (receipt == null)
+            {
+                return;
+            }
+
+            if (receipt.accepted)
+            {
+                saveSession.RecordAccepted(receipt, pieceLibrary.State);
+                if (pieceProjection != null)
+                {
+                    pieceProjection.RefreshAll();
+                }
+            }
+            else
+            {
+                status = receipt.message;
+            }
+        }
+
         private M3MapObject FindObjectAt(Vector2Int cell)
         {
             if (editor.State.map == null || editor.State.map.objects == null)
@@ -864,9 +956,18 @@ namespace Sundoll.Presentation
                                       "World Revision：" + editor.State.revision + "\n" +
                                       "Map Cells：" + map.cells.Count + "\n" +
                                       "Map Objects：" + (map.objects == null ? 0 : map.objects.Count) + "\n" +
+                                      "棋子定义：" + (editor.State.pieceDefinitions == null ? 0 : editor.State.pieceDefinitions.Count) + "\n" +
+                                      "棋子实例：" + (editor.State.pieceInstances == null ? 0 : editor.State.pieceInstances.Count) + "\n" +
                                       "选择：" + (selection.IsEmpty ? "无" : selection.ToString()) + "\n" +
                                       "Published：" + (editor.State.publishedMap == null ? "否" : "是") + "\n" +
                                       "拾取可选择最上方可见层；锁定层可拾取但不可修改。";
+            }
+
+            if (pieceLibraryLabel != null)
+            {
+                pieceLibraryLabel.text = "定义 " + (editor.State.pieceDefinitions == null ? 0 : editor.State.pieceDefinitions.Count) +
+                                         " · 实例 " + (editor.State.pieceInstances == null ? 0 : editor.State.pieceInstances.Count) + "\n" +
+                                         "缺少图片时保留数据并显示占位色块。";
             }
 
             if (historyLabel != null)

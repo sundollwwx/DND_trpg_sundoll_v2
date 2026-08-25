@@ -1,5 +1,7 @@
 using System.Collections;
 using NUnit.Framework;
+using Sundoll.Application;
+using Sundoll.Core;
 using Sundoll.Presentation;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -44,6 +46,34 @@ namespace Sundoll.Tests.PlayMode
             Assert.That(root.LayerEditState.CanEdit("wall"), Is.False);
 
             Object.Destroy(root.gameObject);
+            yield return null;
+        }
+
+        [UnityTest]
+        public IEnumerator M4PieceProjectionRebuildsPlaceholderPieceView()
+        {
+            var bus = M1VerticalSlice.CreateDemoBus();
+            var library = new M4PieceLibraryFacade(bus);
+            var definition = library.CreateDefinition(
+                "m4-play-definition",
+                "PlayMode 占位棋子",
+                "Placeholder",
+                new[] { "playmode" });
+            Assert.That(definition.accepted, Is.True, definition.message);
+            var instance = library.CreateInstance("m4-play-definition", "m4-play-instance");
+            Assert.That(instance.accepted, Is.True, instance.message);
+            var placement = library.Place("m4-play-instance", 3, 4);
+            Assert.That(placement.accepted, Is.True, placement.message);
+
+            var projectionObject = new GameObject("M4PlayModeProjection");
+            var projection = projectionObject.AddComponent<M4WorkbenchPieceProjection>();
+            projection.Bind(bus);
+            yield return null;
+
+            Assert.That(projection.Views.ContainsKey("m4-play-instance"), Is.True);
+            Assert.That(projection.Views["m4-play-instance"].transform.position, Is.EqualTo(new Vector3(3f, 4f, -0.5f)));
+
+            Object.Destroy(projectionObject);
             yield return null;
         }
     }

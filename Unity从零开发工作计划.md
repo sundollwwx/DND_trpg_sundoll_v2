@@ -2,7 +2,7 @@
 
 > 文档状态：v0.3，执行跟踪稿
 > 更新日期：2026-08-25
-> 当前状态：**M3 功能范围已实现并通过自动化验证；性能/正式 macOS IL2CPP 与 Windows 矩阵仍未关闭**
+> 当前状态：**M4 第一批棋子库与空间交互底座已实现并通过自动化验证；M4 UI 完整度、性能与 Windows 矩阵仍未关闭**
 
 ## 里程碑状态矩阵
 
@@ -12,6 +12,7 @@
 | M1 | 纵向领域闭环、纯数据重建、4/4 测试、macOS universal build | 当前正式构建仍为 Mono | Windows Smoke |
 | M2 | Revision、HEAD/Revision 扫描恢复、generation 冲突保护、Journal、blob、便携包、命令契约、Journal v2 Payload 重放、单写入后台保存队列、保存状态、OS 文件写锁与故障注入；完整证据含 M2 26/26 | 真实磁盘满/权限、独立进程强制退出与跨平台验证 | Windows 强制退出、原子写盘与跨平台互开矩阵 |
 | M3 | 正式 Workbench、UI Toolkit 固定布局、Tilemap 五层投影、Input System 绘制/视口、选择/复制/剪切/粘贴/旋转、五层 Workspace State 2、门箱对象、Schema 2；57/57 EditMode、1/1 PlayMode、macOS universal IL2CPP 构建与 Smoke | 性能 p95、真实鼠标视觉复验 | Windows 性能与构建、跨平台互开矩阵 |
+| M4 | Asset/Definition/Instance 纯数据模型、内容寻址去重、四种位置、堆叠/收纳/附着/解除、旋转/翻面/显隐、关系循环校验、Command/Journal 接入、Workbench 占位投影；EditMode 65/65、PlayMode 2/2 | 正式棋子库 UI、运行时图片导入/缩略图、棋子操作 UI、纹理性能基准 | Windows/跨平台矩阵与后续发布门槛 |
 
 详细执行证据与限制见 [v0.3 实施状态](./SundollWorld/Docs/v0.3-实施状态.md)。状态为 Partial 或 Blocked 的项目不得被解释为对应里程碑已经完整关闭。
 
@@ -867,6 +868,8 @@ Loopback 通过后再专项比较 Unity Multiplayer/Transport、Mirror、FishNet
 退出条件：能从空白持续制作、保存并重开一张中等地图；批量操作全部原子且可撤销；发布版本不可变。
 
 ### M4：项目棋子库与空间交互（3 周）
+
+当前进度：M4 第一批已实现：Asset/Definition/Instance 纯数据模型、内容寻址资产去重、四种互斥位置、堆叠/收纳/附着/解除、旋转/翻面/显隐、关系循环校验、版本化 Command/Journal 接入，以及 Workbench 的占位棋子投影；EditMode 65/65、PlayMode 2/2。正式棋子库 UI、运行时图片导入/缩略图、棋子操作 UI、纹理性能预算仍在进行，详见 [M4 结果报告](./SundollWorld/Docs/M4-结果报告.md)。
 
 工作：
 

@@ -129,6 +129,105 @@ namespace Sundoll.Infrastructure
                         payload.rotation,
                         (M3MapObjectAction)payload.action);
                 }
+                case "M4.RegisterPieceAsset":
+                {
+                    var payload = ReadPayload<M4RegisterPieceAssetCommandPayload>(envelope);
+                    return new M4RegisterPieceAssetCommand(
+                        envelope.commandId,
+                        envelope.baseRevision,
+                        new M4PieceAsset
+                        {
+                            id = payload.assetId,
+                            sha256 = payload.sha256,
+                            extension = payload.extension,
+                            mimeType = payload.mimeType,
+                            byteLength = payload.byteLength,
+                            relativePath = payload.relativePath,
+                            thumbnailSha256 = payload.thumbnailSha256,
+                            thumbnailRelativePath = payload.thumbnailRelativePath
+                        });
+                }
+                case "M4.CreatePieceDefinition":
+                {
+                    var payload = ReadPayload<M4CreatePieceDefinitionCommandPayload>(envelope);
+                    return new M4CreatePieceDefinitionCommand(
+                        envelope.commandId,
+                        envelope.baseRevision,
+                        payload.definitionId,
+                        payload.displayName,
+                        payload.category,
+                        payload.tags,
+                        payload.assetId,
+                        payload.footprintWidth,
+                        payload.footprintHeight);
+                }
+                case "M4.CreatePieceInstance":
+                {
+                    var payload = ReadPayload<M4CreatePieceInstanceCommandPayload>(envelope);
+                    return new M4CreatePieceInstanceCommand(
+                        envelope.commandId,
+                        envelope.baseRevision,
+                        payload.definitionId,
+                        payload.instanceId);
+                }
+                case "M4.PlacePiece":
+                {
+                    var payload = ReadPayload<M4PlacePieceCommandPayload>(envelope);
+                    return new M4PlacePieceCommand(
+                        envelope.commandId,
+                        envelope.baseRevision,
+                        payload.instanceId,
+                        payload.x,
+                        payload.y);
+                }
+                case "M4.MovePiece":
+                {
+                    var payload = ReadPayload<M4MovePieceCommandPayload>(envelope);
+                    return new M4MovePieceCommand(
+                        envelope.commandId,
+                        envelope.baseRevision,
+                        payload.instanceId,
+                        payload.x,
+                        payload.y);
+                }
+                case "M4.MovePieceToContainer":
+                {
+                    var payload = ReadPayload<M4MovePieceToContainerCommandPayload>(envelope);
+                    return new M4MovePieceToContainerCommand(
+                        envelope.commandId,
+                        envelope.baseRevision,
+                        payload.instanceId,
+                        payload.containerPieceId);
+                }
+                case "M4.AttachPiece":
+                {
+                    var payload = ReadPayload<M4AttachPieceCommandPayload>(envelope);
+                    return new M4AttachPieceCommand(
+                        envelope.commandId,
+                        envelope.baseRevision,
+                        payload.instanceId,
+                        payload.targetPieceId,
+                        payload.attachmentSlot);
+                }
+                case "M4.DetachPiece":
+                {
+                    var payload = ReadPayload<M4DetachPieceCommandPayload>(envelope);
+                    return new M4DetachPieceCommand(
+                        envelope.commandId,
+                        envelope.baseRevision,
+                        payload.instanceId);
+                }
+                case "M4.SetPiecePresentation":
+                {
+                    var payload = ReadPayload<M4SetPiecePresentationCommandPayload>(envelope);
+                    return new M4SetPiecePresentationCommand(
+                        envelope.commandId,
+                        envelope.baseRevision,
+                        payload.instanceId,
+                        payload.rotation,
+                        payload.flipped,
+                        payload.visible);
+                }
                 default:
                     throw new InvalidDataException("Unknown command type: " + envelope.commandType);
             }

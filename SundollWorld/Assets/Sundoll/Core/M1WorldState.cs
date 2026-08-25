@@ -268,6 +268,11 @@ namespace Sundoll.Core
         public M1BoardInstance board;
         public M1PieceDefinition pieceDefinition;
         public M1PieceInstance pieceInstance;
+        // M4 collections are additive to the M1 singular fields. The latter
+        // remain readable for existing pre-M4 development saves.
+        public List<M4PieceAsset> pieceAssets = new List<M4PieceAsset>();
+        public List<M4PieceDefinition> pieceDefinitions = new List<M4PieceDefinition>();
+        public List<M4PieceInstance> pieceInstances = new List<M4PieceInstance>();
 
         public static M1WorldState CreateEmpty()
         {
@@ -331,6 +336,10 @@ namespace Sundoll.Core
                 }
             };
 
+            clone.pieceAssets = ClonePieceAssets(pieceAssets);
+            clone.pieceDefinitions = ClonePieceDefinitions(pieceDefinitions);
+            clone.pieceInstances = ClonePieceInstances(pieceInstances);
+
             if (pieceInstance != null)
             {
                 clone.pieceInstance = new M1PieceInstance
@@ -362,6 +371,9 @@ namespace Sundoll.Core
             board = clone.board;
             pieceDefinition = clone.pieceDefinition;
             pieceInstance = clone.pieceInstance;
+            pieceAssets = clone.pieceAssets;
+            pieceDefinitions = clone.pieceDefinitions;
+            pieceInstances = clone.pieceInstances;
         }
 
         /// <summary>
@@ -401,6 +413,21 @@ namespace Sundoll.Core
                 {
                     publishedMap.objects = new List<M3MapObject>();
                 }
+            }
+
+            if (pieceAssets == null)
+            {
+                pieceAssets = new List<M4PieceAsset>();
+            }
+
+            if (pieceDefinitions == null)
+            {
+                pieceDefinitions = new List<M4PieceDefinition>();
+            }
+
+            if (pieceInstances == null)
+            {
+                pieceInstances = new List<M4PieceInstance>();
             }
         }
 
@@ -444,6 +471,63 @@ namespace Sundoll.Core
                 if (mapObject != null)
                 {
                     result.Add(mapObject.DeepClone());
+                }
+            }
+
+            return result;
+        }
+
+        private static List<M4PieceAsset> ClonePieceAssets(List<M4PieceAsset> source)
+        {
+            var result = new List<M4PieceAsset>();
+            if (source == null)
+            {
+                return result;
+            }
+
+            foreach (var asset in source)
+            {
+                if (asset != null)
+                {
+                    result.Add(asset.DeepClone());
+                }
+            }
+
+            return result;
+        }
+
+        private static List<M4PieceDefinition> ClonePieceDefinitions(List<M4PieceDefinition> source)
+        {
+            var result = new List<M4PieceDefinition>();
+            if (source == null)
+            {
+                return result;
+            }
+
+            foreach (var definition in source)
+            {
+                if (definition != null)
+                {
+                    result.Add(definition.DeepClone());
+                }
+            }
+
+            return result;
+        }
+
+        private static List<M4PieceInstance> ClonePieceInstances(List<M4PieceInstance> source)
+        {
+            var result = new List<M4PieceInstance>();
+            if (source == null)
+            {
+                return result;
+            }
+
+            foreach (var instance in source)
+            {
+                if (instance != null)
+                {
+                    result.Add(instance.DeepClone());
                 }
             }
 

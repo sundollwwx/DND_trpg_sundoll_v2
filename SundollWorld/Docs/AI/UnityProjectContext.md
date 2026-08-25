@@ -6,15 +6,15 @@
 
 - Project root: `/Users/sundoll/Desktop/SundollUnity/SundollWorld`
 - Last analyzed: 2026-08-25
-- Git root: `/Users/sundoll/Desktop/SundollUnity`; latest audit covers the formal M3 Workbench and schema-2 map-object implementation
-- This is the formal M3 Unity project. `M0-Spike` remains disposable validation material; M1 is complete and M2 core persistence is implemented with cross-platform validation pending.
+- Git root: `/Users/sundoll/Desktop/SundollUnity`; latest audit covers the formal M4 piece-library slice and M3 Workbench integration
+- This is the formal M4 Unity project. `M0-Spike` remains disposable validation material; M1/M2 core and the M3 Workbench are complete with cross-platform validation pending, and M4's first piece-library slice is implemented.
 
 ## Confirmed Environment
 
 - Unity version: `6000.3.22f1` (`1c726e1fb402`)
 - Render pipeline: Universal Render Pipeline with the Universal 2D template and 2D Renderer
 - Input system: Unity Input System package `1.20.0`; the template also contains the legacy Input Manager asset
-- Target platforms: macOS and Windows are the M0/M1/M2/M3 target platforms; current Hub project row is macOS
+- Target platforms: macOS and Windows are the M0/M1/M2/M3/M4 target platforms; current Hub project row is macOS
 
 ## Important Packages And Frameworks
 
@@ -51,15 +51,15 @@
 ## Scenes And Startup Flow
 
 - Build scenes: `Assets/Sundoll/Scenes/M3Workbench.unity` is first and `Assets/Sundoll/Scenes/M1Bootstrap.unity` remains enabled as a diagnostic scene.
-- Startup flow: `M3WorkbenchRoot` creates the pure-data command bus, opens the isolated M3 save session under `Application.persistentDataPath/SundollWorld_M3`, binds the Tilemap projection and UI Toolkit Workbench, then attaches the Input System adapter.
+- Startup flow: `M3WorkbenchRoot` creates the pure-data command bus, opens the isolated M4 save session under `Application.persistentDataPath/SundollWorld_M4`, binds the Tilemap and M4 placeholder projections plus the UI Toolkit Workbench, then attaches the Input System adapter.
 - `M1Bootstrap` remains a diagnostic surface; its automatic runtime creation hook is disabled so it cannot interfere with the formal M3 scene.
 
 ## Architecture
 
 | Pattern | Finding | Confidence | Evidence |
 | --- | --- | --- | --- |
-| Formal M1/M2/M3 architecture | Pure C# state authority, command bus, M2 persistence infrastructure, M3 map editing commands, Unity bootstrap/presentation boundary | Confirmed | `Assets/Sundoll/` source and asmdef files |
-| M1/M2/M3 target | Pure C# domain state as authority, explicit Application command flow, M2 persistence, M3 map editing, Unity as presentation/bootstrap | Confirmed requirement | `../../../Unity从零开发工作计划.md` and M1/M2/M3 reports |
+| Formal M1/M2/M3/M4 architecture | Pure C# state authority, command bus, M2 persistence infrastructure, M3 map editing commands, M4 piece-library commands, Unity bootstrap/presentation boundary | Confirmed | `Assets/Sundoll/` source and asmdef files |
+| M1/M2/M3/M4 target | Pure C# domain state as authority, explicit Application command flow, M2 persistence, M3 map editing, M4 piece library/relationships, Unity as presentation/bootstrap | Confirmed requirement | `../../../Unity从零开发工作计划.md` and M1/M2/M3/M4 reports |
 | Existing DI/event bus/networking | No DI framework, external event bus, or networking SDK | Confirmed | no such package or source dependency |
 
 ## Coding Conventions
@@ -71,9 +71,9 @@
 
 ## Testing And Validation
 
-- EditMode tests: 57 first-party tests; 57 passed, 0 failed, 0 ignored in the latest completed Unity Editor run. The suite contains 4 M1, 26 M2 and 27 M3 tests, including the existing persistence/geometry/cache coverage plus clipboard atomic bounds checks, topmost visible-layer picking, map-object command/rotation/publish deep-copy checks, Schema 1→2 defaults and Workspace State format 2 view/tool/order restoration.
-- PlayMode validation: 1/1 Workbench smoke passed in `M3Workbench.unity`, covering startup, five Tilemap projections, edit and dirty-region refresh, hidden/locked layer behavior and View destruction cleanup. Batch validation is headless; real-window visual layout and mouse feel remain unverified.
-- CI/build validation: no CI configuration detected. M3 macOS universal IL2CPP build and no-graphics player startup Smoke passed; build summary is `Docs/M3-构建摘要.md`. Latest test evidence is `SundollWorld/TestResults_EditMode_20260825_m3_final2.xml` and `SundollWorld/TestResults_PlayMode_20260825_m3_final4.xml`; Windows build, independent-process forced-exit recovery, cross-platform save exchange and formal performance checks remain unverified.
+- EditMode tests: 65 first-party tests; 65 passed, 0 failed, 0 ignored in the latest completed Unity Editor run. The suite contains the M1/M2/M3 coverage plus 8 M4 tests for asset/definition/instance data, relationship validation, canonical round-trip, Journal replay and content deduplication.
+- PlayMode validation: 2/2 passed in `M3Workbench.unity`, covering startup, five Tilemap projections, edit and dirty-region refresh, hidden/locked layer behavior, M4 placeholder piece projection and View destruction cleanup. Batch validation is headless; real-window visual layout and mouse feel remain unverified.
+- CI/build validation: no CI configuration detected. M3 macOS universal IL2CPP build and no-graphics player startup Smoke passed; build summary is `Docs/M3-构建摘要.md`. Latest test evidence is `SundollWorld/TestResults_EditMode_20260825_m4_full2.xml` and `SundollWorld/TestResults_PlayMode_20260825_m4_full2.xml`; Windows build, independent-process forced-exit recovery, cross-platform save exchange and formal performance checks remain unverified.
 
 ## Available Unity Tooling
 
