@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using Sundoll.Core;
 
 namespace Sundoll.Infrastructure
@@ -117,6 +118,19 @@ namespace Sundoll.Infrastructure
 
         public long ExpectedGeneration { get; }
         public long ActualGeneration { get; }
+    }
+
+    public sealed class M2WriteLockTimeoutException : IOException
+    {
+        public M2WriteLockTimeoutException(string lockPath, int timeoutMilliseconds, Exception innerException)
+            : base("Timed out waiting for the M2 writer lock after " + timeoutMilliseconds + " ms: " + lockPath, innerException)
+        {
+            LockPath = lockPath;
+            TimeoutMilliseconds = timeoutMilliseconds;
+        }
+
+        public string LockPath { get; }
+        public int TimeoutMilliseconds { get; }
     }
 
     public sealed class M2LoadResult

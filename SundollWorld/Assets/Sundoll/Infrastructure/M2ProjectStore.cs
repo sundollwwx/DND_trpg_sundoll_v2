@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
+using System.Threading;
 using Sundoll.Core;
 using UnityEngine;
 
@@ -25,12 +26,14 @@ namespace Sundoll.Infrastructure
 
         public string RootPath { get; }
         public string HeadPath => Path.Combine(RootPath, "HEAD.json");
+        public string WriteLockPath => Path.Combine(RootPath, ".save.lock");
         public string RevisionsPath => Path.Combine(RootPath, "revisions");
         public string StagingPath => Path.Combine(RootPath, "staging");
         public string AssetsPath => Path.Combine(RootPath, "assets");
         public string ThumbnailsPath => Path.Combine(RootPath, "thumbnails");
         public string JournalPath => Path.Combine(RootPath, "journal");
         public int MaxRetainedRevisions { get; set; } = 10;
+        public int WriteLockTimeoutMilliseconds { get; set; } = 30000;
 
         public bool HasHead => File.Exists(HeadPath);
 
@@ -44,6 +47,23 @@ namespace Sundoll.Infrastructure
             {
                 throw new ArgumentNullException(nameof(state));
             }
+
+            using (AcquireWriteLock())
+            {
+                // Read HEAD and commit the immutable Revision while the same
+                // cross-process lock is held. This turns expectedGeneration
+                // into a real compare-and-commit boundary rather than a
+                // best-effort check.
+                return SaveLocked(state, journalStreamId, journalOperationSequence, expectedGeneration);
+            }
+        }
+
+        private M2SaveResult SaveLocked(
+            M1WorldState state,
+            string journalStreamId,
+            long journalOperationSequence,
+            long? expectedGeneration)
+        {
 
             var previousHead = ReadHeadOrDefault();
             if (expectedGeneration.HasValue && previousHead.generation != expectedGeneration.Value)
@@ -128,6 +148,37 @@ namespace Sundoll.Infrastructure
                 if (Directory.Exists(stagingDirectory))
                 {
                     Directory.Delete(stagingDirectory, true);
+                }
+            }
+        }
+
+        private FileStream AcquireWriteLock()
+        {
+            if (WriteLockTimeoutMilliseconds < 1)
+            {
+                throw new ArgumentOutOfRangeException(nameof(WriteLockTimeoutMilliseconds));
+            }
+
+            var deadline = DateTime.UtcNow.AddMilliseconds(WriteLockTimeoutMilliseconds);
+            IOException lastIOException = null;
+            while (true)
+            {
+                try
+                {
+                    return new FileStream(WriteLockPath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
+                }
+                catch (IOException exception)
+                {
+                    lastIOException = exception;
+                    if (DateTime.UtcNow >= deadline)
+                    {
+                        throw new M2WriteLockTimeoutException(
+                            WriteLockPath,
+                            WriteLockTimeoutMilliseconds,
+                            lastIOException);
+                    }
+
+                    Thread.Sleep(25);
                 }
             }
         }

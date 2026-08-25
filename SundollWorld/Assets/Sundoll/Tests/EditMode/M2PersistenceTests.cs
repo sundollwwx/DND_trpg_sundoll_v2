@@ -2,6 +2,8 @@ using System;
 using System.IO;
 using System.IO.Compression;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 using NUnit.Framework;
 using Sundoll.Application;
 using Sundoll.Core;
@@ -210,6 +212,55 @@ namespace Sundoll.Tests.EditMode
         }
 
         [Test]
+        public void FailedRevisionCommitCleansStagingAndKeepsPreviousHead()
+        {
+            var bus = M1VerticalSlice.CreateDemoBus();
+            var stableStore = new M2ProjectStore(root);
+            var first = stableStore.Save(bus.State, "stream-test", 0);
+            var stableHeadJson = File.ReadAllText(stableStore.HeadPath, new UTF8Encoding(false));
+            var revisionCount = Directory.GetDirectories(stableStore.RevisionsPath).Length;
+            bus.Execute(new M1MovePieceCommand("m2-disk-full", bus.State.revision, 5, 0));
+
+            var failingStore = new M2ProjectStore(root, point =>
+            {
+                if (point == M2SaveFaultPoint.BeforeRevisionCommit)
+                {
+                    throw new IOException("Injected disk-full failure before revision commit.");
+                }
+            });
+
+            Assert.Throws<IOException>(() => failingStore.Save(bus.State, "stream-test", 1, first.generation));
+            Assert.That(Directory.GetDirectories(stableStore.RevisionsPath).Length, Is.EqualTo(revisionCount));
+            Assert.That(Directory.GetDirectories(stableStore.StagingPath).Length, Is.EqualTo(0));
+            Assert.That(File.ReadAllText(stableStore.HeadPath, new UTF8Encoding(false)), Is.EqualTo(stableHeadJson));
+            Assert.That(stableStore.LoadActive().state.pieceInstance.location.x, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void UnauthorizedHeadCommitKeepsPreviousHead()
+        {
+            var bus = M1VerticalSlice.CreateDemoBus();
+            var stableStore = new M2ProjectStore(root);
+            var first = stableStore.Save(bus.State, "stream-test", 0);
+            var stableHeadJson = File.ReadAllText(stableStore.HeadPath, new UTF8Encoding(false));
+            bus.Execute(new M1MovePieceCommand("m2-unauthorized", bus.State.revision, 6, 0));
+
+            var failingStore = new M2ProjectStore(root, point =>
+            {
+                if (point == M2SaveFaultPoint.BeforeHeadCommit)
+                {
+                    throw new UnauthorizedAccessException("Injected permission failure before HEAD commit.");
+                }
+            });
+
+            var failure = Assert.Throws<UnauthorizedAccessException>(() =>
+                failingStore.Save(bus.State, "stream-test", 1, first.generation));
+            Assert.That(failure.Message, Does.Contain("permission failure"));
+            Assert.That(File.ReadAllText(stableStore.HeadPath, new UTF8Encoding(false)), Is.EqualTo(stableHeadJson));
+            Assert.That(stableStore.LoadActive().state.pieceInstance.location.x, Is.EqualTo(1));
+        }
+
+        [Test]
         public void MissingHeadRecoversNewestValidImmutableRevisionWithoutRewritingHead()
         {
             var bus = M1VerticalSlice.CreateDemoBus();
@@ -267,6 +318,107 @@ namespace Sundoll.Tests.EditMode
             Assert.That(Directory.GetDirectories(store.RevisionsPath).Length, Is.EqualTo(revisionCount));
             Assert.That(File.ReadAllText(store.HeadPath, new UTF8Encoding(false)), Is.EqualTo(stableHeadJson));
             Assert.That(store.LoadActive().state.pieceInstance.location.x, Is.EqualTo(6));
+        }
+
+        [Test]
+        public void ConcurrentProjectStoresSerializeWritesAndRejectStaleGeneration()
+        {
+            var bus = M1VerticalSlice.CreateDemoBus();
+            var stableStore = new M2ProjectStore(root);
+            var first = stableStore.Save(bus.State, "stream-test", 0);
+
+            bus.Execute(new M1MovePieceCommand("concurrent-first", bus.State.revision, 4, 0));
+            var firstState = bus.State.DeepClone();
+            bus.Execute(new M1MovePieceCommand("concurrent-stale", bus.State.revision, 5, 0));
+            var staleState = bus.State.DeepClone();
+
+            var enteredHeadCommit = new ManualResetEventSlim(false);
+            var releaseHeadCommit = new ManualResetEventSlim(false);
+            var firstWriter = new M2ProjectStore(root, point =>
+            {
+                if (point == M2SaveFaultPoint.BeforeHeadCommit)
+                {
+                    enteredHeadCommit.Set();
+                    if (!releaseHeadCommit.Wait(5000))
+                    {
+                        throw new TimeoutException("Test did not release the first writer.");
+                    }
+                }
+            });
+            var secondWriter = new M2ProjectStore(root)
+            {
+                WriteLockTimeoutMilliseconds = 5000
+            };
+            Task firstTask = null;
+            Task<Exception> secondTask = null;
+
+            try
+            {
+                firstTask = Task.Run(() => firstWriter.Save(firstState, "stream-test", 1, first.generation));
+                Assert.That(enteredHeadCommit.Wait(5000), Is.True);
+
+                secondTask = Task.Run(() =>
+                {
+                    try
+                    {
+                        secondWriter.Save(staleState, "stream-test", 2, first.generation);
+                        return null;
+                    }
+                    catch (Exception exception)
+                    {
+                        return exception;
+                    }
+                });
+
+                Assert.That(secondTask.Wait(200), Is.False);
+                releaseHeadCommit.Set();
+
+                firstTask.GetAwaiter().GetResult();
+                Assert.That(secondTask.GetAwaiter().GetResult(), Is.TypeOf<M2GenerationConflictException>());
+                Assert.That(stableStore.LoadActive().state.pieceInstance.location.x, Is.EqualTo(4));
+            }
+            finally
+            {
+                releaseHeadCommit.Set();
+                if (firstTask != null)
+                {
+                    firstTask.GetAwaiter().GetResult();
+                }
+
+                if (secondTask != null)
+                {
+                    secondTask.GetAwaiter().GetResult();
+                }
+
+                enteredHeadCommit.Dispose();
+                releaseHeadCommit.Dispose();
+            }
+        }
+
+        [Test]
+        public void WriterLockTimeoutFailsWithoutChangingHead()
+        {
+            var bus = M1VerticalSlice.CreateDemoBus();
+            var store = new M2ProjectStore(root);
+            var first = store.Save(bus.State, "stream-test", 0);
+            var stableHeadJson = File.ReadAllText(store.HeadPath, new UTF8Encoding(false));
+            var revisionCount = Directory.GetDirectories(store.RevisionsPath).Length;
+            bus.Execute(new M1MovePieceCommand("writer-lock-timeout", bus.State.revision, 6, 0));
+
+            using (var heldLock = new FileStream(store.WriteLockPath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None))
+            {
+                var blockedStore = new M2ProjectStore(root)
+                {
+                    WriteLockTimeoutMilliseconds = 100
+                };
+                var failure = Assert.Throws<M2WriteLockTimeoutException>(() =>
+                    blockedStore.Save(bus.State, "stream-test", 1, first.generation));
+
+                Assert.That(failure.LockPath, Is.EqualTo(store.WriteLockPath));
+                Assert.That(failure.TimeoutMilliseconds, Is.EqualTo(100));
+                Assert.That(Directory.GetDirectories(store.RevisionsPath).Length, Is.EqualTo(revisionCount));
+                Assert.That(File.ReadAllText(store.HeadPath, new UTF8Encoding(false)), Is.EqualTo(stableHeadJson));
+            }
         }
 
         [Test]
