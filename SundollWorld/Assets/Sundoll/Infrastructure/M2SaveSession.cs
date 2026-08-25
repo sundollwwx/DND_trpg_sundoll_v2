@@ -47,7 +47,17 @@ namespace Sundoll.Infrastructure
 
         public void MarkSaved()
         {
-            pendingTransactions = 0;
+            MarkSaved(pendingTransactions);
+        }
+
+        public void MarkSaved(int savedTransactions)
+        {
+            if (savedTransactions < 0 || savedTransactions > pendingTransactions)
+            {
+                throw new ArgumentOutOfRangeException(nameof(savedTransactions));
+            }
+
+            pendingTransactions -= savedTransactions;
             elapsedSeconds = 0f;
         }
     }
@@ -56,14 +66,17 @@ namespace Sundoll.Infrastructure
     {
         private readonly M2ProjectStore projectStore;
         private readonly M2AutosavePolicy autosavePolicy;
+        private readonly M2SaveQueue saveQueue;
         private M2JournalStore journalStore;
         private M1WorldState currentState;
         private string journalStreamId;
+        private M2SaveOperation activeSaveOperation;
 
         private M2SaveSession(M2ProjectStore projectStore, M2AutosavePolicy autosavePolicy)
         {
             this.projectStore = projectStore;
             this.autosavePolicy = autosavePolicy;
+            saveQueue = new M2SaveQueue(projectStore);
         }
 
         public string ProjectRoot => projectStore.RootPath;
@@ -72,7 +85,14 @@ namespace Sundoll.Infrastructure
         public string LastAction { get; private set; } = "M2 尚未保存";
         public int PendingTransactions => autosavePolicy.PendingTransactions;
         public M2SaveResult LastSave { get; private set; }
+        public M2SaveStatus SaveStatus { get; private set; } = M2SaveStatus.Unsaved;
+        public string LastSaveError { get; private set; }
         public M1WorldState State => currentState == null ? null : currentState.DeepClone();
+
+        public void WaitForSave()
+        {
+            WaitForActiveSave();
+        }
 
         public static M2SaveSession Open(string projectRoot, M1WorldState initialState, M2AutosavePolicy autosavePolicy = null)
         {
@@ -100,6 +120,7 @@ namespace Sundoll.Infrastructure
             session.journalStore = new M2JournalStore(projectRoot, session.journalStreamId);
             session.ActiveRevisionId = loaded.manifest.saveRevisionId;
             session.RestoreJournalAfterSnapshot(loaded, "已从 " + loaded.source + " 加载 Revision");
+            session.SaveStatus = M2SaveStatus.Safe;
             return session;
         }
 
@@ -120,6 +141,7 @@ namespace Sundoll.Infrastructure
                 throw new ArgumentNullException(nameof(state));
             }
 
+            RefreshSaveStatus();
             currentState = state.DeepClone();
             if (receipt.command == null)
             {
@@ -137,9 +159,10 @@ namespace Sundoll.Infrastructure
             }
 
             LastAction = receipt.message;
-            if (autosavePolicy.NotifyAccepted())
+            SaveStatus = activeSaveOperation == null ? M2SaveStatus.Unsaved : M2SaveStatus.Saving;
+            if (autosavePolicy.NotifyAccepted() && activeSaveOperation == null)
             {
-                SaveCurrent("达到事务数量阈值，自动保存");
+                QueueSave("达到事务数量阈值，自动保存");
             }
         }
 
@@ -155,12 +178,80 @@ namespace Sundoll.Infrastructure
                 throw new ArgumentNullException(nameof(state));
             }
 
+            WaitForActiveSave();
             currentState = state.DeepClone();
             return SaveCurrent("手动保存 Snapshot");
         }
 
+        public M2SaveOperation QueueSave(string reason = "后台保存 Snapshot")
+        {
+            if (string.IsNullOrWhiteSpace(reason))
+            {
+                throw new ArgumentException("Save reason is required.", nameof(reason));
+            }
+
+            RefreshSaveStatus();
+            if (activeSaveOperation != null)
+            {
+                return activeSaveOperation;
+            }
+
+            if (currentState == null)
+            {
+                throw new InvalidOperationException("M2 session has no current state.");
+            }
+
+            LastSaveError = null;
+            SaveStatus = M2SaveStatus.Saving;
+            activeSaveOperation = saveQueue.Enqueue(
+                currentState,
+                journalStreamId,
+                journalStore.LastSequence,
+                ActiveGeneration,
+                reason,
+                autosavePolicy.PendingTransactions);
+            LastAction = reason + "（保存中）";
+            return activeSaveOperation;
+        }
+
+        public void RefreshSaveStatus()
+        {
+            if (activeSaveOperation == null)
+            {
+                return;
+            }
+
+            if (!activeSaveOperation.IsCompleted)
+            {
+                SaveStatus = M2SaveStatus.Saving;
+                return;
+            }
+
+            var completedOperation = activeSaveOperation;
+            activeSaveOperation = null;
+            if (completedOperation.Status == M2SaveStatus.Safe)
+            {
+                LastSave = completedOperation.Result;
+                ActiveRevisionId = LastSave.saveRevisionId;
+                ActiveGeneration = LastSave.generation;
+                autosavePolicy.MarkSaved(completedOperation.CapturedPendingTransactions);
+                LastAction = completedOperation.Reason + "：" + LastSave.saveRevisionId;
+                SaveStatus = autosavePolicy.PendingTransactions > 0
+                    ? M2SaveStatus.Unsaved
+                    : M2SaveStatus.Safe;
+                return;
+            }
+
+            LastSaveError = completedOperation.Error == null
+                ? "后台保存失败"
+                : completedOperation.Error.Message;
+            LastAction = completedOperation.Reason + "失败：" + LastSaveError;
+            SaveStatus = M2SaveStatus.Failed;
+        }
+
         public M2LoadResult Reload()
         {
+            WaitForActiveSave();
             var loaded = projectStore.LoadBestAvailable();
             if (loaded == null)
             {
@@ -175,6 +266,7 @@ namespace Sundoll.Infrastructure
             RestoreJournalAfterSnapshot(loaded, "已重新加载 " + loaded.source);
 
             autosavePolicy.MarkSaved();
+            SaveStatus = M2SaveStatus.Safe;
             return new M2LoadResult
             {
                 state = currentState.DeepClone(),
@@ -187,9 +279,10 @@ namespace Sundoll.Infrastructure
 
         public bool TickAutosave(float deltaSeconds)
         {
-            if (autosavePolicy.Tick(deltaSeconds))
+            RefreshSaveStatus();
+            if (activeSaveOperation == null && autosavePolicy.Tick(deltaSeconds))
             {
-                SaveCurrent("自动保存");
+                QueueSave("自动保存");
                 return true;
             }
 
@@ -208,6 +301,12 @@ namespace Sundoll.Infrastructure
             return path;
         }
 
+        public void Dispose()
+        {
+            WaitForActiveSave();
+            saveQueue.Dispose();
+        }
+
         private void RecordMutation(string commandId, string description, M1WorldState state, string operationType, bool allowAutosave)
         {
             if (state == null)
@@ -215,12 +314,14 @@ namespace Sundoll.Infrastructure
                 throw new ArgumentNullException(nameof(state));
             }
 
+            RefreshSaveStatus();
             currentState = state.DeepClone();
             journalStore.Append(commandId, description, currentState, operationType);
             LastAction = description;
-            if (allowAutosave && autosavePolicy.NotifyAccepted())
+            SaveStatus = activeSaveOperation == null ? M2SaveStatus.Unsaved : M2SaveStatus.Saving;
+            if (allowAutosave && autosavePolicy.NotifyAccepted() && activeSaveOperation == null)
             {
-                SaveCurrent("达到事务数量阈值，自动保存");
+                QueueSave("达到事务数量阈值，自动保存");
             }
         }
 
@@ -230,8 +331,32 @@ namespace Sundoll.Infrastructure
             ActiveRevisionId = LastSave.saveRevisionId;
             ActiveGeneration = LastSave.generation;
             autosavePolicy.MarkSaved();
+            LastSaveError = null;
+            SaveStatus = M2SaveStatus.Safe;
             LastAction = reason + "：" + ActiveRevisionId;
             return LastSave;
+        }
+
+        private void WaitForActiveSave()
+        {
+            if (activeSaveOperation == null)
+            {
+                return;
+            }
+
+            try
+            {
+                activeSaveOperation.Wait();
+            }
+            catch (Exception)
+            {
+                // RefreshSaveStatus records the failure without hiding it from the
+                // session. A subsequent manual save can retry with the latest state.
+            }
+            finally
+            {
+                RefreshSaveStatus();
+            }
         }
 
         private void RestoreJournalAfterSnapshot(M2LoadResult loaded, string snapshotAction)

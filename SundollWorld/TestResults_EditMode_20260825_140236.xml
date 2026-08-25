@@ -1,0 +1,326 @@
+<?xml version="1.0" encoding="utf-8"?>
+<test-run id="2" testcasecount="48" result="Passed" total="48" passed="48" failed="0" inconclusive="0" skipped="0" asserts="0" engine-version="3.5.0.0" clr-version="4.0.30319.42000" start-time="2026-08-25 06:02:12Z" end-time="2026-08-25 06:02:13Z" duration="1.1986358">
+  <test-suite type="TestSuite" id="1063" name="SundollWorld" fullname="SundollWorld" runstate="Runnable" testcasecount="48" result="Passed" start-time="2026-08-25 06:02:12Z" end-time="2026-08-25 06:02:13Z" duration="1.198636" total="48" passed="48" failed="0" inconclusive="0" skipped="0" asserts="0">
+    <properties>
+      <property name="platform" value="EditMode" />
+    </properties>
+    <test-suite type="Assembly" id="1052" name="Sundoll.Tests.EditMode.dll" fullname="/Users/sundoll/Desktop/SundollUnity/SundollWorld/Library/ScriptAssemblies/Sundoll.Tests.EditMode.dll" runstate="Runnable" testcasecount="48" result="Passed" start-time="2026-08-25 06:02:12Z" end-time="2026-08-25 06:02:13Z" duration="1.195618" total="48" passed="48" failed="0" inconclusive="0" skipped="0" asserts="0">
+      <properties>
+        <property name="_PID" value="50765" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="EditMode" />
+        <property name="EditorOnly" value="True" />
+      </properties>
+      <test-suite type="TestSuite" id="1053" name="Sundoll" fullname="Sundoll" runstate="Runnable" testcasecount="48" result="Passed" start-time="2026-08-25 06:02:12Z" end-time="2026-08-25 06:02:13Z" duration="1.195458" total="48" passed="48" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-suite type="TestSuite" id="1054" name="Tests" fullname="Sundoll.Tests" runstate="Runnable" testcasecount="48" result="Passed" start-time="2026-08-25 06:02:12Z" end-time="2026-08-25 06:02:13Z" duration="1.195364" total="48" passed="48" failed="0" inconclusive="0" skipped="0" asserts="0">
+          <properties />
+          <test-suite type="TestSuite" id="1055" name="EditMode" fullname="Sundoll.Tests.EditMode" runstate="Runnable" testcasecount="48" result="Passed" start-time="2026-08-25 06:02:12Z" end-time="2026-08-25 06:02:13Z" duration="1.195231" total="48" passed="48" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-suite type="TestFixture" id="1001" name="M1VerticalSliceTests" fullname="Sundoll.Tests.EditMode.M1VerticalSliceTests" classname="Sundoll.Tests.EditMode.M1VerticalSliceTests" runstate="Runnable" testcasecount="4" result="Passed" start-time="2026-08-25 06:02:12Z" end-time="2026-08-25 06:02:12Z" duration="0.011269" total="4" passed="4" failed="0" inconclusive="0" skipped="0" asserts="0">
+              <properties />
+              <test-case id="1004" name="LocalAuthorityIsIdempotentAndRejectsStaleCommand" fullname="Sundoll.Tests.EditMode.M1VerticalSliceTests.LocalAuthorityIsIdempotentAndRejectsStaleCommand" methodname="LocalAuthorityIsIdempotentAndRejectsStaleCommand" classname="Sundoll.Tests.EditMode.M1VerticalSliceTests" runstate="Runnable" seed="1608273697" result="Passed" start-time="2026-08-25 06:02:12Z" end-time="2026-08-25 06:02:12Z" duration="0.005225" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1005" name="SnapshotRoundTripRebuildsOnlyFromPureData" fullname="Sundoll.Tests.EditMode.M1VerticalSliceTests.SnapshotRoundTripRebuildsOnlyFromPureData" methodname="SnapshotRoundTripRebuildsOnlyFromPureData" classname="Sundoll.Tests.EditMode.M1VerticalSliceTests" runstate="Runnable" seed="444114801" result="Passed" start-time="2026-08-25 06:02:12Z" end-time="2026-08-25 06:02:12Z" duration="0.001506" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1003" name="UndoAndRedoRestorePiecePosition" fullname="Sundoll.Tests.EditMode.M1VerticalSliceTests.UndoAndRedoRestorePiecePosition" methodname="UndoAndRedoRestorePiecePosition" classname="Sundoll.Tests.EditMode.M1VerticalSliceTests" runstate="Runnable" seed="1337594099" result="Passed" start-time="2026-08-25 06:02:12Z" end-time="2026-08-25 06:02:12Z" duration="0.000218" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1002" name="VerticalSliceCreatesPublishedMapBoardAndOnBoardPiece" fullname="Sundoll.Tests.EditMode.M1VerticalSliceTests.VerticalSliceCreatesPublishedMapBoardAndOnBoardPiece" methodname="VerticalSliceCreatesPublishedMapBoardAndOnBoardPiece" classname="Sundoll.Tests.EditMode.M1VerticalSliceTests" runstate="Runnable" seed="440138071" result="Passed" start-time="2026-08-25 06:02:12Z" end-time="2026-08-25 06:02:12Z" duration="0.000361" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+            </test-suite>
+            <test-suite type="TestFixture" id="1006" name="M2PersistenceTests" fullname="Sundoll.Tests.EditMode.M2PersistenceTests" classname="Sundoll.Tests.EditMode.M2PersistenceTests" runstate="Runnable" testcasecount="22" result="Passed" start-time="2026-08-25 06:02:12Z" end-time="2026-08-25 06:02:12Z" duration="0.070846" total="22" passed="22" failed="0" inconclusive="0" skipped="0" asserts="0">
+              <properties />
+              <test-case id="1009" name="AcceptedOperationBatchCarriesEnvelopeAndWorldChangeSet" fullname="Sundoll.Tests.EditMode.M2PersistenceTests.AcceptedOperationBatchCarriesEnvelopeAndWorldChangeSet" methodname="AcceptedOperationBatchCarriesEnvelopeAndWorldChangeSet" classname="Sundoll.Tests.EditMode.M2PersistenceTests" runstate="Runnable" seed="1499066170" result="Passed" start-time="2026-08-25 06:02:12Z" end-time="2026-08-25 06:02:12Z" duration="0.002924" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1025" name="BackgroundSaveQueueCapturesSnapshotAndReportsSafe" fullname="Sundoll.Tests.EditMode.M2PersistenceTests.BackgroundSaveQueueCapturesSnapshotAndReportsSafe" methodname="BackgroundSaveQueueCapturesSnapshotAndReportsSafe" classname="Sundoll.Tests.EditMode.M2PersistenceTests" runstate="Runnable" seed="369944834" result="Passed" start-time="2026-08-25 06:02:12Z" end-time="2026-08-25 06:02:12Z" duration="0.009469" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1026" name="BackgroundSaveQueueReportsFailureAndKeepsPreviousHead" fullname="Sundoll.Tests.EditMode.M2PersistenceTests.BackgroundSaveQueueReportsFailureAndKeepsPreviousHead" methodname="BackgroundSaveQueueReportsFailureAndKeepsPreviousHead" classname="Sundoll.Tests.EditMode.M2PersistenceTests" runstate="Runnable" seed="1455043162" result="Passed" start-time="2026-08-25 06:02:12Z" end-time="2026-08-25 06:02:12Z" duration="0.004100" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1007" name="CanonicalHashSurvivesJsonRoundTripAndDetectsStateChange" fullname="Sundoll.Tests.EditMode.M2PersistenceTests.CanonicalHashSurvivesJsonRoundTripAndDetectsStateChange" methodname="CanonicalHashSurvivesJsonRoundTripAndDetectsStateChange" classname="Sundoll.Tests.EditMode.M2PersistenceTests" runstate="Runnable" seed="177162542" result="Passed" start-time="2026-08-25 06:02:12Z" end-time="2026-08-25 06:02:12Z" duration="0.000165" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1022" name="ContentBlobsAreAddressedByHashAndVerifiedOnRead" fullname="Sundoll.Tests.EditMode.M2PersistenceTests.ContentBlobsAreAddressedByHashAndVerifiedOnRead" methodname="ContentBlobsAreAddressedByHashAndVerifiedOnRead" classname="Sundoll.Tests.EditMode.M2PersistenceTests" runstate="Runnable" seed="294586396" result="Passed" start-time="2026-08-25 06:02:12Z" end-time="2026-08-25 06:02:12Z" duration="0.001374" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1017" name="CorruptHeadRecoversNewestValidImmutableRevisionWithoutRewritingHead" fullname="Sundoll.Tests.EditMode.M2PersistenceTests.CorruptHeadRecoversNewestValidImmutableRevisionWithoutRewritingHead" methodname="CorruptHeadRecoversNewestValidImmutableRevisionWithoutRewritingHead" classname="Sundoll.Tests.EditMode.M2PersistenceTests" runstate="Runnable" seed="227953218" result="Passed" start-time="2026-08-25 06:02:12Z" end-time="2026-08-25 06:02:12Z" duration="0.003365" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1018" name="ExpectedGenerationConflictDoesNotWriteRevisionOrReplaceHead" fullname="Sundoll.Tests.EditMode.M2PersistenceTests.ExpectedGenerationConflictDoesNotWriteRevisionOrReplaceHead" methodname="ExpectedGenerationConflictDoesNotWriteRevisionOrReplaceHead" classname="Sundoll.Tests.EditMode.M2PersistenceTests" runstate="Runnable" seed="1915385879" result="Passed" start-time="2026-08-25 06:02:12Z" end-time="2026-08-25 06:02:12Z" duration="0.003772" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1015" name="FailedHeadCommitLeavesPreviousRevisionActive" fullname="Sundoll.Tests.EditMode.M2PersistenceTests.FailedHeadCommitLeavesPreviousRevisionActive" methodname="FailedHeadCommitLeavesPreviousRevisionActive" classname="Sundoll.Tests.EditMode.M2PersistenceTests" runstate="Runnable" seed="759129429" result="Passed" start-time="2026-08-25 06:02:12Z" end-time="2026-08-25 06:02:12Z" duration="0.002751" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1021" name="JournalAppendAfterUnterminatedCorruptTailStartsANewSegment" fullname="Sundoll.Tests.EditMode.M2PersistenceTests.JournalAppendAfterUnterminatedCorruptTailStartsANewSegment" methodname="JournalAppendAfterUnterminatedCorruptTailStartsANewSegment" classname="Sundoll.Tests.EditMode.M2PersistenceTests" runstate="Runnable" seed="753881916" result="Passed" start-time="2026-08-25 06:02:12Z" end-time="2026-08-25 06:02:12Z" duration="0.002374" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1011" name="JournalReplaySupportsMixedLegacyAndVersionedBatches" fullname="Sundoll.Tests.EditMode.M2PersistenceTests.JournalReplaySupportsMixedLegacyAndVersionedBatches" methodname="JournalReplaySupportsMixedLegacyAndVersionedBatches" classname="Sundoll.Tests.EditMode.M2PersistenceTests" runstate="Runnable" seed="145145628" result="Passed" start-time="2026-08-25 06:02:12Z" end-time="2026-08-25 06:02:12Z" duration="0.001167" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1019" name="JournalSegmentsRecoverLatestValidBatchAfterCorruptTail" fullname="Sundoll.Tests.EditMode.M2PersistenceTests.JournalSegmentsRecoverLatestValidBatchAfterCorruptTail" methodname="JournalSegmentsRecoverLatestValidBatchAfterCorruptTail" classname="Sundoll.Tests.EditMode.M2PersistenceTests" runstate="Runnable" seed="1440857929" result="Passed" start-time="2026-08-25 06:02:12Z" end-time="2026-08-25 06:02:12Z" duration="0.001489" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1020" name="JournalSequenceAndSegmentsStayContinuousAcrossRolloverAndReopen" fullname="Sundoll.Tests.EditMode.M2PersistenceTests.JournalSequenceAndSegmentsStayContinuousAcrossRolloverAndReopen" methodname="JournalSequenceAndSegmentsStayContinuousAcrossRolloverAndReopen" classname="Sundoll.Tests.EditMode.M2PersistenceTests" runstate="Runnable" seed="890471169" result="Passed" start-time="2026-08-25 06:02:12Z" end-time="2026-08-25 06:02:12Z" duration="0.002166" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1016" name="MissingHeadRecoversNewestValidImmutableRevisionWithoutRewritingHead" fullname="Sundoll.Tests.EditMode.M2PersistenceTests.MissingHeadRecoversNewestValidImmutableRevisionWithoutRewritingHead" methodname="MissingHeadRecoversNewestValidImmutableRevisionWithoutRewritingHead" classname="Sundoll.Tests.EditMode.M2PersistenceTests" runstate="Runnable" seed="1984280132" result="Passed" start-time="2026-08-25 06:02:12Z" end-time="2026-08-25 06:02:12Z" duration="0.003207" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1024" name="PackageImportRejectsTraversalEntry" fullname="Sundoll.Tests.EditMode.M2PersistenceTests.PackageImportRejectsTraversalEntry" methodname="PackageImportRejectsTraversalEntry" classname="Sundoll.Tests.EditMode.M2PersistenceTests" runstate="Runnable" seed="1628681122" result="Passed" start-time="2026-08-25 06:02:12Z" end-time="2026-08-25 06:02:12Z" duration="0.005128" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1023" name="PackageRoundTripPreservesActiveRevision" fullname="Sundoll.Tests.EditMode.M2PersistenceTests.PackageRoundTripPreservesActiveRevision" methodname="PackageRoundTripPreservesActiveRevision" classname="Sundoll.Tests.EditMode.M2PersistenceTests" runstate="Runnable" seed="1043288823" result="Passed" start-time="2026-08-25 06:02:12Z" end-time="2026-08-25 06:02:12Z" duration="0.005953" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1014" name="ProjectStoreKeepsImmutableRevisionsAndValidHead" fullname="Sundoll.Tests.EditMode.M2PersistenceTests.ProjectStoreKeepsImmutableRevisionsAndValidHead" methodname="ProjectStoreKeepsImmutableRevisionsAndValidHead" classname="Sundoll.Tests.EditMode.M2PersistenceTests" runstate="Runnable" seed="121446979" result="Passed" start-time="2026-08-25 06:02:12Z" end-time="2026-08-25 06:02:12Z" duration="0.003866" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1028" name="SaveSessionAutosavesAtTransactionThreshold" fullname="Sundoll.Tests.EditMode.M2PersistenceTests.SaveSessionAutosavesAtTransactionThreshold" methodname="SaveSessionAutosavesAtTransactionThreshold" classname="Sundoll.Tests.EditMode.M2PersistenceTests" runstate="Runnable" seed="977241085" result="Passed" start-time="2026-08-25 06:02:12Z" end-time="2026-08-25 06:02:12Z" duration="0.004460" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1012" name="SaveSessionReplaysUnsavedVersionedCommandAfterSnapshot" fullname="Sundoll.Tests.EditMode.M2PersistenceTests.SaveSessionReplaysUnsavedVersionedCommandAfterSnapshot" methodname="SaveSessionReplaysUnsavedVersionedCommandAfterSnapshot" classname="Sundoll.Tests.EditMode.M2PersistenceTests" runstate="Runnable" seed="1313135003" result="Passed" start-time="2026-08-25 06:02:12Z" end-time="2026-08-25 06:02:12Z" duration="0.003720" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1027" name="SaveSessionTracksQueuedSaveAndChangesAfterCapturedSnapshot" fullname="Sundoll.Tests.EditMode.M2PersistenceTests.SaveSessionTracksQueuedSaveAndChangesAfterCapturedSnapshot" methodname="SaveSessionTracksQueuedSaveAndChangesAfterCapturedSnapshot" classname="Sundoll.Tests.EditMode.M2PersistenceTests" runstate="Runnable" seed="1796916523" result="Passed" start-time="2026-08-25 06:02:12Z" end-time="2026-08-25 06:02:12Z" duration="0.005428" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1008" name="VersionedCommandEnvelopeRoundTripsM3CommandAndPayload" fullname="Sundoll.Tests.EditMode.M2PersistenceTests.VersionedCommandEnvelopeRoundTripsM3CommandAndPayload" methodname="VersionedCommandEnvelopeRoundTripsM3CommandAndPayload" classname="Sundoll.Tests.EditMode.M2PersistenceTests" runstate="Runnable" seed="2012321229" result="Passed" start-time="2026-08-25 06:02:12Z" end-time="2026-08-25 06:02:12Z" duration="0.000191" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1010" name="VersionedJournalReplaysCommandWithoutPersistingFullStateJson" fullname="Sundoll.Tests.EditMode.M2PersistenceTests.VersionedJournalReplaysCommandWithoutPersistingFullStateJson" methodname="VersionedJournalReplaysCommandWithoutPersistingFullStateJson" classname="Sundoll.Tests.EditMode.M2PersistenceTests" runstate="Runnable" seed="952568421" result="Passed" start-time="2026-08-25 06:02:12Z" end-time="2026-08-25 06:02:12Z" duration="0.000992" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1013" name="VersionedJournalReplaysValidEntriesBeforeCorruptTail" fullname="Sundoll.Tests.EditMode.M2PersistenceTests.VersionedJournalReplaysValidEntriesBeforeCorruptTail" methodname="VersionedJournalReplaysValidEntriesBeforeCorruptTail" classname="Sundoll.Tests.EditMode.M2PersistenceTests" runstate="Runnable" seed="2097110232" result="Passed" start-time="2026-08-25 06:02:12Z" end-time="2026-08-25 06:02:12Z" duration="0.000700" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+            </test-suite>
+            <test-suite type="TestFixture" id="1029" name="M3MapEditorTests" fullname="Sundoll.Tests.EditMode.M3MapEditorTests" classname="Sundoll.Tests.EditMode.M3MapEditorTests" runstate="Runnable" testcasecount="22" result="Passed" start-time="2026-08-25 06:02:12Z" end-time="2026-08-25 06:02:13Z" duration="1.112522" total="22" passed="22" failed="0" inconclusive="0" skipped="0" asserts="0">
+              <properties />
+              <test-case id="1030" name="BatchPaintIsAtomicAndUndoable" fullname="Sundoll.Tests.EditMode.M3MapEditorTests.BatchPaintIsAtomicAndUndoable" methodname="BatchPaintIsAtomicAndUndoable" classname="Sundoll.Tests.EditMode.M3MapEditorTests" runstate="Runnable" seed="660498117" result="Passed" start-time="2026-08-25 06:02:12Z" end-time="2026-08-25 06:02:12Z" duration="0.000612" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1040" name="ContentLookupCacheAppliesDirtyCellsWithoutFullRebuild" fullname="Sundoll.Tests.EditMode.M3MapEditorTests.ContentLookupCacheAppliesDirtyCellsWithoutFullRebuild" methodname="ContentLookupCacheAppliesDirtyCellsWithoutFullRebuild" classname="Sundoll.Tests.EditMode.M3MapEditorTests" runstate="Runnable" seed="1607874303" result="Passed" start-time="2026-08-25 06:02:12Z" end-time="2026-08-25 06:02:12Z" duration="0.000970" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1038" name="DirtyRegionAndDeltaUndoStayScopedToTheChangedCells" fullname="Sundoll.Tests.EditMode.M3MapEditorTests.DirtyRegionAndDeltaUndoStayScopedToTheChangedCells" methodname="DirtyRegionAndDeltaUndoStayScopedToTheChangedCells" classname="Sundoll.Tests.EditMode.M3MapEditorTests" runstate="Runnable" seed="1056453116" result="Passed" start-time="2026-08-25 06:02:12Z" end-time="2026-08-25 06:02:12Z" duration="0.000375" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1035" name="EraseOnlyRemovesTheSelectedLayer" fullname="Sundoll.Tests.EditMode.M3MapEditorTests.EraseOnlyRemovesTheSelectedLayer" methodname="EraseOnlyRemovesTheSelectedLayer" classname="Sundoll.Tests.EditMode.M3MapEditorTests" runstate="Runnable" seed="1888708486" result="Passed" start-time="2026-08-25 06:02:12Z" end-time="2026-08-25 06:02:12Z" duration="0.000187" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1032" name="EraseRemovesCellAndPublishCopiesDraft" fullname="Sundoll.Tests.EditMode.M3MapEditorTests.EraseRemovesCellAndPublishCopiesDraft" methodname="EraseRemovesCellAndPublishCopiesDraft" classname="Sundoll.Tests.EditMode.M3MapEditorTests" runstate="Runnable" seed="1447868051" result="Passed" start-time="2026-08-25 06:02:12Z" end-time="2026-08-25 06:02:12Z" duration="0.000288" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1051" name="FloodFillStopsAtDifferentContent" fullname="Sundoll.Tests.EditMode.M3MapEditorTests.FloodFillStopsAtDifferentContent" methodname="FloodFillStopsAtDifferentContent" classname="Sundoll.Tests.EditMode.M3MapEditorTests" runstate="Runnable" seed="1089950051" result="Passed" start-time="2026-08-25 06:02:12Z" end-time="2026-08-25 06:02:12Z" duration="0.000630" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1031" name="InvalidBatchDoesNotPartiallyModifyMap" fullname="Sundoll.Tests.EditMode.M3MapEditorTests.InvalidBatchDoesNotPartiallyModifyMap" methodname="InvalidBatchDoesNotPartiallyModifyMap" classname="Sundoll.Tests.EditMode.M3MapEditorTests" runstate="Runnable" seed="1270355264" result="Passed" start-time="2026-08-25 06:02:12Z" end-time="2026-08-25 06:02:12Z" duration="0.000146" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1042" name="LayerEditStateDefaultsToVisibleAndUnlocked" fullname="Sundoll.Tests.EditMode.M3MapEditorTests.LayerEditStateDefaultsToVisibleAndUnlocked" methodname="LayerEditStateDefaultsToVisibleAndUnlocked" classname="Sundoll.Tests.EditMode.M3MapEditorTests" runstate="Runnable" seed="985881779" result="Passed" start-time="2026-08-25 06:02:12Z" end-time="2026-08-25 06:02:12Z" duration="0.000180" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1044" name="LayerEditStateRejectsUnknownLayer" fullname="Sundoll.Tests.EditMode.M3MapEditorTests.LayerEditStateRejectsUnknownLayer" methodname="LayerEditStateRejectsUnknownLayer" classname="Sundoll.Tests.EditMode.M3MapEditorTests" runstate="Runnable" seed="792917890" result="Passed" start-time="2026-08-25 06:02:12Z" end-time="2026-08-25 06:02:12Z" duration="0.000152" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1043" name="LayerEditStateTogglesVisibilityAndLockWithoutChangingContent" fullname="Sundoll.Tests.EditMode.M3MapEditorTests.LayerEditStateTogglesVisibilityAndLockWithoutChangingContent" methodname="LayerEditStateTogglesVisibilityAndLockWithoutChangingContent" classname="Sundoll.Tests.EditMode.M3MapEditorTests" runstate="Runnable" seed="1161130276" result="Passed" start-time="2026-08-25 06:02:12Z" end-time="2026-08-25 06:02:12Z" duration="0.000140" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1033" name="MapDraftSurvivesM2SaveAndReload" fullname="Sundoll.Tests.EditMode.M3MapEditorTests.MapDraftSurvivesM2SaveAndReload" methodname="MapDraftSurvivesM2SaveAndReload" classname="Sundoll.Tests.EditMode.M3MapEditorTests" runstate="Runnable" seed="1502855124" result="Passed" start-time="2026-08-25 06:02:12Z" end-time="2026-08-25 06:02:12Z" duration="0.003526" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1049" name="MediumMapBatchPaintSavesAndReloads" fullname="Sundoll.Tests.EditMode.M3MapEditorTests.MediumMapBatchPaintSavesAndReloads" methodname="MediumMapBatchPaintSavesAndReloads" classname="Sundoll.Tests.EditMode.M3MapEditorTests" runstate="Runnable" seed="1077034488" result="Passed" start-time="2026-08-25 06:02:12Z" end-time="2026-08-25 06:02:13Z" duration="1.093040" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+                <output><![CDATA[256x256 batch apply: 19 ms; save/reload: 280 ms
+]]></output>
+              </test-case>
+              <test-case id="1036" name="MultiLayerDraftSurvivesM2SaveAndReloadWithCanonicalHash" fullname="Sundoll.Tests.EditMode.M3MapEditorTests.MultiLayerDraftSurvivesM2SaveAndReloadWithCanonicalHash" methodname="MultiLayerDraftSurvivesM2SaveAndReloadWithCanonicalHash" classname="Sundoll.Tests.EditMode.M3MapEditorTests" runstate="Runnable" seed="1267090912" result="Passed" start-time="2026-08-25 06:02:13Z" end-time="2026-08-25 06:02:13Z" duration="0.006071" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1037" name="PublishRetainsEveryContentLayer" fullname="Sundoll.Tests.EditMode.M3MapEditorTests.PublishRetainsEveryContentLayer" methodname="PublishRetainsEveryContentLayer" classname="Sundoll.Tests.EditMode.M3MapEditorTests" runstate="Runnable" seed="923680623" result="Passed" start-time="2026-08-25 06:02:13Z" end-time="2026-08-25 06:02:13Z" duration="0.000292" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1048" name="RasterizedStrokeCommitsAsOneAtomicPaintCommand" fullname="Sundoll.Tests.EditMode.M3MapEditorTests.RasterizedStrokeCommitsAsOneAtomicPaintCommand" methodname="RasterizedStrokeCommitsAsOneAtomicPaintCommand" classname="Sundoll.Tests.EditMode.M3MapEditorTests" runstate="Runnable" seed="2011143043" result="Passed" start-time="2026-08-25 06:02:13Z" end-time="2026-08-25 06:02:13Z" duration="0.000322" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1050" name="RectangleRasterizerSupportsOutlineAndFill" fullname="Sundoll.Tests.EditMode.M3MapEditorTests.RectangleRasterizerSupportsOutlineAndFill" methodname="RectangleRasterizerSupportsOutlineAndFill" classname="Sundoll.Tests.EditMode.M3MapEditorTests" runstate="Runnable" seed="1183765928" result="Passed" start-time="2026-08-25 06:02:13Z" end-time="2026-08-25 06:02:13Z" duration="0.000156" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1047" name="StrokeRasterizerIncludesEndpointsAndHasNoGaps" fullname="Sundoll.Tests.EditMode.M3MapEditorTests.StrokeRasterizerIncludesEndpointsAndHasNoGaps" methodname="StrokeRasterizerIncludesEndpointsAndHasNoGaps" classname="Sundoll.Tests.EditMode.M3MapEditorTests" runstate="Runnable" seed="1102014150" result="Passed" start-time="2026-08-25 06:02:13Z" end-time="2026-08-25 06:02:13Z" duration="0.000202" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1034" name="TerrainAndWallCanCoexistAtSameCoordinate" fullname="Sundoll.Tests.EditMode.M3MapEditorTests.TerrainAndWallCanCoexistAtSameCoordinate" methodname="TerrainAndWallCanCoexistAtSameCoordinate" classname="Sundoll.Tests.EditMode.M3MapEditorTests" runstate="Runnable" seed="149977258" result="Passed" start-time="2026-08-25 06:02:13Z" end-time="2026-08-25 06:02:13Z" duration="0.000167" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1041" name="VisibleBoundsOnlyIncludesCellsInsideViewport" fullname="Sundoll.Tests.EditMode.M3MapEditorTests.VisibleBoundsOnlyIncludesCellsInsideViewport" methodname="VisibleBoundsOnlyIncludesCellsInsideViewport" classname="Sundoll.Tests.EditMode.M3MapEditorTests" runstate="Runnable" seed="1403187755" result="Passed" start-time="2026-08-25 06:02:13Z" end-time="2026-08-25 06:02:13Z" duration="0.000210" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1045" name="WorkspaceStateRoundTripsWithoutChangingWorldHash" fullname="Sundoll.Tests.EditMode.M3MapEditorTests.WorkspaceStateRoundTripsWithoutChangingWorldHash" methodname="WorkspaceStateRoundTripsWithoutChangingWorldHash" classname="Sundoll.Tests.EditMode.M3MapEditorTests" runstate="Runnable" seed="1625544909" result="Passed" start-time="2026-08-25 06:02:13Z" end-time="2026-08-25 06:02:13Z" duration="0.000869" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1046" name="WorkspaceStateUsesDefaultsWhenMissingOrCorrupt" fullname="Sundoll.Tests.EditMode.M3MapEditorTests.WorkspaceStateUsesDefaultsWhenMissingOrCorrupt" methodname="WorkspaceStateUsesDefaultsWhenMissingOrCorrupt" classname="Sundoll.Tests.EditMode.M3MapEditorTests" runstate="Runnable" seed="418410841" result="Passed" start-time="2026-08-25 06:02:13Z" end-time="2026-08-25 06:02:13Z" duration="0.000385" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1039" name="WorldChangeSetJsonRoundTripAppliesForwardAndInverse" fullname="Sundoll.Tests.EditMode.M3MapEditorTests.WorldChangeSetJsonRoundTripAppliesForwardAndInverse" methodname="WorldChangeSetJsonRoundTripAppliesForwardAndInverse" classname="Sundoll.Tests.EditMode.M3MapEditorTests" runstate="Runnable" seed="109361704" result="Passed" start-time="2026-08-25 06:02:13Z" end-time="2026-08-25 06:02:13Z" duration="0.000210" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+                <output><![CDATA[Saving results to: /Users/sundoll/Library/Application Support/DefaultCompany/SundollWorld/TestResults.xml
+]]></output>
+              </test-case>
+            </test-suite>
+          </test-suite>
+        </test-suite>
+      </test-suite>
+    </test-suite>
+  </test-suite>
+</test-run>

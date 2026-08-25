@@ -27,7 +27,14 @@ namespace Sundoll.Presentation
             if (saveSession != null)
             {
                 saveSession.TickAutosave(Time.unscaledDeltaTime);
+                saveSession.RefreshSaveStatus();
+                status = saveSession.LastAction;
             }
+        }
+
+        private void OnDestroy()
+        {
+            saveSession?.Dispose();
         }
 
         private void OnGUI()
@@ -53,7 +60,7 @@ namespace Sundoll.Presentation
             GUILayout.Label($"PieceInstance: {state.pieceInstance?.id} → {locationText}");
             GUILayout.Label($"World Revision: {state.revision}");
             GUILayout.Label($"状态：{status}");
-            GUILayout.Label($"M2 HEAD：{saveSession.ActiveRevisionId} / 待自动保存事务：{saveSession.PendingTransactions}");
+            GUILayout.Label($"M2 HEAD：{saveSession.ActiveRevisionId} / 保存状态：{SaveStatusLabel(saveSession.SaveStatus)} / 待自动保存事务：{saveSession.PendingTransactions}");
             GUILayout.Space(8);
 
             GUILayout.BeginHorizontal();
@@ -89,8 +96,10 @@ namespace Sundoll.Presentation
 
             if (GUILayout.Button("保存 Snapshot", GUILayout.Width(120)))
             {
-                var result = saveSession.Save(commandBus.State);
-                status = "M2 Revision 已保存：" + result.saveRevisionId;
+                var operation = saveSession.QueueSave("手动保存 Snapshot");
+                status = operation.Status == M2SaveStatus.Saving
+                    ? "M2 Revision 保存中"
+                    : saveSession.LastAction;
             }
 
             if (GUILayout.Button("重新加载", GUILayout.Width(100)))
@@ -127,6 +136,23 @@ namespace Sundoll.Presentation
             GUILayout.Label($"Project Root: {saveSession.ProjectRoot}");
             GUILayout.Label($"HEAD: {Path.Combine(saveSession.ProjectRoot, "HEAD.json")}");
             GUILayout.EndArea();
+        }
+
+        private static string SaveStatusLabel(M2SaveStatus saveStatus)
+        {
+            switch (saveStatus)
+            {
+                case M2SaveStatus.Unsaved:
+                    return "未落盘";
+                case M2SaveStatus.Saving:
+                    return "保存中";
+                case M2SaveStatus.Safe:
+                    return "已安全保存";
+                case M2SaveStatus.Failed:
+                    return "保存失败";
+                default:
+                    return saveStatus.ToString();
+            }
         }
     }
 }

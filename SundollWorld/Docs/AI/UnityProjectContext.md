@@ -66,14 +66,14 @@
 
 - Namespace style: `Sundoll.*` namespaces.
 - Runtime domain and persistence DTOs remain free of Scene/GameObject references; Unity APIs are limited to the bootstrap/presentation boundary and JSON serialization integration.
-- M2 persistence is synchronous for this slice and writes only immutable DTO snapshots; background save is not yet implemented.
+- M2 Revision writes use `M2SaveQueue`: the main thread captures an immutable DTO snapshot and a single background chain performs serialization, atomic write and flush. The synchronous `Save()` API remains for compatibility and initialization.
 - Persistence invariants and recovery limitations are documented in `Docs/M2-结果报告.md`.
 
 ## Testing And Validation
 
-- EditMode tests: 45 first-party tests; 45 passed, 0 failed, 0 ignored in the latest completed Unity Editor run. The suite contains 4 M1, 19 M2 and 22 M3 tests, including Journal v2 command replay, v1/v2 compatibility, Snapshot-after-unsaved-command recovery, the 256×256 batch save/reload benchmark, geometry rasterizer tests, multi-layer persistence tests, Dirty Region tracking, incremental content-cache tests, visible-bounds tests, layer visibility/lock state tests, and Workspace State round-trip/corruption fallback tests.
-- PlayMode validation: M2 save/session flow and the M3 runtime 8×8 grid panel were exercised in `M1Bootstrap`; hiding Terrain removed its symbols from the grid, and a versioned `workspace-state.json` restored Terrain hidden/locked state after exiting and re-entering Play Mode. A click on the locked Terrain produced no new Journal entry and did not advance the current domain Revision. Manual brush/line/rectangle/fill confirmation passed; wheel/middle-button input remains unverified because the available Computer Use surface cannot target those Unity IMGUI events. The 256×256 visible-bounds path is covered by EditMode rather than a large-map runtime scene.
-- CI/build validation: no CI configuration detected. M2 has a successful macOS universal build; the latest EditMode XML is `SundollWorld/TestResults_EditMode_20260825_104204.xml`; Windows build, cross-platform save exchange and performance checks remain unverified.
+- EditMode tests: 48 first-party tests; 48 passed, 0 failed, 0 ignored in the latest completed Unity Editor run. The suite contains 4 M1, 22 M2 and 22 M3 tests, including Journal v2 command replay, v1/v2 compatibility, Snapshot-after-unsaved-command recovery, background save snapshot isolation, failure status and session tracking, the 256×256 batch save/reload benchmark, geometry rasterizer tests, multi-layer persistence tests, Dirty Region tracking, incremental content-cache tests, visible-bounds tests, layer visibility/lock state tests, and Workspace State round-trip/corruption fallback tests.
+- PlayMode validation: M2 save/session flow and the M3 runtime 8×8 grid panel were exercised in `M1Bootstrap`; the runtime overlay now displays save status and Play Mode enter/exit completed without new Console errors. Hiding Terrain removed its symbols from the grid, and a versioned `workspace-state.json` restored Terrain hidden/locked state after exiting and re-entering Play Mode. A click on the locked Terrain produced no new Journal entry and did not advance the current domain Revision. Manual brush/line/rectangle/fill confirmation passed; wheel/middle-button input remains unverified because the available Computer Use surface cannot target those Unity IMGUI events. The 256×256 visible-bounds path is covered by EditMode rather than a large-map runtime scene.
+- CI/build validation: no CI configuration detected. M2 has a successful macOS universal build; the latest EditMode XML is `SundollWorld/TestResults_EditMode_20260825_140236.xml`; Windows build, cross-platform save exchange and performance checks remain unverified.
 
 ## Available Unity Tooling
 
@@ -88,7 +88,7 @@
 | `unity.gameobject.inspect` | available | local Editor/serialized scene; no MCP bridge |
 | `unity.asset.search` | available | filesystem and Unity Project window |
 | `unity.package.read` | available | `Packages/manifest.json` and lock file |
-| `unity.tests.list` | available | Unity Test Framework installed; 45 first-party EditMode tests present |
+| `unity.tests.list` | available | Unity Test Framework installed; 48 first-party EditMode tests present |
 | `unity.tests.run` | available | via Unity Test Framework/Editor; no MCP bridge |
 | `unity.playmode.read` | available | local Editor; no MCP bridge |
 | `unity.profiler.read` | unverified | M2 performance budget and long-session profiling remain deferred |

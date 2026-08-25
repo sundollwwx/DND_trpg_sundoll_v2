@@ -403,6 +403,110 @@ namespace Sundoll.Tests.EditMode
         }
 
         [Test]
+        public void BackgroundSaveQueueCapturesSnapshotAndReportsSafe()
+        {
+            var bus = M1VerticalSlice.CreateDemoBus();
+            var store = new M2ProjectStore(root);
+            var first = store.Save(bus.State, "stream-test", 0);
+            var queue = new M2SaveQueue(store);
+
+            try
+            {
+                bus.Execute(new M1MovePieceCommand("queue-first", bus.State.revision, 4, 0));
+                var operation = queue.Enqueue(
+                    bus.State,
+                    "stream-test",
+                    1,
+                    first.generation,
+                    "queue-first",
+                    1);
+
+                // The queued write must use the captured snapshot, not this later state.
+                bus.Execute(new M1MovePieceCommand("queue-second", bus.State.revision, 5, 0));
+
+                var result = operation.Wait();
+                Assert.That(operation.Status, Is.EqualTo(M2SaveStatus.Safe));
+                Assert.That(result.saveRevisionId, Is.Not.Null.And.Not.Empty);
+                Assert.That(store.LoadActive().state.pieceInstance.location.x, Is.EqualTo(4));
+            }
+            finally
+            {
+                queue.Dispose();
+            }
+        }
+
+        [Test]
+        public void BackgroundSaveQueueReportsFailureAndKeepsPreviousHead()
+        {
+            var bus = M1VerticalSlice.CreateDemoBus();
+            var stableStore = new M2ProjectStore(root);
+            var first = stableStore.Save(bus.State, "stream-test", 0);
+            var failingStore = new M2ProjectStore(root, point =>
+            {
+                if (point == M2SaveFaultPoint.BeforeHeadCommit)
+                {
+                    throw new IOException("Injected background save failure.");
+                }
+            });
+            var queue = new M2SaveQueue(failingStore);
+
+            try
+            {
+                bus.Execute(new M1MovePieceCommand("queue-failure", bus.State.revision, 6, 0));
+                var operation = queue.Enqueue(
+                    bus.State,
+                    "stream-test",
+                    1,
+                    first.generation,
+                    "queue-failure");
+
+                Assert.Throws<IOException>(() => operation.Wait());
+                Assert.That(operation.Status, Is.EqualTo(M2SaveStatus.Failed));
+                Assert.That(operation.Error.Message, Does.Contain("background save failure"));
+                Assert.That(stableStore.LoadActive().state.pieceInstance.location.x, Is.EqualTo(1));
+            }
+            finally
+            {
+                queue.Dispose();
+            }
+        }
+
+        [Test]
+        public void SaveSessionTracksQueuedSaveAndChangesAfterCapturedSnapshot()
+        {
+            var bus = M1VerticalSlice.CreateDemoBus();
+            var session = M2SaveSession.Open(root, bus.State, new M2AutosavePolicy(25, 999f));
+
+            try
+            {
+                var firstReceipt = bus.Execute(new M1MovePieceCommand("session-queue-first", bus.State.revision, 4, 0));
+                session.RecordAccepted(firstReceipt, bus.State);
+                var firstOperation = session.QueueSave("测试后台保存");
+
+                var secondReceipt = bus.Execute(new M1MovePieceCommand("session-queue-second", bus.State.revision, 5, 0));
+                session.RecordAccepted(secondReceipt, bus.State);
+
+                firstOperation.Wait();
+                session.RefreshSaveStatus();
+                Assert.That(session.SaveStatus, Is.EqualTo(M2SaveStatus.Unsaved));
+                Assert.That(session.PendingTransactions, Is.EqualTo(1));
+
+                var secondOperation = session.QueueSave("测试第二次后台保存");
+                secondOperation.Wait();
+                session.RefreshSaveStatus();
+
+                Assert.That(session.SaveStatus, Is.EqualTo(M2SaveStatus.Safe));
+                Assert.That(session.PendingTransactions, Is.EqualTo(0));
+                Assert.That(session.State.pieceInstance.location.x, Is.EqualTo(5));
+                Assert.That(session.Validate().valid, Is.True);
+            }
+            finally
+            {
+                session.Dispose();
+            }
+        }
+
+        [Test]
         public void SaveSessionAutosavesAtTransactionThreshold()
         {
             var bus = M1VerticalSlice.CreateDemoBus();
@@ -424,9 +528,13 @@ namespace Sundoll.Tests.EditMode
                 accepted = true
             }, bus.State);
 
+            session.WaitForSave();
             Assert.That(session.PendingTransactions, Is.EqualTo(0));
+            session.RefreshSaveStatus();
+            Assert.That(session.SaveStatus, Is.EqualTo(M2SaveStatus.Safe));
             Assert.That(session.Validate().valid, Is.True);
             Assert.That(session.ActiveRevisionId, Is.Not.Null.And.Not.Empty);
+            session.Dispose();
         }
     }
 }
