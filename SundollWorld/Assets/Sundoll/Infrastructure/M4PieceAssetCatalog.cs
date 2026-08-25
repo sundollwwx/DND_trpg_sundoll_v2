@@ -96,5 +96,73 @@ namespace Sundoll.Infrastructure
             content.byteLength = new FileInfo(Path.Combine(blobStore.RootPath, asset.thumbnailRelativePath)).Length;
             return blobStore.TryResolve(content, out _);
         }
+
+        public bool TryReadAssetBytes(M4PieceAsset asset, out byte[] bytes)
+        {
+            bytes = null;
+            if (asset == null)
+            {
+                return false;
+            }
+
+            try
+            {
+                bytes = blobStore.Read(new M2ContentRef
+                {
+                    sha256 = asset.sha256,
+                    extension = asset.extension,
+                    mimeType = asset.mimeType,
+                    byteLength = asset.byteLength,
+                    relativePath = asset.relativePath,
+                    kind = "asset"
+                });
+                return true;
+            }
+            catch (FileNotFoundException)
+            {
+                return false;
+            }
+            catch (InvalidDataException)
+            {
+                return false;
+            }
+        }
+
+        public bool TryReadThumbnailBytes(M4PieceAsset asset, out byte[] bytes)
+        {
+            bytes = null;
+            if (asset == null || string.IsNullOrWhiteSpace(asset.thumbnailSha256))
+            {
+                return false;
+            }
+
+            try
+            {
+                var absolutePath = Path.Combine(blobStore.RootPath, asset.thumbnailRelativePath ?? string.Empty);
+                if (!File.Exists(absolutePath))
+                {
+                    return false;
+                }
+
+                bytes = blobStore.Read(new M2ContentRef
+                {
+                    sha256 = asset.thumbnailSha256,
+                    extension = Path.GetExtension(asset.thumbnailRelativePath),
+                    mimeType = "image/png",
+                    byteLength = new FileInfo(absolutePath).Length,
+                    relativePath = asset.thumbnailRelativePath,
+                    kind = "thumbnail"
+                });
+                return true;
+            }
+            catch (FileNotFoundException)
+            {
+                return false;
+            }
+            catch (InvalidDataException)
+            {
+                return false;
+            }
+        }
     }
 }

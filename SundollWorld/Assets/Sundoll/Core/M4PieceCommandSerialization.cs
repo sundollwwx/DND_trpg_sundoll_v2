@@ -92,4 +92,11 @@ namespace Sundoll.Core
         public bool flipped;
         public bool visible;
     }
+
+    [Serializable]
+    public sealed class M4SetPieceStackOrderCommandPayload
+    {
+        public string instanceId;
+        public int stackOrder;
+    }
 }

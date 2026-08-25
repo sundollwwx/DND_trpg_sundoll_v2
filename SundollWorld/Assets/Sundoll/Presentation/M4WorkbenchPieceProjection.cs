@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Sundoll.Application;
 using Sundoll.Core;
+using Sundoll.Infrastructure;
 using UnityEngine;
 
 namespace Sundoll.Presentation
@@ -14,7 +15,11 @@ namespace Sundoll.Presentation
     public sealed class M4WorkbenchPieceProjection : MonoBehaviour
     {
         private readonly Dictionary<string, GameObject> views = new Dictionary<string, GameObject>(StringComparer.Ordinal);
+        private readonly Dictionary<string, Sprite> viewSprites = new Dictionary<string, Sprite>(StringComparer.Ordinal);
+        private readonly Dictionary<string, string> viewAssetIds = new Dictionary<string, string>(StringComparer.Ordinal);
         private M1CommandBus commandBus;
+        private M4PieceAssetCatalog assetCatalog;
+        private M7TextureCache textureCache;
         private Sprite placeholderSprite;
         private Texture2D placeholderTexture;
 
@@ -22,7 +27,18 @@ namespace Sundoll.Presentation
 
         public void Bind(M1CommandBus nextCommandBus)
         {
+            Bind(nextCommandBus, null);
+        }
+
+        public void Bind(M1CommandBus nextCommandBus, M4PieceAssetCatalog nextAssetCatalog)
+        {
             commandBus = nextCommandBus ?? throw new ArgumentNullException(nameof(nextCommandBus));
+            assetCatalog = nextAssetCatalog;
+            if (textureCache == null)
+            {
+                textureCache = new M7TextureCache();
+            }
+
             EnsurePlaceholderSprite();
             RefreshAll();
         }
@@ -60,6 +76,7 @@ namespace Sundoll.Presentation
 
                     view.transform.position = position;
                     var renderer = view.GetComponent<SpriteRenderer>();
+                    ApplySprite(state, instance, renderer);
                     renderer.color = ColorForInstance(state, instance);
                     renderer.sortingOrder = 100 + Math.Max(0, instance.location == null ? 0 : instance.location.stackOrder);
                     view.transform.rotation = Quaternion.Euler(0f, 0f, instance.rotation);
@@ -83,6 +100,8 @@ namespace Sundoll.Presentation
                     Destroy(views[staleId]);
                 }
 
+                ReleaseViewAsset(staleId);
+
                 views.Remove(staleId);
             }
         }
@@ -96,6 +115,58 @@ namespace Sundoll.Presentation
             renderer.drawMode = SpriteDrawMode.Sliced;
             renderer.size = Vector2.one * 0.82f;
             return view;
+        }
+
+        private void ApplySprite(M1WorldState state, M4PieceInstance instance, SpriteRenderer renderer)
+        {
+            var definition = M4PieceQueries.FindDefinition(state, instance.definitionId);
+            var asset = M4PieceQueries.FindAsset(state, definition == null ? null : definition.assetId);
+            var desiredAssetId = asset == null ? null : asset.id;
+            if (viewAssetIds.TryGetValue(instance.id, out var currentAssetId) && currentAssetId == desiredAssetId)
+            {
+                return;
+            }
+
+            ReleaseViewAsset(instance.id);
+            if (assetCatalog != null && asset != null && textureCache != null &&
+                textureCache.TryAcquire(asset, assetCatalog, out var texture, out _))
+            {
+                var sprite = Sprite.Create(
+                    texture,
+                    new Rect(0f, 0f, texture.width, texture.height),
+                    new Vector2(0.5f, 0.5f),
+                    Mathf.Max(1f, texture.width));
+                sprite.name = "SundollWorld.PieceSprite." + instance.id;
+                viewSprites[instance.id] = sprite;
+                viewAssetIds[instance.id] = asset.id;
+                renderer.sprite = sprite;
+                renderer.drawMode = SpriteDrawMode.Simple;
+                renderer.size = Vector2.one;
+                return;
+            }
+
+            renderer.sprite = placeholderSprite;
+            renderer.drawMode = SpriteDrawMode.Sliced;
+            renderer.size = Vector2.one * 0.82f;
+        }
+
+        private void ReleaseViewAsset(string instanceId)
+        {
+            if (viewAssetIds.TryGetValue(instanceId, out var assetId))
+            {
+                textureCache?.Release(assetId);
+                viewAssetIds.Remove(instanceId);
+            }
+
+            if (viewSprites.TryGetValue(instanceId, out var sprite))
+            {
+                if (sprite != null)
+                {
+                    Destroy(sprite);
+                }
+
+                viewSprites.Remove(instanceId);
+            }
         }
 
         private bool TryResolveBoardPosition(M1WorldState state, string instanceId, out Vector3 position)
@@ -180,6 +251,13 @@ namespace Sundoll.Presentation
             }
 
             views.Clear();
+            foreach (var instanceId in new List<string>(viewAssetIds.Keys))
+            {
+                ReleaseViewAsset(instanceId);
+            }
+
+            textureCache?.Dispose();
+            textureCache = null;
             if (placeholderSprite != null)
             {
                 Destroy(placeholderSprite);

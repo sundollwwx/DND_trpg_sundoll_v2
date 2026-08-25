@@ -135,5 +135,14 @@ namespace Sundoll.Application
                 flipped,
                 visible));
         }
+
+        public M1CommandReceipt SetStackOrder(string instanceId, int stackOrder)
+        {
+            return commandBus.Execute(new M4SetPieceStackOrderCommand(
+                "m4-stack-" + Guid.NewGuid().ToString("N"),
+                State.revision,
+                instanceId,
+                stackOrder));
+        }
     }
 }

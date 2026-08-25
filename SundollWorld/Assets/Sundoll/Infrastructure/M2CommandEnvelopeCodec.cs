@@ -242,6 +242,79 @@ namespace Sundoll.Infrastructure
                         payload.flipped,
                         payload.visible);
                 }
+                case "M4.SetPieceStackOrder":
+                {
+                    var payload = ReadPayload<M4SetPieceStackOrderCommandPayload>(envelope);
+                    return new M4SetPieceStackOrderCommand(
+                        envelope.commandId,
+                        envelope.baseRevision,
+                        payload.instanceId,
+                        payload.stackOrder);
+                }
+                case "M5.CreateMapSlot":
+                {
+                    var payload = ReadPayload<M5CreateMapSlotCommandPayload>(envelope);
+                    return new M5CreateMapSlotCommand(
+                        envelope.commandId,
+                        envelope.baseRevision,
+                        payload.mapId,
+                        payload.displayName,
+                        payload.width,
+                        payload.height);
+                }
+                case "M5.SwitchMap":
+                {
+                    var payload = ReadPayload<M5SwitchMapCommandPayload>(envelope);
+                    return new M5SwitchMapCommand(envelope.commandId, envelope.baseRevision, payload.mapId);
+                }
+                case "M5.RenameMap":
+                {
+                    var payload = ReadPayload<M5RenameMapCommandPayload>(envelope);
+                    return new M5RenameMapCommand(
+                        envelope.commandId,
+                        envelope.baseRevision,
+                        payload.mapId,
+                        payload.displayName);
+                }
+                case "M5.SetFog":
+                {
+                    var payload = ReadPayload<M5SetFogCommandPayload>(envelope);
+                    return new M5SetFogCommand(
+                        envelope.commandId,
+                        envelope.baseRevision,
+                        payload.mapId,
+                        payload.x,
+                        payload.y,
+                        payload.revealed);
+                }
+                case "M5.UpsertAnnotation":
+                {
+                    var payload = ReadPayload<M5UpsertAnnotationCommandPayload>(envelope);
+                    return new M5UpsertAnnotationCommand(
+                        envelope.commandId,
+                        envelope.baseRevision,
+                        payload.annotationId,
+                        payload.mapId,
+                        payload.x,
+                        payload.y,
+                        payload.text,
+                        payload.colorHex,
+                        payload.visible);
+                }
+                case "M5.RemoveAnnotation":
+                {
+                    var payload = ReadPayload<M5RemoveAnnotationCommandPayload>(envelope);
+                    return new M5RemoveAnnotationCommand(envelope.commandId, envelope.baseRevision, payload.annotationId);
+                }
+                case "M5.SetInteractionState":
+                {
+                    var payload = ReadPayload<M5SetInteractionStateCommandPayload>(envelope);
+                    return new M5SetInteractionStateCommand(
+                        envelope.commandId,
+                        envelope.baseRevision,
+                        payload.objectId,
+                        payload.open);
+                }
                 default:
                     throw new InvalidDataException("Unknown command type: " + envelope.commandType);
             }

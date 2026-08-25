@@ -126,5 +126,43 @@ namespace Sundoll.Tests.PlayMode
 
             yield return null;
         }
+
+        [UnityTest]
+        public IEnumerator M7TextureCacheReusesAndReleasesRuntimeTexture()
+        {
+            var root = Path.Combine(Path.GetTempPath(), "Sundoll-M7-Texture-" + Guid.NewGuid().ToString("N"));
+            try
+            {
+                var source = new Texture2D(2, 2, TextureFormat.RGBA32, false);
+                source.SetPixels(new[] { Color.red, Color.red, Color.red, Color.red });
+                source.Apply(false, false);
+                var bytes = source.EncodeToPNG();
+                Object.Destroy(source);
+
+                var catalog = new M4PieceAssetCatalog(root);
+                var imported = M4RuntimeImageImporter.Import(catalog, bytes, "png", "image/png");
+                Assert.That(imported.accepted, Is.True, imported.diagnostic);
+                using (var cache = new M7TextureCache())
+                {
+                    Assert.That(cache.TryAcquire(imported.asset, catalog, out var first, out var firstDiagnostic), Is.True, firstDiagnostic);
+                    Assert.That(cache.TryAcquire(imported.asset, catalog, out var second, out var secondDiagnostic), Is.True, secondDiagnostic);
+                    Assert.That(second, Is.SameAs(first));
+                    Assert.That(cache.Count, Is.EqualTo(1));
+                    cache.Release(imported.asset.id);
+                    Assert.That(cache.Count, Is.EqualTo(1));
+                    cache.Release(imported.asset.id);
+                    Assert.That(cache.Count, Is.EqualTo(0));
+                }
+            }
+            finally
+            {
+                if (Directory.Exists(root))
+                {
+                    Directory.Delete(root, true);
+                }
+            }
+
+            yield return null;
+        }
     }
 }

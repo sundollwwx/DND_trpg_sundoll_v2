@@ -58,6 +58,10 @@ namespace Sundoll.Infrastructure
             {
                 AppendM4Pieces(builder, state);
             }
+            if (HasM5Data(state))
+            {
+                AppendM5Console(builder, state.m5Console, layerAware, includeMapObjects);
+            }
             return M2FileIO.Sha256Utf8(builder.ToString());
         }
 
@@ -137,6 +141,122 @@ namespace Sundoll.Infrastructure
             return state.pieceAssets != null && state.pieceAssets.Count > 0 ||
                    state.pieceDefinitions != null && state.pieceDefinitions.Count > 0 ||
                    state.pieceInstances != null && state.pieceInstances.Count > 0;
+        }
+
+        private static bool HasM5Data(M1WorldState state)
+        {
+            var console = state.m5Console;
+            return console != null &&
+                   (!string.IsNullOrWhiteSpace(console.activeMapId) ||
+                    console.maps != null && console.maps.Count > 0 ||
+                    console.fogCells != null && console.fogCells.Count > 0 ||
+                    console.annotations != null && console.annotations.Count > 0 ||
+                    console.interactions != null && console.interactions.Count > 0);
+        }
+
+        private static void AppendM5Console(
+            StringBuilder builder,
+            M5ConsoleState console,
+            bool layerAware,
+            bool includeMapObjects)
+        {
+            AppendInt(builder, console == null ? 0 : console.formatVersion);
+            AppendOptionalString(builder, console == null ? null : console.activeMapId);
+
+            var maps = new List<M5MapSlot>();
+            if (console != null && console.maps != null)
+            {
+                foreach (var map in console.maps)
+                {
+                    if (map != null)
+                    {
+                        maps.Add(map);
+                    }
+                }
+            }
+
+            maps.Sort((left, right) => string.CompareOrdinal(left.id, right.id));
+            AppendInt(builder, maps.Count);
+            foreach (var map in maps)
+            {
+                AppendOptionalString(builder, map.id);
+                AppendOptionalString(builder, map.displayName);
+                AppendMap(builder, map.map, layerAware, includeMapObjects);
+                AppendPublishedMap(builder, map.publishedMap, layerAware, includeMapObjects);
+            }
+
+            var fog = new List<M5FogCell>();
+            if (console != null && console.fogCells != null)
+            {
+                foreach (var cell in console.fogCells)
+                {
+                    if (cell != null)
+                    {
+                        fog.Add(cell);
+                    }
+                }
+            }
+
+            fog.Sort((left, right) =>
+            {
+                var result = string.CompareOrdinal(left.mapId, right.mapId);
+                if (result != 0) return result;
+                result = left.x.CompareTo(right.x);
+                return result != 0 ? result : left.y.CompareTo(right.y);
+            });
+            AppendInt(builder, fog.Count);
+            foreach (var cell in fog)
+            {
+                AppendOptionalString(builder, cell.mapId);
+                AppendInt(builder, cell.x);
+                AppendInt(builder, cell.y);
+                AppendInt(builder, cell.revealed ? 1 : 0);
+            }
+
+            var annotations = new List<M5DynamicAnnotation>();
+            if (console != null && console.annotations != null)
+            {
+                foreach (var annotation in console.annotations)
+                {
+                    if (annotation != null)
+                    {
+                        annotations.Add(annotation);
+                    }
+                }
+            }
+
+            annotations.Sort((left, right) => string.CompareOrdinal(left.id, right.id));
+            AppendInt(builder, annotations.Count);
+            foreach (var annotation in annotations)
+            {
+                AppendOptionalString(builder, annotation.id);
+                AppendOptionalString(builder, annotation.mapId);
+                AppendInt(builder, annotation.x);
+                AppendInt(builder, annotation.y);
+                AppendOptionalString(builder, annotation.text);
+                AppendOptionalString(builder, annotation.colorHex);
+                AppendInt(builder, annotation.visible ? 1 : 0);
+            }
+
+            var interactions = new List<M5InteractionState>();
+            if (console != null && console.interactions != null)
+            {
+                foreach (var interaction in console.interactions)
+                {
+                    if (interaction != null)
+                    {
+                        interactions.Add(interaction);
+                    }
+                }
+            }
+
+            interactions.Sort((left, right) => string.CompareOrdinal(left.objectId, right.objectId));
+            AppendInt(builder, interactions.Count);
+            foreach (var interaction in interactions)
+            {
+                AppendOptionalString(builder, interaction.objectId);
+                AppendInt(builder, interaction.open ? 1 : 0);
+            }
         }
 
         private static void AppendM4Pieces(StringBuilder builder, M1WorldState state)

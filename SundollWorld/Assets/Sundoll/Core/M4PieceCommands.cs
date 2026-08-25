@@ -435,4 +435,62 @@ namespace Sundoll.Core
             instance.visible = visible;
         }
     }
+
+    public sealed class M4SetPieceStackOrderCommand : M1Command
+    {
+        private readonly string instanceId;
+        private readonly int requestedStackOrder;
+
+        public M4SetPieceStackOrderCommand(string commandId, int baseRevision, string instanceId, int requestedStackOrder)
+            : base(commandId, baseRevision)
+        {
+            this.instanceId = instanceId;
+            this.requestedStackOrder = requestedStackOrder;
+        }
+
+        public override string Description => "调整棋子堆叠顺序";
+        public override string CommandType => "M4.SetPieceStackOrder";
+        public override int PayloadVersion => 1;
+        public override object CreatePayload() => new M4SetPieceStackOrderCommandPayload
+        {
+            instanceId = instanceId,
+            stackOrder = requestedStackOrder
+        };
+
+        public override void Apply(M1WorldState state)
+        {
+            M4PieceCommandSupport.EnsureLists(state);
+            var instance = M4PieceCommandSupport.RequireInstance(state, instanceId);
+            if (instance.location == null || instance.location.kind != M1PieceLocationKind.OnBoard)
+            {
+                throw new InvalidOperationException("Only an on-board piece can change stack order.");
+            }
+
+            var sameCell = new List<M4PieceInstance>();
+            foreach (var candidate in state.pieceInstances)
+            {
+                if (candidate != null && candidate.location != null &&
+                    candidate.location.kind == M1PieceLocationKind.OnBoard &&
+                    candidate.location.boardId == instance.location.boardId &&
+                    candidate.location.x == instance.location.x &&
+                    candidate.location.y == instance.location.y)
+                {
+                    sameCell.Add(candidate);
+                }
+            }
+
+            sameCell.Sort((left, right) =>
+            {
+                var result = left.location.stackOrder.CompareTo(right.location.stackOrder);
+                return result != 0 ? result : string.CompareOrdinal(left.id, right.id);
+            });
+            sameCell.Remove(instance);
+            var targetIndex = Math.Max(0, Math.Min(sameCell.Count, requestedStackOrder));
+            sameCell.Insert(targetIndex, instance);
+            for (var index = 0; index < sameCell.Count; index++)
+            {
+                sameCell[index].location.stackOrder = index;
+            }
+        }
+    }
 }

@@ -33,6 +33,8 @@ namespace Sundoll.Presentation
         private M2SaveSession saveSession;
         private M3MapEditorFacade editor;
         private M4PieceLibraryFacade pieceLibrary;
+        private M4PieceAssetCatalog pieceAssetCatalog;
+        private M5ConsoleFacade consoleFacade;
         private M3LayerEditState layerEditState;
         private M3WorkspaceStateStore workspaceStateStore;
         private M3WorkbenchMapProjection projection;
@@ -49,6 +51,9 @@ namespace Sundoll.Presentation
         private TextField pieceSearchField;
         private TextField pieceCategoryField;
         private TextField pieceTagsField;
+        private TextField pieceImagePathField;
+        private TextField pieceRelationTargetField;
+        private TextField pieceAttachmentSlotField;
         private VisualElement pieceListContainer;
         private string currentTool = "画笔";
         private string currentLayerId = M3MapLayerIds.Terrain;
@@ -66,6 +71,9 @@ namespace Sundoll.Presentation
         private bool hasLoadedWorkspaceView;
         private string selectedPieceDefinitionId;
         private string selectedPieceInstanceId;
+        private TextField mapIdField;
+        private TextField mapNameField;
+        private Label consoleLabel;
 
         public M3MapEditorFacade Editor => editor;
         public M2SaveSession SaveSession => saveSession;
@@ -98,7 +106,7 @@ namespace Sundoll.Presentation
                 pieceProjection = pieceObject.AddComponent<M4WorkbenchPieceProjection>();
             }
 
-            pieceProjection.Bind(commandBus);
+            pieceProjection.Bind(commandBus, pieceAssetCatalog);
             BuildUi();
             input = GetComponent<M3WorkbenchInput>();
             if (input == null)
@@ -162,6 +170,9 @@ namespace Sundoll.Presentation
                 new M1LocalAuthority(new AllowAllRulePolicy()));
             editor = new M3MapEditorFacade(commandBus);
             pieceLibrary = new M4PieceLibraryFacade(commandBus);
+            pieceAssetCatalog = new M4PieceAssetCatalog(projectRoot);
+            consoleFacade = new M5ConsoleFacade(commandBus);
+            M5ConsoleQueries.Ensure(commandBus.State);
             workspaceStateStore = new M3WorkspaceStateStore(projectRoot);
             var workspaceLoad = workspaceStateStore.Load(editor.State.map.id, LayerIds);
             layerEditState = workspaceLoad.state;
@@ -238,6 +249,9 @@ namespace Sundoll.Presentation
             saveStatusLabel.style.marginLeft = 14f;
             saveStatusLabel.style.marginRight = 18f;
             topBar.Add(saveStatusLabel);
+            var consoleButton = new Button(CreateHostMap) { text = "新建主持地图" };
+            consoleButton.style.marginLeft = 10f;
+            topBar.Add(consoleButton);
             root.Add(topBar);
 
             var body = new VisualElement { name = "WorkbenchBody" };
@@ -321,6 +335,12 @@ namespace Sundoll.Presentation
             var createInstanceButton = new Button(CreateInstanceFromSelectedDefinition) { text = "创建实例并放置" };
             createInstanceButton.style.marginTop = 5f;
             panel.Add(createInstanceButton);
+            pieceImagePathField = new TextField("图片路径") { name = "PieceImagePath" };
+            pieceImagePathField.style.marginTop = 6f;
+            panel.Add(pieceImagePathField);
+            var importImageButton = new Button(ImportPieceImageFromPath) { text = "导入图片路径" };
+            importImageButton.style.marginTop = 4f;
+            panel.Add(importImageButton);
             pieceLibraryLabel = new Label { name = "PieceLibraryBody" };
             pieceLibraryLabel.style.marginTop = 8f;
             pieceLibraryLabel.style.whiteSpace = WhiteSpace.Normal;
@@ -329,6 +349,19 @@ namespace Sundoll.Presentation
             pieceListContainer.style.marginTop = 6f;
             pieceListContainer.style.maxHeight = 250f;
             panel.Add(pieceListContainer);
+            mapIdField = new TextField("地图 ID") { name = "HostMapId" };
+            mapIdField.style.marginTop = 8f;
+            panel.Add(mapIdField);
+            mapNameField = new TextField("地图名称") { name = "HostMapName" };
+            mapNameField.style.marginTop = 4f;
+            panel.Add(mapNameField);
+            var switchMapButton = new Button(SwitchHostMap) { text = "切换主持地图" };
+            switchMapButton.style.marginTop = 4f;
+            panel.Add(switchMapButton);
+            consoleLabel = new Label { name = "HostConsoleBody" };
+            consoleLabel.style.marginTop = 6f;
+            consoleLabel.style.whiteSpace = WhiteSpace.Normal;
+            panel.Add(consoleLabel);
             return panel;
         }
 
@@ -374,6 +407,24 @@ namespace Sundoll.Presentation
             var detachButton = new Button(DetachSelectedPiece) { text = "解除选中棋子关系" };
             detachButton.style.marginTop = 5f;
             panel.Add(detachButton);
+            var lowerStackButton = new Button(() => MoveSelectedPieceStack(-1)) { text = "堆叠上移" };
+            lowerStackButton.style.marginTop = 5f;
+            panel.Add(lowerStackButton);
+            var raiseStackButton = new Button(() => MoveSelectedPieceStack(1)) { text = "堆叠下移" };
+            raiseStackButton.style.marginTop = 5f;
+            panel.Add(raiseStackButton);
+            pieceRelationTargetField = new TextField("关系目标实例") { name = "PieceRelationTarget" };
+            pieceRelationTargetField.style.marginTop = 10f;
+            panel.Add(pieceRelationTargetField);
+            pieceAttachmentSlotField = new TextField("附着槽") { name = "PieceAttachmentSlot" };
+            pieceAttachmentSlotField.style.marginTop = 4f;
+            panel.Add(pieceAttachmentSlotField);
+            var containerButton = new Button(MoveSelectedPieceToContainer) { text = "收入容器" };
+            containerButton.style.marginTop = 4f;
+            panel.Add(containerButton);
+            var attachButton = new Button(AttachSelectedPiece) { text = "附着到目标" };
+            attachButton.style.marginTop = 4f;
+            panel.Add(attachButton);
             return panel;
         }
 
@@ -382,6 +433,59 @@ namespace Sundoll.Presentation
             var operation = saveSession.QueueSave("Workbench 手动保存 Snapshot");
             status = operation.Status == M2SaveStatus.Saving ? "Workbench Snapshot 保存中" : saveSession.LastAction;
             RefreshUiState();
+        }
+
+        private void CreateHostMap()
+        {
+            if (consoleFacade == null)
+            {
+                return;
+            }
+
+            var id = mapIdField == null ? string.Empty : mapIdField.value;
+            if (string.IsNullOrWhiteSpace(id))
+            {
+                id = "map-host-" + Guid.NewGuid().ToString("N").Substring(0, 8);
+            }
+
+            var name = mapNameField == null ? id : mapNameField.value;
+            var receipt = consoleFacade.CreateMap(id.Trim(), string.IsNullOrWhiteSpace(name) ? id : name.Trim());
+            CommitConsoleReceipt(receipt);
+            status = receipt.accepted ? "已创建主持地图：" + id : receipt.message;
+            RefreshUiState();
+        }
+
+        private void SwitchHostMap()
+        {
+            if (consoleFacade == null || mapIdField == null || string.IsNullOrWhiteSpace(mapIdField.value))
+            {
+                status = "请输入要切换的地图 ID";
+                RefreshUiState();
+                return;
+            }
+
+            var receipt = consoleFacade.SwitchMap(mapIdField.value.Trim());
+            CommitConsoleReceipt(receipt);
+            status = receipt.accepted ? "已切换主持地图：" + mapIdField.value.Trim() : receipt.message;
+            RefreshUiState();
+        }
+
+        private void CommitConsoleReceipt(M1CommandReceipt receipt)
+        {
+            if (receipt == null)
+            {
+                return;
+            }
+
+            if (receipt.accepted)
+            {
+                saveSession.RecordAccepted(receipt, consoleFacade.State);
+                projection.RefreshAll();
+                if (pieceProjection != null)
+                {
+                    pieceProjection.RefreshAll();
+                }
+            }
         }
 
         private void SelectTool(string tool)
@@ -888,6 +992,89 @@ namespace Sundoll.Presentation
             RefreshUiState();
         }
 
+        private void ImportPieceImageFromPath()
+        {
+            var path = pieceImagePathField == null ? string.Empty : pieceImagePathField.value;
+            if (string.IsNullOrWhiteSpace(path) || !File.Exists(path.Trim()))
+            {
+                status = "请输入存在的图片文件路径；当前版本未绑定原生文件选择器";
+                RefreshUiState();
+                return;
+            }
+
+            try
+            {
+                path = path.Trim();
+                var extension = Path.GetExtension(path).TrimStart('.').ToLowerInvariant();
+                var result = M4RuntimeImageImporter.Import(
+                    pieceAssetCatalog,
+                    File.ReadAllBytes(path),
+                    extension,
+                    MimeTypeForImageExtension(extension));
+                if (!result.accepted || result.asset == null)
+                {
+                    status = result.diagnostic;
+                    RefreshUiState();
+                    return;
+                }
+
+                var existing = M4PieceQueries.FindAsset(pieceLibrary.State, result.asset.id);
+                var assetReceipt = existing == null ? pieceLibrary.RegisterAsset(result.asset) : null;
+                if (assetReceipt != null && !assetReceipt.accepted)
+                {
+                    status = assetReceipt.message;
+                    RefreshUiState();
+                    return;
+                }
+
+                if (assetReceipt != null)
+                {
+                    CommitPieceReceipt(assetReceipt);
+                }
+
+                var definition = M4PieceQueries.FindDefinition(pieceLibrary.State, selectedPieceDefinitionId);
+                if (definition != null)
+                {
+                    var update = pieceLibrary.UpdateDefinition(
+                        definition.id,
+                        definition.displayName,
+                        definition.category,
+                        definition.tags,
+                        result.asset.id,
+                        definition.footprintWidth,
+                        definition.footprintHeight);
+                    CommitPieceReceipt(update);
+                    status = update.accepted ? "图片已导入并绑定到当前定义" : update.message;
+                }
+                else
+                {
+                    status = "图片已导入；请选择定义后再绑定";
+                }
+            }
+            catch (Exception exception)
+            {
+                status = "图片路径导入失败：" + exception.Message;
+            }
+
+            RefreshUiState();
+        }
+
+        private static string MimeTypeForImageExtension(string extension)
+        {
+            switch ((extension ?? string.Empty).ToLowerInvariant())
+            {
+                case "jpg":
+                case "jpeg":
+                    return "image/jpeg";
+                case "gif":
+                    return "image/gif";
+                case "webp":
+                    return "image/webp";
+                default:
+                    return "image/png";
+            }
+        }
+
         private void SyncSelectedPieceDefinitionFields()
         {
             var definition = M4PieceQueries.FindDefinition(pieceLibrary == null ? null : pieceLibrary.State, selectedPieceDefinitionId);
@@ -1048,6 +1235,55 @@ namespace Sundoll.Presentation
             var receipt = pieceLibrary.Detach(instance.id);
             CommitPieceReceipt(receipt);
             status = receipt.accepted ? "选中棋子已解除关系" : receipt.message;
+            RefreshUiState();
+        }
+
+        private void MoveSelectedPieceStack(int direction)
+        {
+            var instance = M4PieceQueries.FindInstance(pieceLibrary == null ? null : pieceLibrary.State, selectedPieceInstanceId);
+            if (instance == null || instance.location == null || instance.location.kind != M1PieceLocationKind.OnBoard)
+            {
+                status = "请先选择一个已放置的棋子";
+                RefreshUiState();
+                return;
+            }
+
+            var receipt = pieceLibrary.SetStackOrder(instance.id, instance.location.stackOrder + direction);
+            CommitPieceReceipt(receipt);
+            status = receipt.accepted ? "棋子堆叠顺序已调整" : receipt.message;
+            RefreshUiState();
+        }
+
+        private void MoveSelectedPieceToContainer()
+        {
+            var targetId = pieceRelationTargetField == null ? string.Empty : pieceRelationTargetField.value;
+            if (string.IsNullOrWhiteSpace(selectedPieceInstanceId) || string.IsNullOrWhiteSpace(targetId))
+            {
+                status = "请选择棋子并填写容器实例 ID";
+                RefreshUiState();
+                return;
+            }
+
+            var receipt = pieceLibrary.MoveToContainer(selectedPieceInstanceId, targetId.Trim());
+            CommitPieceReceipt(receipt);
+            status = receipt.accepted ? "棋子已收入容器" : receipt.message;
+            RefreshUiState();
+        }
+
+        private void AttachSelectedPiece()
+        {
+            var targetId = pieceRelationTargetField == null ? string.Empty : pieceRelationTargetField.value;
+            var slot = pieceAttachmentSlotField == null ? string.Empty : pieceAttachmentSlotField.value;
+            if (string.IsNullOrWhiteSpace(selectedPieceInstanceId) || string.IsNullOrWhiteSpace(targetId))
+            {
+                status = "请选择棋子并填写附着目标实例 ID";
+                RefreshUiState();
+                return;
+            }
+
+            var receipt = pieceLibrary.Attach(selectedPieceInstanceId, targetId.Trim(), slot == null ? string.Empty : slot.Trim());
+            CommitPieceReceipt(receipt);
+            status = receipt.accepted ? "棋子已附着到目标" : receipt.message;
             RefreshUiState();
         }
 
@@ -1282,6 +1518,15 @@ namespace Sundoll.Presentation
                 pieceLibraryLabel.text = "定义 " + (editor.State.pieceDefinitions == null ? 0 : editor.State.pieceDefinitions.Count) +
                                          " · 实例 " + (editor.State.pieceInstances == null ? 0 : editor.State.pieceInstances.Count) + "\n" +
                                          "缺少图片时保留数据并显示占位色块。";
+            }
+
+            if (consoleLabel != null)
+            {
+                var console = commandBus.State.m5Console;
+                consoleLabel.text = "主持地图 " + (console == null ? 0 : console.maps.Count) +
+                                    " · 当前 " + (console == null ? "无" : console.activeMapId) +
+                                    "\n迷雾记录 " + (console == null ? 0 : console.fogCells.Count) +
+                                    " · 动态标注 " + (console == null ? 0 : console.annotations.Count);
             }
 
             RefreshPieceLibraryList();

@@ -273,6 +273,9 @@ namespace Sundoll.Core
         public List<M4PieceAsset> pieceAssets = new List<M4PieceAsset>();
         public List<M4PieceDefinition> pieceDefinitions = new List<M4PieceDefinition>();
         public List<M4PieceInstance> pieceInstances = new List<M4PieceInstance>();
+        // M5 host-console state is additive so existing pre-M5 saves remain
+        // readable and can be upgraded through the explicit migration path.
+        public M5ConsoleState m5Console = new M5ConsoleState();
 
         public static M1WorldState CreateEmpty()
         {
@@ -339,6 +342,7 @@ namespace Sundoll.Core
             clone.pieceAssets = ClonePieceAssets(pieceAssets);
             clone.pieceDefinitions = ClonePieceDefinitions(pieceDefinitions);
             clone.pieceInstances = ClonePieceInstances(pieceInstances);
+            clone.m5Console = m5Console == null ? null : m5Console.DeepClone();
 
             if (pieceInstance != null)
             {
@@ -374,6 +378,7 @@ namespace Sundoll.Core
             pieceAssets = clone.pieceAssets;
             pieceDefinitions = clone.pieceDefinitions;
             pieceInstances = clone.pieceInstances;
+            m5Console = clone.m5Console;
         }
 
         /// <summary>
@@ -428,6 +433,11 @@ namespace Sundoll.Core
             if (pieceInstances == null)
             {
                 pieceInstances = new List<M4PieceInstance>();
+            }
+
+            if (m5Console == null)
+            {
+                m5Console = new M5ConsoleState();
             }
         }
 

@@ -90,6 +90,24 @@ namespace Sundoll.Tests.EditMode
         }
 
         [Test]
+        public void StackOrderCanBeAdjustedWithoutSortingTheWholeWorldState()
+        {
+            var bus = CreateBusWithDefinition();
+            Execute(bus, new M4CreatePieceInstanceCommand("m4-stack-a", bus.State.revision, "definition-token", "stack-a"));
+            Execute(bus, new M4CreatePieceInstanceCommand("m4-stack-b", bus.State.revision, "definition-token", "stack-b"));
+            Execute(bus, new M4CreatePieceInstanceCommand("m4-stack-c", bus.State.revision, "definition-token", "stack-c"));
+            Execute(bus, new M4PlacePieceCommand("m4-stack-place-a", bus.State.revision, "stack-a", 2, 2));
+            Execute(bus, new M4PlacePieceCommand("m4-stack-place-b", bus.State.revision, "stack-b", 2, 2));
+            Execute(bus, new M4PlacePieceCommand("m4-stack-place-c", bus.State.revision, "stack-c", 2, 2));
+
+            Execute(bus, new M4SetPieceStackOrderCommand("m4-stack-move", bus.State.revision, "stack-a", 2));
+            Assert.That(M4PieceQueries.FindInstance(bus.State, "stack-a").location.stackOrder, Is.EqualTo(2));
+            Assert.That(M4PieceQueries.FindInstance(bus.State, "stack-b").location.stackOrder, Is.EqualTo(0));
+            Assert.That(M4PieceQueries.FindInstance(bus.State, "stack-c").location.stackOrder, Is.EqualTo(1));
+            Assert.That(M4PieceStateValidator.TryValidate(bus.State, out var diagnostic), Is.True, diagnostic);
+        }
+
+        [Test]
         public void ContainerAndAttachmentRelationshipsCanBeDetached()
         {
             var bus = CreateBusWithDefinition();

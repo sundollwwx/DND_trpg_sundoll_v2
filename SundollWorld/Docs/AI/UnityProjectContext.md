@@ -6,8 +6,8 @@
 
 - Project root: `/Users/sundoll/Desktop/SundollUnity/SundollWorld`
 - Last analyzed: 2026-08-25
-- Git root: `/Users/sundoll/Desktop/SundollUnity`; latest audit covers the formal M4 piece-library slice and M3 Workbench integration
-- This is the formal M4 Unity project. `M0-Spike` remains disposable validation material; M1/M2 core and the M3 Workbench are complete with cross-platform validation pending, and M4's first piece-library slice is implemented.
+- Git root: `/Users/sundoll/Desktop/SundollUnity`; latest audit covers the formal M4-M7 implementation slices and M3 Workbench integration
+- This is the formal M7 Unity project. `M0-Spike` remains disposable validation material; M1/M2 core, the M3 Workbench, M4 piece library, M5 console slice, M6A/M6B proofs and the first M7 hardening slice are implemented with cross-platform validation pending.
 
 ## Confirmed Environment
 
@@ -71,9 +71,9 @@
 
 ## Testing And Validation
 
-- EditMode tests: 66 first-party tests; 66 passed, 0 failed, 0 ignored in the latest completed Unity Editor run. The suite contains the M1/M2/M3 coverage plus 9 M4 tests for asset/definition/instance data, relationship validation, canonical round-trip, Journal replay, content deduplication and definition editing.
-- PlayMode validation: 3/3 passed in `M3Workbench.unity`, covering startup, five Tilemap projections, edit and dirty-region refresh, hidden/locked layer behavior, M4 placeholder piece projection, Workbench UI controls, runtime image import/thumbnail generation and View destruction cleanup. Batch validation is headless; real-window visual layout and mouse feel remain unverified.
-- CI/build validation: no CI configuration detected. M3 macOS universal IL2CPP build and no-graphics player startup Smoke passed; build summary is `Docs/M3-构建摘要.md`. Latest test evidence is `SundollWorld/TestResults_EditMode_20260825_m4_ui.xml` and `SundollWorld/TestResults_PlayMode_20260825_m4_import3.xml`; Windows build, independent-process forced-exit recovery, cross-platform save exchange and formal performance checks remain unverified.
+- EditMode tests: 76 first-party tests; 76 passed, 0 failed, 0 ignored in the latest completed Unity Editor run. The suite contains M1-M4 coverage plus M5 multi-map/console tests, M6A/M6B rule and Loopback tests, and M7 migration/frozen-save/pool tests.
+- PlayMode validation: 4/4 passed in `M3Workbench.unity`, covering startup, five Tilemap projections, edit and dirty-region refresh, hidden/locked layer behavior, M4 placeholder piece projection, Workbench UI controls, runtime image import/thumbnail generation, M7 texture cache lifecycle and View destruction cleanup. Batch validation is headless; real-window visual layout and mouse feel remain unverified.
+- CI/build validation: no CI configuration detected. M3 macOS universal IL2CPP build and no-graphics player startup Smoke passed; build summary is `Docs/M3-构建摘要.md`. Latest test evidence is `SundollWorld/TestResults_EditMode_20260825_m5m6m7.xml` and `SundollWorld/TestResults_PlayMode_20260825_m5m6m7.xml`; this round's macOS IL2CPP rebuild, Windows build, independent-process forced-exit recovery, cross-platform save exchange and formal performance checks remain unverified.
 
 ## Available Unity Tooling
 
@@ -100,7 +100,7 @@
 - Do not add packages, networking SDKs, DOTS, or DI frameworks without an explicit requirement.
 - Domain state must be reconstructable without Scene, GameObject, Transform, or Unity object references.
 - M2/M3 persistence is pre-v1; save format compatibility is not promised beyond the current schema.
-- Do not claim Windows IL2CPP or Windows durable-write validation from this macOS environment.
+- Do not claim Windows IL2CPP, Windows durable-write, cross-platform save exchange, or real-network validation from this macOS environment.
 
 ## Unknowns And Confidence
 
