@@ -72,8 +72,8 @@
 ## Testing And Validation
 
 - EditMode tests: 65 first-party tests; 65 passed, 0 failed, 0 ignored in the latest completed Unity Editor run. The suite contains the M1/M2/M3 coverage plus 8 M4 tests for asset/definition/instance data, relationship validation, canonical round-trip, Journal replay and content deduplication.
-- PlayMode validation: 2/2 passed in `M3Workbench.unity`, covering startup, five Tilemap projections, edit and dirty-region refresh, hidden/locked layer behavior, M4 placeholder piece projection and View destruction cleanup. Batch validation is headless; real-window visual layout and mouse feel remain unverified.
-- CI/build validation: no CI configuration detected. M3 macOS universal IL2CPP build and no-graphics player startup Smoke passed; build summary is `Docs/M3-构建摘要.md`. Latest test evidence is `SundollWorld/TestResults_EditMode_20260825_m4_full2.xml` and `SundollWorld/TestResults_PlayMode_20260825_m4_full2.xml`; Windows build, independent-process forced-exit recovery, cross-platform save exchange and formal performance checks remain unverified.
+- PlayMode validation: 3/3 passed in `M3Workbench.unity`, covering startup, five Tilemap projections, edit and dirty-region refresh, hidden/locked layer behavior, M4 placeholder piece projection, Workbench UI controls, runtime image import/thumbnail generation and View destruction cleanup. Batch validation is headless; real-window visual layout and mouse feel remain unverified.
+- CI/build validation: no CI configuration detected. M3 macOS universal IL2CPP build and no-graphics player startup Smoke passed; build summary is `Docs/M3-构建摘要.md`. Latest test evidence is `SundollWorld/TestResults_EditMode_20260825_m4_ui.xml` and `SundollWorld/TestResults_PlayMode_20260825_m4_import3.xml`; Windows build, independent-process forced-exit recovery, cross-platform save exchange and formal performance checks remain unverified.
 
 ## Available Unity Tooling
 

@@ -1,13 +1,17 @@
 using System.Collections;
+using System;
+using System.IO;
 using NUnit.Framework;
 using Sundoll.Application;
 using Sundoll.Core;
+using Sundoll.Infrastructure;
 using Sundoll.Presentation;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.TestTools;
 using UnityEngine.Tilemaps;
 using UnityEngine.UIElements;
+using Object = UnityEngine.Object;
 
 namespace Sundoll.Tests.PlayMode
 {
@@ -79,6 +83,47 @@ namespace Sundoll.Tests.PlayMode
             Assert.That(projection.Views["m4-play-instance"].transform.position, Is.EqualTo(new Vector3(3f, 4f, -0.5f)));
 
             Object.Destroy(projectionObject);
+            yield return null;
+        }
+
+        [UnityTest]
+        public IEnumerator M4RuntimeImageImporterStoresAssetAndThumbnail()
+        {
+            var root = Path.Combine(Path.GetTempPath(), "Sundoll-M4-Image-" + Guid.NewGuid().ToString("N"));
+            try
+            {
+                var source = new Texture2D(4, 2, TextureFormat.RGBA32, false);
+                for (var y = 0; y < 2; y++)
+                {
+                    for (var x = 0; x < 4; x++)
+                    {
+                        source.SetPixel(x, y, x < 2 ? Color.cyan : Color.magenta);
+                    }
+                }
+
+                source.Apply(false, false);
+                var bytes = source.EncodeToPNG();
+                Object.Destroy(source);
+
+                var catalog = new M4PieceAssetCatalog(root);
+                var result = M4RuntimeImageImporter.Import(catalog, bytes, "png", "image/png");
+                Assert.That(result.accepted, Is.True, result.diagnostic);
+                Assert.That(result.width, Is.EqualTo(4));
+                Assert.That(result.height, Is.EqualTo(2));
+                Assert.That(catalog.IsAssetAvailable(result.asset), Is.True);
+                Assert.That(catalog.IsThumbnailAvailable(result.asset), Is.True);
+
+                var invalid = M4RuntimeImageImporter.Import(catalog, new byte[] { 1, 2, 3 }, "png", "image/png");
+                Assert.That(invalid.accepted, Is.False);
+            }
+            finally
+            {
+                if (Directory.Exists(root))
+                {
+                    Directory.Delete(root, true);
+                }
+            }
+
             yield return null;
         }
     }

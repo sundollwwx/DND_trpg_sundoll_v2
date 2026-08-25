@@ -19,6 +19,14 @@ namespace Sundoll.Application
 
         public M1WorldState State => commandBus.State;
 
+        public M1CommandReceipt RegisterAsset(M4PieceAsset asset)
+        {
+            return commandBus.Execute(new M4RegisterPieceAssetCommand(
+                "m4-asset-" + Guid.NewGuid().ToString("N"),
+                State.revision,
+                asset));
+        }
+
         public M1CommandReceipt CreateDefinition(
             string definitionId,
             string displayName,
