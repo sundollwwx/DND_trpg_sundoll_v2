@@ -29,6 +29,8 @@ namespace Sundoll.Presentation
         private readonly Dictionary<string, Button> layerLockButtons = new Dictionary<string, Button>(StringComparer.Ordinal);
         private readonly List<M3CellMutation> pendingStroke = new List<M3CellMutation>();
         private readonly HashSet<M3MapCellKey> pendingStrokeKeys = new HashSet<M3MapCellKey>();
+        private ProjectWorkspaceService workspaceService;
+        private WorkbenchSession workbenchSession;
         private M1CommandBus commandBus;
         private M2SaveSession saveSession;
         private M3MapEditorFacade editor;
@@ -41,6 +43,7 @@ namespace Sundoll.Presentation
         private UIDocument uiDocument;
         private PanelSettings panelSettings;
         private Label saveStatusLabel;
+        private Label projectTitleLabel;
         private Label mapStatusLabel;
         private Label inspectorLabel;
         private Label historyLabel;
@@ -85,6 +88,7 @@ namespace Sundoll.Presentation
         private VisualElement contextMenuContainer;
         private Label hostModeLabel;
         private bool hostPreviewMode;
+        private M7ProjectCenterPanel projectCenterPanel;
         private Vector2Int contextMenuCell;
         private string selectedMapObjectId;
         // These containers are rebuilt only when their authoritative inputs change.
@@ -171,19 +175,16 @@ namespace Sundoll.Presentation
 
         private void OnDestroy()
         {
-            if (saveSession != null)
-            {
-                saveSession.Dispose();
-                saveSession = null;
-            }
+            PersistWorkspaceState();
+            workbenchSession?.Dispose();
+            workbenchSession = null;
+            saveSession = null;
 
             if (panelSettings != null)
             {
                 Destroy(panelSettings);
                 panelSettings = null;
             }
-
-            PersistWorkspaceState();
         }
 
         private void OnApplicationQuit()
@@ -193,20 +194,61 @@ namespace Sundoll.Presentation
 
         private void InitializeDomain()
         {
-            var initialBus = M1VerticalSlice.CreateDemoBus();
-            // M4 intentionally uses a new development root. Existing M1/M2/M3
-            // samples remain readable and untouched while piece data evolves.
-            var projectRoot = Path.Combine(UnityEngine.Application.persistentDataPath, "SundollWorld_M4");
-            saveSession = M2SaveSession.Open(projectRoot, initialBus.State);
-            commandBus = new M1CommandBus(
-                saveSession.State,
-                new M1LocalAuthority(new AllowAllRulePolicy()));
-            editor = new M3MapEditorFacade(commandBus);
-            pieceLibrary = new M4PieceLibraryFacade(commandBus);
-            pieceAssetCatalog = new M4PieceAssetCatalog(projectRoot);
-            consoleFacade = new M5ConsoleFacade(commandBus);
-            M5ConsoleQueries.Ensure(commandBus.State);
-            workspaceStateStore = new M3WorkspaceStateStore(projectRoot);
+            var productRoot = Path.Combine(UnityEngine.Application.persistentDataPath, "SundollWorld");
+            if (UnityEngine.Application.isBatchMode)
+            {
+                // Automated scene runs must never open or mutate a person's
+                // desktop projects. Each batch process gets an isolated root.
+                productRoot = Path.Combine(
+                    UnityEngine.Application.temporaryCachePath,
+                    "SundollWorld-Tests",
+                    Guid.NewGuid().ToString("N"));
+            }
+
+            workspaceService = new ProjectWorkspaceService(
+                Path.Combine(productRoot, "Projects"),
+                Path.Combine(productRoot, "Workspace"));
+
+            ProjectWorkspaceOpenResult openResult = null;
+            foreach (var recent in workspaceService.GetRecentProjects())
+            {
+                try
+                {
+                    openResult = workspaceService.Open(recent.projectRoot);
+                    break;
+                }
+                catch (Exception)
+                {
+                    // A stale recent item must not block application startup.
+                }
+            }
+
+            if (openResult == null)
+            {
+                openResult = workspaceService.Create("SundollWorld 项目");
+            }
+
+            AdoptSession(openResult, false);
+        }
+
+        private void AdoptSession(ProjectWorkspaceOpenResult openResult, bool refreshViews)
+        {
+            if (openResult == null || openResult.saveSession == null)
+            {
+                throw new ArgumentNullException(nameof(openResult));
+            }
+
+            PersistWorkspaceState();
+            var previousSession = workbenchSession;
+            var nextSession = new WorkbenchSession(openResult.saveSession);
+            workbenchSession = nextSession;
+            saveSession = nextSession.SaveSession;
+            commandBus = nextSession.CommandBus;
+            editor = nextSession.MapEditor;
+            pieceLibrary = nextSession.PieceLibrary;
+            pieceAssetCatalog = nextSession.PieceAssetCatalog;
+            consoleFacade = nextSession.Console;
+            workspaceStateStore = nextSession.WorkspaceStateStore;
             var workspaceLoad = workspaceStateStore.Load(editor.State.map.id, LayerIds);
             layerEditState = workspaceLoad.state;
             currentTool = string.IsNullOrWhiteSpace(workspaceLoad.currentTool) ? "画笔" : workspaceLoad.currentTool;
@@ -217,8 +259,29 @@ namespace Sundoll.Presentation
             loadedWorkspaceZoom = workspaceLoad.zoom;
             loadedWorkspacePan = new Vector2(workspaceLoad.panX, workspaceLoad.panY);
             status = string.IsNullOrEmpty(workspaceLoad.diagnostic)
-                ? "地图草稿已加载"
-                : "地图草稿已加载；" + workspaceLoad.diagnostic;
+                ? openResult.diagnostic
+                : openResult.diagnostic + "；" + workspaceLoad.diagnostic;
+
+            selection = M3GridBounds.Empty;
+            clipboard = null;
+            selectedPieceDefinitionId = null;
+            selectedPieceInstanceId = null;
+            selectedMapObjectId = null;
+            lastHierarchyRevision = -1;
+            lastMapListRevision = -1;
+            lastPieceListRevision = -1;
+
+            if (refreshViews)
+            {
+                EnsureCamera();
+                projection.Bind(editor, layerEditState);
+                pieceProjection.Bind(commandBus, pieceAssetCatalog);
+                consoleProjection.Bind(commandBus);
+                projectTitleLabel.text = nextSession.ProjectDisplayName;
+                RefreshUiState();
+            }
+
+            previousSession?.Dispose();
         }
 
         private void EnsureCamera()
@@ -260,18 +323,32 @@ namespace Sundoll.Presentation
 
             var root = uiDocument.rootVisualElement;
             root.Clear();
+            var workbenchStyles = Resources.Load<StyleSheet>("SundollWorld/WorkbenchStyles");
+            if (workbenchStyles != null)
+            {
+                root.styleSheets.Add(workbenchStyles);
+            }
+            root.AddToClassList("sw-root");
             root.style.flexGrow = 1f;
             root.style.flexDirection = FlexDirection.Column;
             root.style.backgroundColor = new Color(0f, 0f, 0f, 0f);
 
             var topBar = CreatePanel(new Color(0.055f, 0.07f, 0.095f, 0.96f), 48f);
+            topBar.AddToClassList("sw-topbar");
             topBar.style.width = Length.Percent(100f);
             topBar.style.height = 48f;
             topBar.style.flexDirection = FlexDirection.Row;
             topBar.style.alignItems = Align.Center;
-            topBar.Add(new Label("SundollWorld") { name = "ProjectTitle" });
-            topBar.Q<Label>("ProjectTitle").style.unityFontStyleAndWeight = FontStyle.Bold;
-            topBar.Q<Label>("ProjectTitle").style.marginLeft = 16f;
+            projectTitleLabel = new Label(workbenchSession.ProjectDisplayName) { name = "ProjectTitle" };
+            projectTitleLabel.AddToClassList("sw-brand");
+            topBar.Add(projectTitleLabel);
+            var projectCenterButton = new Button(() => projectCenterPanel.Show(workbenchSession.ProjectDisplayName))
+            {
+                text = "项目中心"
+            };
+            projectCenterButton.name = "ProjectCenterButton";
+            projectCenterButton.AddToClassList("sw-button-quiet");
+            topBar.Add(projectCenterButton);
             mapStatusLabel = new Label { name = "MapStatus" };
             mapStatusLabel.style.marginLeft = 28f;
             topBar.Add(mapStatusLabel);
@@ -314,6 +391,11 @@ namespace Sundoll.Presentation
             root.Add(bottomBar);
             contextMenuContainer = BuildContextMenu();
             root.Add(contextMenuContainer);
+            projectCenterPanel = new M7ProjectCenterPanel(
+                workspaceService,
+                result => AdoptSession(result, true),
+                () => saveSession);
+            root.Add(projectCenterPanel.Element);
             RefreshUiState();
         }
 

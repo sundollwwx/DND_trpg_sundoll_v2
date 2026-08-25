@@ -83,7 +83,16 @@ namespace Sundoll.Infrastructure
             var revisionDirectory = Path.Combine(RevisionsPath, saveRevisionId);
             var stagingDirectory = Path.Combine(StagingPath, "revision-" + saveRevisionId);
             var projectJson = JsonUtility.ToJson(state, true);
-            var canonicalStateHash = M2CanonicalStateHasher.Compute(state);
+            // Hash the exact pure-data shape that will be read back. JsonUtility
+            // normalizes some sparse/default fields, so hashing the in-memory
+            // authoring object can reject an otherwise valid first Revision.
+            var persistedState = JsonUtility.FromJson<M1WorldState>(projectJson);
+            if (persistedState == null)
+            {
+                throw new InvalidDataException("World state could not be serialized for persistence.");
+            }
+
+            var canonicalStateHash = M2CanonicalStateHasher.Compute(persistedState);
             var savedUtc = DateTime.UtcNow.ToString("O");
 
             try

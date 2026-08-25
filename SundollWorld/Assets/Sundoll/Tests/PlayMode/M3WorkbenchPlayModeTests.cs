@@ -78,6 +78,9 @@ namespace Sundoll.Tests.PlayMode
             Assert.That(projection, Is.Not.Null);
             Assert.That(Object.FindFirstObjectByType<M5WorkbenchConsoleProjection>(), Is.Not.Null);
             Assert.That(projection.Tilemaps.Count, Is.GreaterThanOrEqualTo(5));
+            var initialTerrain = root.Editor.PaintCell(2, 3, "terrain", "terrain-ground");
+            Assert.That(initialTerrain.accepted, Is.True);
+            projection.RefreshRegion(root.Editor.LastDirtyBounds);
             Assert.That(projection.Tilemaps["terrain"].HasTile(new Vector3Int(2, 3, 0)), Is.True);
 
             var revisionBefore = root.Editor.State.revision;
