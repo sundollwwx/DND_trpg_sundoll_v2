@@ -1,53 +1,62 @@
 <?xml version="1.0" encoding="utf-8"?>
-<test-run id="2" testcasecount="5" result="Passed" total="5" passed="5" failed="0" inconclusive="0" skipped="0" asserts="0" engine-version="3.5.0.0" clr-version="4.0.30319.42000" start-time="2026-08-25 13:14:05Z" end-time="2026-08-25 13:14:05Z" duration="0.4724008">
-  <test-suite type="TestSuite" id="1014" name="SundollWorld" fullname="SundollWorld" runstate="Runnable" testcasecount="5" result="Passed" start-time="2026-08-25 13:14:05Z" end-time="2026-08-25 13:14:05Z" duration="0.472401" total="5" passed="5" failed="0" inconclusive="0" skipped="0" asserts="0">
+<test-run id="2" testcasecount="6" result="Passed" total="6" passed="6" failed="0" inconclusive="0" skipped="0" asserts="0" engine-version="3.5.0.0" clr-version="4.0.30319.42000" start-time="2026-08-25 13:30:15Z" end-time="2026-08-25 13:30:16Z" duration="0.4442905">
+  <test-suite type="TestSuite" id="1015" name="SundollWorld" fullname="SundollWorld" runstate="Runnable" testcasecount="6" result="Passed" start-time="2026-08-25 13:30:15Z" end-time="2026-08-25 13:30:16Z" duration="0.444291" total="6" passed="6" failed="0" inconclusive="0" skipped="0" asserts="0">
     <properties>
       <property name="platform" value="PlayMode" />
     </properties>
-    <test-suite type="Assembly" id="1007" name="Sundoll.Tests.PlayMode.dll" fullname="/Users/sundoll/Desktop/SundollUnity/SundollWorld/Library/ScriptAssemblies/Sundoll.Tests.PlayMode.dll" runstate="Runnable" testcasecount="5" result="Passed" start-time="2026-08-25 13:14:05Z" end-time="2026-08-25 13:14:05Z" duration="0.469670" total="5" passed="5" failed="0" inconclusive="0" skipped="0" asserts="0">
+    <test-suite type="Assembly" id="1008" name="Sundoll.Tests.PlayMode.dll" fullname="/Users/sundoll/Desktop/SundollUnity/SundollWorld/Library/ScriptAssemblies/Sundoll.Tests.PlayMode.dll" runstate="Runnable" testcasecount="6" result="Passed" start-time="2026-08-25 13:30:15Z" end-time="2026-08-25 13:30:16Z" duration="0.441413" total="6" passed="6" failed="0" inconclusive="0" skipped="0" asserts="0">
       <properties>
-        <property name="_PID" value="83139" />
+        <property name="_PID" value="83847" />
         <property name="_APPDOMAIN" value="Unity Child Domain" />
         <property name="platform" value="PlayMode" />
         <property name="EditorOnly" value="False" />
       </properties>
-      <test-suite type="TestSuite" id="1008" name="Sundoll" fullname="Sundoll" runstate="Runnable" testcasecount="5" result="Passed" start-time="2026-08-25 13:14:05Z" end-time="2026-08-25 13:14:05Z" duration="0.469109" total="5" passed="5" failed="0" inconclusive="0" skipped="0" asserts="0">
+      <test-suite type="TestSuite" id="1009" name="Sundoll" fullname="Sundoll" runstate="Runnable" testcasecount="6" result="Passed" start-time="2026-08-25 13:30:15Z" end-time="2026-08-25 13:30:16Z" duration="0.440390" total="6" passed="6" failed="0" inconclusive="0" skipped="0" asserts="0">
         <properties />
-        <test-suite type="TestSuite" id="1009" name="Tests" fullname="Sundoll.Tests" runstate="Runnable" testcasecount="5" result="Passed" start-time="2026-08-25 13:14:05Z" end-time="2026-08-25 13:14:05Z" duration="0.468695" total="5" passed="5" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <test-suite type="TestSuite" id="1010" name="Tests" fullname="Sundoll.Tests" runstate="Runnable" testcasecount="6" result="Passed" start-time="2026-08-25 13:30:15Z" end-time="2026-08-25 13:30:16Z" duration="0.439961" total="6" passed="6" failed="0" inconclusive="0" skipped="0" asserts="0">
           <properties />
-          <test-suite type="TestSuite" id="1010" name="PlayMode" fullname="Sundoll.Tests.PlayMode" runstate="Runnable" testcasecount="5" result="Passed" start-time="2026-08-25 13:14:05Z" end-time="2026-08-25 13:14:05Z" duration="0.468181" total="5" passed="5" failed="0" inconclusive="0" skipped="0" asserts="0">
+          <test-suite type="TestSuite" id="1011" name="PlayMode" fullname="Sundoll.Tests.PlayMode" runstate="Runnable" testcasecount="6" result="Passed" start-time="2026-08-25 13:30:15Z" end-time="2026-08-25 13:30:16Z" duration="0.439535" total="6" passed="6" failed="0" inconclusive="0" skipped="0" asserts="0">
             <properties />
-            <test-suite type="TestFixture" id="1001" name="M3WorkbenchPlayModeTests" fullname="Sundoll.Tests.PlayMode.M3WorkbenchPlayModeTests" classname="Sundoll.Tests.PlayMode.M3WorkbenchPlayModeTests" runstate="Runnable" testcasecount="5" result="Passed" start-time="2026-08-25 13:14:05Z" end-time="2026-08-25 13:14:05Z" duration="0.467462" total="5" passed="5" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <test-suite type="TestFixture" id="1001" name="M3WorkbenchPlayModeTests" fullname="Sundoll.Tests.PlayMode.M3WorkbenchPlayModeTests" classname="Sundoll.Tests.PlayMode.M3WorkbenchPlayModeTests" runstate="Runnable" testcasecount="6" result="Passed" start-time="2026-08-25 13:30:15Z" end-time="2026-08-25 13:30:16Z" duration="0.438810" total="6" passed="6" failed="0" inconclusive="0" skipped="0" asserts="0">
               <properties />
-              <test-case id="1003" name="M4PieceProjectionRebuildsPlaceholderPieceView" fullname="Sundoll.Tests.PlayMode.M3WorkbenchPlayModeTests.M4PieceProjectionRebuildsPlaceholderPieceView" methodname="M4PieceProjectionRebuildsPlaceholderPieceView" classname="Sundoll.Tests.PlayMode.M3WorkbenchPlayModeTests" runstate="Runnable" seed="1365137895" result="Passed" start-time="2026-08-25 13:14:05Z" end-time="2026-08-25 13:14:05Z" duration="0.011390" asserts="0">
+              <test-case id="1003" name="M4PieceProjectionRebuildsPlaceholderPieceView" fullname="Sundoll.Tests.PlayMode.M3WorkbenchPlayModeTests.M4PieceProjectionRebuildsPlaceholderPieceView" methodname="M4PieceProjectionRebuildsPlaceholderPieceView" classname="Sundoll.Tests.PlayMode.M3WorkbenchPlayModeTests" runstate="Runnable" seed="1408903717" result="Passed" start-time="2026-08-25 13:30:15Z" end-time="2026-08-25 13:30:15Z" duration="0.012259" asserts="0">
                 <properties>
                   <property name="_JOINTYPE" value="UnityCombinatorial" />
                   <property name="retryIteration" value="0" />
                   <property name="repeatIteration" value="0" />
                 </properties>
               </test-case>
-              <test-case id="1004" name="M4RuntimeImageImporterStoresAssetAndThumbnail" fullname="Sundoll.Tests.PlayMode.M3WorkbenchPlayModeTests.M4RuntimeImageImporterStoresAssetAndThumbnail" methodname="M4RuntimeImageImporterStoresAssetAndThumbnail" classname="Sundoll.Tests.PlayMode.M3WorkbenchPlayModeTests" runstate="Runnable" seed="1719305748" result="Passed" start-time="2026-08-25 13:14:05Z" end-time="2026-08-25 13:14:05Z" duration="0.005280" asserts="0">
+              <test-case id="1004" name="M4RuntimeImageImporterStoresAssetAndThumbnail" fullname="Sundoll.Tests.PlayMode.M3WorkbenchPlayModeTests.M4RuntimeImageImporterStoresAssetAndThumbnail" methodname="M4RuntimeImageImporterStoresAssetAndThumbnail" classname="Sundoll.Tests.PlayMode.M3WorkbenchPlayModeTests" runstate="Runnable" seed="53367128" result="Passed" start-time="2026-08-25 13:30:15Z" end-time="2026-08-25 13:30:15Z" duration="0.005661" asserts="0">
                 <properties>
                   <property name="_JOINTYPE" value="UnityCombinatorial" />
                   <property name="retryIteration" value="0" />
                   <property name="repeatIteration" value="0" />
                 </properties>
               </test-case>
-              <test-case id="1006" name="M5ConsoleProjectionRebuildsFogAndAnnotationViews" fullname="Sundoll.Tests.PlayMode.M3WorkbenchPlayModeTests.M5ConsoleProjectionRebuildsFogAndAnnotationViews" methodname="M5ConsoleProjectionRebuildsFogAndAnnotationViews" classname="Sundoll.Tests.PlayMode.M3WorkbenchPlayModeTests" runstate="Runnable" seed="1699313583" result="Passed" start-time="2026-08-25 13:14:05Z" end-time="2026-08-25 13:14:05Z" duration="0.127303" asserts="0">
+              <test-case id="1006" name="M4TextureProjectionBaselineSharesTextureAcross64Pieces" fullname="Sundoll.Tests.PlayMode.M3WorkbenchPlayModeTests.M4TextureProjectionBaselineSharesTextureAcross64Pieces" methodname="M4TextureProjectionBaselineSharesTextureAcross64Pieces" classname="Sundoll.Tests.PlayMode.M3WorkbenchPlayModeTests" runstate="Runnable" seed="1422285892" result="Passed" start-time="2026-08-25 13:30:15Z" end-time="2026-08-25 13:30:15Z" duration="0.008034" asserts="0">
+                <properties>
+                  <property name="_JOINTYPE" value="UnityCombinatorial" />
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+                <output><![CDATA[M4 texture baseline | pieces=64 textures=1 refresh p95=0.121ms max=0.121ms
+]]></output>
+              </test-case>
+              <test-case id="1007" name="M5ConsoleProjectionRebuildsFogAndAnnotationViews" fullname="Sundoll.Tests.PlayMode.M3WorkbenchPlayModeTests.M5ConsoleProjectionRebuildsFogAndAnnotationViews" methodname="M5ConsoleProjectionRebuildsFogAndAnnotationViews" classname="Sundoll.Tests.PlayMode.M3WorkbenchPlayModeTests" runstate="Runnable" seed="2115082257" result="Passed" start-time="2026-08-25 13:30:15Z" end-time="2026-08-25 13:30:16Z" duration="0.137643" asserts="0">
                 <properties>
                   <property name="_JOINTYPE" value="UnityCombinatorial" />
                   <property name="retryIteration" value="0" />
                   <property name="repeatIteration" value="0" />
                 </properties>
               </test-case>
-              <test-case id="1005" name="M7TextureCacheReusesAndReleasesRuntimeTexture" fullname="Sundoll.Tests.PlayMode.M3WorkbenchPlayModeTests.M7TextureCacheReusesAndReleasesRuntimeTexture" methodname="M7TextureCacheReusesAndReleasesRuntimeTexture" classname="Sundoll.Tests.PlayMode.M3WorkbenchPlayModeTests" runstate="Runnable" seed="1618890127" result="Passed" start-time="2026-08-25 13:14:05Z" end-time="2026-08-25 13:14:05Z" duration="0.003772" asserts="0">
+              <test-case id="1005" name="M7TextureCacheReusesAndReleasesRuntimeTexture" fullname="Sundoll.Tests.PlayMode.M3WorkbenchPlayModeTests.M7TextureCacheReusesAndReleasesRuntimeTexture" methodname="M7TextureCacheReusesAndReleasesRuntimeTexture" classname="Sundoll.Tests.PlayMode.M3WorkbenchPlayModeTests" runstate="Runnable" seed="2035122110" result="Passed" start-time="2026-08-25 13:30:16Z" end-time="2026-08-25 13:30:16Z" duration="0.003127" asserts="0">
                 <properties>
                   <property name="_JOINTYPE" value="UnityCombinatorial" />
                   <property name="retryIteration" value="0" />
                   <property name="repeatIteration" value="0" />
                 </properties>
               </test-case>
-              <test-case id="1002" name="WorkbenchBootsProjectsLayersAndCanRebuildView" fullname="Sundoll.Tests.PlayMode.M3WorkbenchPlayModeTests.WorkbenchBootsProjectsLayersAndCanRebuildView" methodname="WorkbenchBootsProjectsLayersAndCanRebuildView" classname="Sundoll.Tests.PlayMode.M3WorkbenchPlayModeTests" runstate="Runnable" seed="728459947" result="Passed" start-time="2026-08-25 13:14:05Z" end-time="2026-08-25 13:14:05Z" duration="0.315272" asserts="0">
+              <test-case id="1002" name="WorkbenchBootsProjectsLayersAndCanRebuildView" fullname="Sundoll.Tests.PlayMode.M3WorkbenchPlayModeTests.WorkbenchBootsProjectsLayersAndCanRebuildView" methodname="WorkbenchBootsProjectsLayersAndCanRebuildView" classname="Sundoll.Tests.PlayMode.M3WorkbenchPlayModeTests" runstate="Runnable" seed="923159738" result="Passed" start-time="2026-08-25 13:30:16Z" end-time="2026-08-25 13:30:16Z" duration="0.267588" asserts="0">
                 <properties>
                   <property name="_JOINTYPE" value="UnityCombinatorial" />
                   <property name="retryIteration" value="0" />

@@ -182,6 +182,78 @@ namespace Sundoll.Tests.PlayMode
         }
 
         [UnityTest]
+        public IEnumerator M4TextureProjectionBaselineSharesTextureAcross64Pieces()
+        {
+            var root = Path.Combine(Path.GetTempPath(), "Sundoll-M4-Texture-Baseline-" + Guid.NewGuid().ToString("N"));
+            GameObject projectionObject = null;
+            try
+            {
+                var source = new Texture2D(16, 16, TextureFormat.RGBA32, false);
+                var pixels = new Color[16 * 16];
+                for (var pixel = 0; pixel < pixels.Length; pixel++)
+                {
+                    pixels[pixel] = Color.cyan;
+                }
+
+                source.SetPixels(pixels);
+                source.Apply(false, false);
+                var bytes = source.EncodeToPNG();
+                Object.Destroy(source);
+
+                var catalog = new M4PieceAssetCatalog(root);
+                var imported = M4RuntimeImageImporter.Import(catalog, bytes, "png", "image/png");
+                Assert.That(imported.accepted, Is.True, imported.diagnostic);
+
+                var bus = M1VerticalSlice.CreateDemoBus();
+                var library = new M4PieceLibraryFacade(bus);
+                var assetReceipt = library.RegisterAsset(imported.asset);
+                Assert.That(assetReceipt.accepted, Is.True, assetReceipt.message);
+                var definitionReceipt = library.CreateDefinition(
+                    "m4-texture-baseline-definition",
+                    "Texture baseline",
+                    "Baseline",
+                    new[] { "performance" },
+                    imported.asset.id);
+                Assert.That(definitionReceipt.accepted, Is.True, definitionReceipt.message);
+
+                for (var index = 0; index < 64; index++)
+                {
+                    var instanceId = "m4-texture-baseline-" + index;
+                    var instanceReceipt = library.CreateInstance("m4-texture-baseline-definition", instanceId);
+                    Assert.That(instanceReceipt.accepted, Is.True, instanceReceipt.message);
+                    var placementReceipt = library.Place(instanceId, index % 8, index / 8);
+                    Assert.That(placementReceipt.accepted, Is.True, placementReceipt.message);
+                }
+
+                projectionObject = new GameObject("M4TextureBaselineProjection");
+                var projection = projectionObject.AddComponent<M4WorkbenchPieceProjection>();
+                projection.Bind(bus, catalog);
+                var refresh = M7PerformanceProbe.Measure(() => projection.RefreshAll(), 5);
+
+                Assert.That(projection.Views.Count, Is.EqualTo(64));
+                Assert.That(projection.CachedTextureCount, Is.EqualTo(1));
+                TestContext.WriteLine(
+                    "M4 texture baseline | pieces=64 textures=" + projection.CachedTextureCount +
+                    " refresh p95=" + refresh.p95Milliseconds.ToString("0.000") +
+                    "ms max=" + refresh.maxMilliseconds.ToString("0.000") + "ms");
+            }
+            finally
+            {
+                if (projectionObject != null)
+                {
+                    Object.Destroy(projectionObject);
+                }
+
+                if (Directory.Exists(root))
+                {
+                    Directory.Delete(root, true);
+                }
+            }
+
+            yield return null;
+        }
+
+        [UnityTest]
         public IEnumerator M5ConsoleProjectionRebuildsFogAndAnnotationViews()
         {
             var bus = M1VerticalSlice.CreateDemoBus();

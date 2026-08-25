@@ -24,6 +24,7 @@ namespace Sundoll.Presentation
         private Texture2D placeholderTexture;
 
         public IReadOnlyDictionary<string, GameObject> Views => views;
+        public int CachedTextureCount => textureCache == null ? 0 : textureCache.Count;
 
         public void Bind(M1CommandBus nextCommandBus)
         {
