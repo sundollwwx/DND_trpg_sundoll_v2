@@ -40,7 +40,7 @@
 - 正式产品代码位于 `SundollWorld/Assets/Sundoll/`，当前已包含 M1 最小纵向闭环、M2 存档基础设施、M3 地图编辑器、M4 棋子库/空间交互、M5 主控台切片、M6A/M6B 证明和 M7 v1 加固骨架。
 - 启动场景为 `Assets/Sundoll/Scenes/M3Workbench.unity`；`M1Bootstrap.unity` 保留为旧诊断入口。
 - Git 基线已经建立；首个基线提交为 `b8d704f`，后续实现按小批次提交，Unity 缓存与构建产物保持在本机且不纳入版本控制。
-- M2/M3/M4/M5 存档仍为 pre-v1；M7 已提供 save v1/schema 2 冻结、Schema 1→2 迁移注册表、Golden Save 校验、可复用 View Pool 和引用计数纹理缓存。M4 当前通过路径导入和 macOS 原生文件选择器入口完成图片导入接缝；真实窗口视觉、原生选择/取消 Smoke、p95 性能、Windows 与跨平台互开仍未验证。
+- M2/M3/M4/M5 存档仍为 pre-v1；M7 已提供 save v1/schema 2 冻结、Schema 1→2 迁移注册表、Golden Save 校验、可复用 View Pool 和引用计数纹理缓存。M4 当前通过路径导入和 macOS 原生文件选择器完成图片选择接缝，最新 Player 已实际选择临时 PNG；取消路径、正式图片视觉、p95 性能、Windows 与跨平台互开仍未验证。
 - 未复制任何旧项目素材。
 
 M0 已正式接受并保留 Windows/Finder 限制；Unity `6000.3.22f1` 本轮 EditMode 为 78/78，PlayMode 为 6/6，macOS universal IL2CPP 最新代码构建结果为 Success 并通过 Player Smoke；Unity TypeDB 重复类型诊断仍作为发布 caveat 记录。测试证据见 [EditMode XML](./SundollWorld/TestResults_EditMode_20260825_m5_hierarchy_context.xml)、[PlayMode XML](./SundollWorld/TestResults_PlayMode_20260825_m5_hierarchy_context.xml) 和 [M7 结果报告](./SundollWorld/Docs/M7-结果报告.md)。M7 已有 macOS 批量编辑、Snapshot、Revision 保存、10,000 Journal 恢复和 64 棋子纹理共享基线；2560×1440 60 FPS/分配预算以及 Windows/跨平台/强退矩阵仍未关闭。M4 使用新的 `SundollWorld_M4` 本地开发存档根目录，旧 M1/M2/M3 样本原地保留。

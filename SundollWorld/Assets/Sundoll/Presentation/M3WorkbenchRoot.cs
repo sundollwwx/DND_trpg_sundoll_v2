@@ -451,6 +451,7 @@ namespace Sundoll.Presentation
             var closeInteractionButton = new Button(() => SetInteractionFromUi(false)) { text = "关闭对象" };
             closeInteractionButton.style.marginTop = 4f;
             panel.Add(closeInteractionButton);
+            WrapPanelChildrenInScrollView(panel, "ToolPanelScroll");
             return panel;
         }
 
@@ -514,7 +515,27 @@ namespace Sundoll.Presentation
             var attachButton = new Button(AttachSelectedPiece) { text = "附着到目标" };
             attachButton.style.marginTop = 4f;
             panel.Add(attachButton);
+            WrapPanelChildrenInScrollView(panel, "InspectorScroll");
             return panel;
+        }
+
+        private static void WrapPanelChildrenInScrollView(VisualElement panel, string scrollName)
+        {
+            var scroll = new ScrollView(ScrollViewMode.Vertical) { name = scrollName };
+            scroll.style.flexGrow = 1f;
+            scroll.style.minHeight = 0f;
+            var existingChildren = new List<VisualElement>();
+            foreach (var child in panel.Children())
+            {
+                existingChildren.Add(child);
+            }
+
+            foreach (var child in existingChildren)
+            {
+                scroll.Add(child);
+            }
+
+            panel.Add(scroll);
         }
 
         private void QueueSave()
