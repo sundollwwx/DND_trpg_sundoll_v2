@@ -40,4 +40,4 @@
 - M2/M3/M4 存档格式仍为 pre-v1；正式 Workbench、地图编辑、棋子 Asset/Definition/Instance、四种位置关系、占位投影和运行时图片/缩略图导入边界已实现。M3 macOS universal IL2CPP 构建已通过，M4 桌面文件选择器、复杂关系操作 UI、p95 性能、真实窗口视觉、Windows 与跨平台互开仍未验证。
 - 未复制任何旧项目素材。
 
-M0 已正式接受并保留 Windows/Finder 限制；正式工程已完成 M1、M2 核心切片、M3 功能范围和 M4 第一批。Unity `6000.3.22f1` 最新 M4 EditMode 为 65/65，PlayMode 为 3/3，macOS universal IL2CPP 构建与启动 Smoke 通过；测试证据见 [EditMode XML](./SundollWorld/TestResults_EditMode_20260825_m4_import_final.xml)、[PlayMode XML](./SundollWorld/TestResults_PlayMode_20260825_m4_import3.xml) 和 [构建摘要](./SundollWorld/Docs/M3-构建摘要.md)。M4 使用新的 `SundollWorld_M4` 本地开发存档根目录，旧 M1/M2/M3 样本原地保留。当前没有 Windows 环境，Windows IL2CPP、原子写盘、跨平台互开和正式性能 p95 继续登记为发布阻塞/未验证项。
+M0 已正式接受并保留 Windows/Finder 限制；正式工程已完成 M1、M2 核心切片、M3 功能范围和 M4 第一批。Unity `6000.3.22f1` 最新 M4 EditMode 为 66/66，PlayMode 为 3/3，macOS universal IL2CPP 构建与启动 Smoke 通过；测试证据见 [EditMode XML](./SundollWorld/TestResults_EditMode_20260825_m4_definition.xml)、[PlayMode XML](./SundollWorld/TestResults_PlayMode_20260825_m4_definition.xml) 和 [构建摘要](./SundollWorld/Docs/M3-构建摘要.md)。M4 使用新的 `SundollWorld_M4` 本地开发存档根目录，旧 M1/M2/M3 样本原地保留。当前没有 Windows 环境，Windows IL2CPP、原子写盘、跨平台互开和正式性能 p95 继续登记为发布阻塞/未验证项。

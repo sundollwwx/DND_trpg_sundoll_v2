@@ -161,6 +161,20 @@ namespace Sundoll.Infrastructure
                         payload.footprintWidth,
                         payload.footprintHeight);
                 }
+                case "M4.UpdatePieceDefinition":
+                {
+                    var payload = ReadPayload<M4UpdatePieceDefinitionCommandPayload>(envelope);
+                    return new M4UpdatePieceDefinitionCommand(
+                        envelope.commandId,
+                        envelope.baseRevision,
+                        payload.definitionId,
+                        payload.displayName,
+                        payload.category,
+                        payload.tags,
+                        payload.assetId,
+                        payload.footprintWidth,
+                        payload.footprintHeight);
+                }
                 case "M4.CreatePieceInstance":
                 {
                     var payload = ReadPayload<M4CreatePieceInstanceCommandPayload>(envelope);

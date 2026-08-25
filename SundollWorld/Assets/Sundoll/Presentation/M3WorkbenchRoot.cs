@@ -47,6 +47,8 @@ namespace Sundoll.Presentation
         private M4WorkbenchPieceProjection pieceProjection;
         private Label pieceLibraryLabel;
         private TextField pieceSearchField;
+        private TextField pieceCategoryField;
+        private TextField pieceTagsField;
         private VisualElement pieceListContainer;
         private string currentTool = "画笔";
         private string currentLayerId = M3MapLayerIds.Terrain;
@@ -304,6 +306,15 @@ namespace Sundoll.Presentation
             pieceSearchField.style.marginTop = 5f;
             pieceSearchField.RegisterValueChangedCallback(_ => RefreshPieceLibraryList());
             panel.Add(pieceSearchField);
+            pieceCategoryField = new TextField("分类") { name = "PieceCategory" };
+            pieceCategoryField.style.marginTop = 4f;
+            panel.Add(pieceCategoryField);
+            pieceTagsField = new TextField("标签") { name = "PieceTags" };
+            pieceTagsField.style.marginTop = 4f;
+            panel.Add(pieceTagsField);
+            var updateDefinitionButton = new Button(SaveSelectedPieceDefinition) { text = "保存定义分类/标签" };
+            updateDefinitionButton.style.marginTop = 4f;
+            panel.Add(updateDefinitionButton);
             var createPieceButton = new Button(CreatePlaceholderPiece) { text = "新增占位定义" };
             createPieceButton.style.marginTop = 5f;
             panel.Add(createPieceButton);
@@ -835,6 +846,7 @@ namespace Sundoll.Presentation
             }
 
             selectedPieceDefinitionId = definitionId;
+            SyncSelectedPieceDefinitionFields();
             status = "已选择占位棋子定义，可创建多个实例";
             RefreshUiState();
         }
@@ -871,7 +883,61 @@ namespace Sundoll.Presentation
         private void SelectPieceDefinition(string definitionId)
         {
             selectedPieceDefinitionId = definitionId;
+            SyncSelectedPieceDefinitionFields();
             status = "已选择棋子定义：" + definitionId;
+            RefreshUiState();
+        }
+
+        private void SyncSelectedPieceDefinitionFields()
+        {
+            var definition = M4PieceQueries.FindDefinition(pieceLibrary == null ? null : pieceLibrary.State, selectedPieceDefinitionId);
+            if (definition == null)
+            {
+                return;
+            }
+
+            if (pieceCategoryField != null)
+            {
+                pieceCategoryField.SetValueWithoutNotify(definition.category ?? string.Empty);
+            }
+
+            if (pieceTagsField != null)
+            {
+                pieceTagsField.SetValueWithoutNotify(definition.tags == null ? string.Empty : string.Join(", ", definition.tags));
+            }
+        }
+
+        private void SaveSelectedPieceDefinition()
+        {
+            var definition = M4PieceQueries.FindDefinition(pieceLibrary == null ? null : pieceLibrary.State, selectedPieceDefinitionId);
+            if (definition == null)
+            {
+                status = "请先选择一个棋子定义";
+                RefreshUiState();
+                return;
+            }
+
+            var tags = new List<string>();
+            var rawTags = pieceTagsField == null ? string.Empty : pieceTagsField.value;
+            foreach (var rawTag in (rawTags ?? string.Empty).Split(new[] { ',', '，', ';', '；' }, StringSplitOptions.RemoveEmptyEntries))
+            {
+                var tag = rawTag.Trim();
+                if (!string.IsNullOrWhiteSpace(tag) && !tags.Contains(tag))
+                {
+                    tags.Add(tag);
+                }
+            }
+
+            var receipt = pieceLibrary.UpdateDefinition(
+                definition.id,
+                definition.displayName,
+                pieceCategoryField == null ? definition.category : pieceCategoryField.value,
+                tags,
+                definition.assetId,
+                definition.footprintWidth,
+                definition.footprintHeight);
+            CommitPieceReceipt(receipt);
+            status = receipt.accepted ? "棋子定义已更新" : receipt.message;
             RefreshUiState();
         }
 
@@ -882,6 +948,7 @@ namespace Sundoll.Presentation
             if (instance != null)
             {
                 selectedPieceDefinitionId = instance.definitionId;
+                SyncSelectedPieceDefinitionFields();
                 status = "已选择棋子实例：" + instanceId;
             }
 

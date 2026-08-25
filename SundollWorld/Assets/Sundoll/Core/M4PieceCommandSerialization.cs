@@ -29,6 +29,18 @@ namespace Sundoll.Core
     }
 
     [Serializable]
+    public sealed class M4UpdatePieceDefinitionCommandPayload
+    {
+        public string definitionId;
+        public string displayName;
+        public string category;
+        public List<string> tags = new List<string>();
+        public string assetId;
+        public int footprintWidth = 1;
+        public int footprintHeight = 1;
+    }
+
+    [Serializable]
     public sealed class M4CreatePieceInstanceCommandPayload
     {
         public string definitionId;

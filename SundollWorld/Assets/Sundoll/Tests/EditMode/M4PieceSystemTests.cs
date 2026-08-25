@@ -156,6 +156,28 @@ namespace Sundoll.Tests.EditMode
         }
 
         [Test]
+        public void DefinitionCategoryAndTagsUpdateThroughCommandEnvelope()
+        {
+            var bus = CreateBusWithDefinition();
+            var command = new M4UpdatePieceDefinitionCommand(
+                "m4-update-definition",
+                bus.State.revision,
+                "definition-token",
+                "中性棋子",
+                "Monster",
+                new[] { "敌对", "可搜索" },
+                null);
+            var envelope = M2CommandEnvelopeCodec.Encode(command);
+            var decoded = M2CommandEnvelopeCodec.Decode(
+                JsonUtility.FromJson<M1CommandEnvelope>(JsonUtility.ToJson(envelope, false)));
+            Execute(bus, decoded);
+
+            var definition = M4PieceQueries.FindDefinition(bus.State, "definition-token");
+            Assert.That(definition.category, Is.EqualTo("Monster"));
+            Assert.That(definition.tags, Is.EqualTo(new[] { "敌对", "可搜索" }));
+        }
+
+        [Test]
         public void VersionedJournalReplaysM4MoveAndPreservesCanonicalHash()
         {
             var bus = CreateBusWithDefinition();

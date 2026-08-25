@@ -57,6 +57,27 @@ namespace Sundoll.Application
                 string.IsNullOrWhiteSpace(instanceId) ? "instance-" + Guid.NewGuid().ToString("N") : instanceId));
         }
 
+        public M1CommandReceipt UpdateDefinition(
+            string definitionId,
+            string displayName,
+            string category,
+            IEnumerable<string> tags,
+            string assetId,
+            int footprintWidth = 1,
+            int footprintHeight = 1)
+        {
+            return commandBus.Execute(new M4UpdatePieceDefinitionCommand(
+                "m4-definition-update-" + Guid.NewGuid().ToString("N"),
+                State.revision,
+                definitionId,
+                displayName,
+                category,
+                tags,
+                assetId,
+                footprintWidth,
+                footprintHeight));
+        }
+
         public M1CommandReceipt Place(string instanceId, int x, int y)
         {
             return commandBus.Execute(new M4PlacePieceCommand(
