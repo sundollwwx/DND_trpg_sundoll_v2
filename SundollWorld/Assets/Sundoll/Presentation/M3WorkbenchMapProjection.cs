@@ -24,8 +24,11 @@ namespace Sundoll.Presentation
 
         private readonly Dictionary<string, Tilemap> tilemaps = new Dictionary<string, Tilemap>(StringComparer.Ordinal);
         private readonly Dictionary<string, Tile> tiles = new Dictionary<string, Tile>(StringComparer.Ordinal);
+        private readonly Dictionary<string, Texture2D> visualTextures = new Dictionary<string, Texture2D>(StringComparer.Ordinal);
+        private readonly Dictionary<string, Sprite> visualSprites = new Dictionary<string, Sprite>(StringComparer.Ordinal);
         private M3MapEditorFacade editor;
         private M3LayerEditState layerEditState;
+        private IMapVisualCatalog visualCatalog;
         private Tilemap mapObjectTilemap;
         private Tile mapObjectTile;
         private Texture2D tileTexture;
@@ -33,10 +36,14 @@ namespace Sundoll.Presentation
 
         public IReadOnlyDictionary<string, Tilemap> Tilemaps => tilemaps;
 
-        public void Bind(M3MapEditorFacade nextEditor, M3LayerEditState nextLayerEditState)
+        public void Bind(
+            M3MapEditorFacade nextEditor,
+            M3LayerEditState nextLayerEditState,
+            IMapVisualCatalog nextVisualCatalog = null)
         {
             editor = nextEditor ?? throw new ArgumentNullException(nameof(nextEditor));
             layerEditState = nextLayerEditState ?? throw new ArgumentNullException(nameof(nextLayerEditState));
+            visualCatalog = nextVisualCatalog ?? visualCatalog ?? new M7BuiltinMapVisualCatalog();
             DiscoverTilemaps();
             EnsureTileResources();
             RefreshAll();
@@ -73,7 +80,7 @@ namespace Sundoll.Presentation
                     continue;
                 }
 
-                tilemap.SetTile(new Vector3Int(cell.x, cell.y, 0), tiles[layerId]);
+                tilemap.SetTile(new Vector3Int(cell.x, cell.y, 0), GetTile(cell.contentId, layerId));
             }
 
             if (mapObjectTilemap != null && editor.State.map.objects != null)
@@ -132,7 +139,7 @@ namespace Sundoll.Presentation
                 var layerId = M3MapLayerIds.NormalizeLayerId(cell.layerId, cell.contentId);
                 if (tilemaps.TryGetValue(layerId, out var tilemap))
                 {
-                    tilemap.SetTile(new Vector3Int(cell.x, cell.y, 0), tiles[layerId]);
+                    tilemap.SetTile(new Vector3Int(cell.x, cell.y, 0), GetTile(cell.contentId, layerId));
                 }
             }
 
@@ -219,7 +226,7 @@ namespace Sundoll.Presentation
                 }
 
                 renderer.sortingOrder = M3MapLayerIds.RenderPriority(layerId) * 10;
-                tilemap.color = LayerColor(layerId);
+                tilemap.color = Color.white;
                 tilemaps[layerId] = tilemap;
             }
 
@@ -269,7 +276,8 @@ namespace Sundoll.Presentation
 
             foreach (var layerId in LayerIds)
             {
-                if (tiles.ContainsKey(layerId))
+                var fallbackKey = FallbackKey(layerId);
+                if (tiles.ContainsKey(fallbackKey))
                 {
                     continue;
                 }
@@ -277,7 +285,34 @@ namespace Sundoll.Presentation
                 var tile = ScriptableObject.CreateInstance<Tile>();
                 tile.name = "SundollWorld.WorkbenchTile." + layerId;
                 tile.sprite = tileSprite;
-                tiles.Add(layerId, tile);
+                tile.color = LayerColor(layerId);
+                tiles.Add(fallbackKey, tile);
+            }
+
+            if (visualCatalog != null)
+            {
+                foreach (var definition in visualCatalog.Definitions)
+                {
+                    if (definition == null || string.IsNullOrWhiteSpace(definition.contentId) ||
+                        tiles.ContainsKey(definition.contentId))
+                    {
+                        continue;
+                    }
+
+                    var texture = visualCatalog.CreateTexture(definition);
+                    var sprite = Sprite.Create(
+                        texture,
+                        new Rect(0f, 0f, texture.width, texture.height),
+                        new Vector2(0.5f, 0.5f),
+                        texture.width);
+                    sprite.name = "SundollWorld.MapVisualSprite." + definition.contentId;
+                    var tile = ScriptableObject.CreateInstance<Tile>();
+                    tile.name = "SundollWorld.MapVisualTile." + definition.contentId;
+                    tile.sprite = sprite;
+                    visualTextures.Add(definition.contentId, texture);
+                    visualSprites.Add(definition.contentId, sprite);
+                    tiles.Add(definition.contentId, tile);
+                }
             }
 
             if (mapObjectTile == null)
@@ -286,6 +321,21 @@ namespace Sundoll.Presentation
                 mapObjectTile.name = "SundollWorld.WorkbenchTile.MapObject";
                 mapObjectTile.sprite = tileSprite;
             }
+        }
+
+        private Tile GetTile(string contentId, string layerId)
+        {
+            if (!string.IsNullOrWhiteSpace(contentId) && tiles.TryGetValue(contentId, out var tile))
+            {
+                return tile;
+            }
+
+            return tiles[FallbackKey(layerId)];
+        }
+
+        private static string FallbackKey(string layerId)
+        {
+            return "fallback:" + M3MapLayerIds.NormalizeLayerId(layerId, null);
         }
 
         private static Color LayerColor(string layerId)
@@ -312,6 +362,22 @@ namespace Sundoll.Presentation
                 if (tile != null)
                 {
                     Destroy(tile);
+                }
+            }
+
+            foreach (var sprite in visualSprites.Values)
+            {
+                if (sprite != null)
+                {
+                    Destroy(sprite);
+                }
+            }
+
+            foreach (var texture in visualTextures.Values)
+            {
+                if (texture != null)
+                {
+                    Destroy(texture);
                 }
             }
 

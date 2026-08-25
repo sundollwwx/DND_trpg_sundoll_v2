@@ -9,7 +9,7 @@ namespace Sundoll.Infrastructure
     [Serializable]
     internal sealed class M3WorkspaceStateDocument
     {
-        public int formatVersion = 2;
+        public int formatVersion = 3;
         public string mapId;
         public List<string> hiddenLayerIds = new List<string>();
         public List<string> lockedLayerIds = new List<string>();
@@ -19,6 +19,15 @@ namespace Sundoll.Infrastructure
         public float zoom = 1f;
         public float panX;
         public float panY;
+        public string currentWorkspace;
+        public List<M3LayerContentSelectionDocument> selectedContentIds = new List<M3LayerContentSelectionDocument>();
+    }
+
+    [Serializable]
+    internal sealed class M3LayerContentSelectionDocument
+    {
+        public string layerId;
+        public string contentId;
     }
 
     public sealed class M3WorkspaceStateLoadResult
@@ -31,11 +40,13 @@ namespace Sundoll.Infrastructure
         public float zoom = 1f;
         public float panX;
         public float panY;
+        public string currentWorkspace = "map";
+        public Dictionary<string, string> selectedContentIds = new Dictionary<string, string>(StringComparer.Ordinal);
     }
 
     public sealed class M3WorkspaceStateStore
     {
-        private const int CurrentFormatVersion = 2;
+        private const int CurrentFormatVersion = 3;
 
         public M3WorkspaceStateStore(string projectRoot)
         {
@@ -63,14 +74,15 @@ namespace Sundoll.Infrastructure
                     state = defaultState,
                     loaded = false,
                     currentTool = "画笔",
-                    currentLayerId = knownLayerIds[0]
+                    currentLayerId = knownLayerIds[0],
+                    currentWorkspace = "map"
                 };
             }
 
             try
             {
                 var document = JsonUtility.FromJson<M3WorkspaceStateDocument>(File.ReadAllText(StatePath));
-                if (document == null || (document.formatVersion != 1 && document.formatVersion != CurrentFormatVersion) ||
+                if (document == null || document.formatVersion < 1 || document.formatVersion > CurrentFormatVersion ||
                     !string.Equals(document.mapId, mapId, StringComparison.Ordinal))
                 {
                     return new M3WorkspaceStateLoadResult
@@ -79,7 +91,8 @@ namespace Sundoll.Infrastructure
                         loaded = false,
                         diagnostic = "Workspace 状态版本或地图 ID 不匹配，已使用默认状态。",
                         currentTool = "画笔",
-                        currentLayerId = knownLayerIds[0]
+                        currentLayerId = knownLayerIds[0],
+                        currentWorkspace = "map"
                     };
                 }
 
@@ -107,6 +120,21 @@ namespace Sundoll.Infrastructure
                     currentLayerId = knownLayerIds[0];
                 }
 
+                var selectedContentIds = new Dictionary<string, string>(StringComparer.Ordinal);
+                if (document.formatVersion >= 3 && document.selectedContentIds != null)
+                {
+                    foreach (var selection in document.selectedContentIds)
+                    {
+                        if (selection == null || string.IsNullOrWhiteSpace(selection.layerId) ||
+                            string.IsNullOrWhiteSpace(selection.contentId) || !knownLayerIds.Contains(selection.layerId))
+                        {
+                            continue;
+                        }
+
+                        selectedContentIds[selection.layerId] = selection.contentId;
+                    }
+                }
+
                 return new M3WorkspaceStateLoadResult
                 {
                     state = defaultState,
@@ -116,7 +144,11 @@ namespace Sundoll.Infrastructure
                     currentLayerId = currentLayerId,
                     zoom = document.formatVersion >= 2 && document.zoom > 0f ? document.zoom : 1f,
                     panX = document.formatVersion >= 2 ? document.panX : 0f,
-                    panY = document.formatVersion >= 2 ? document.panY : 0f
+                    panY = document.formatVersion >= 2 ? document.panY : 0f,
+                    currentWorkspace = document.formatVersion >= 3 && !string.IsNullOrWhiteSpace(document.currentWorkspace)
+                        ? document.currentWorkspace
+                        : "map",
+                    selectedContentIds = selectedContentIds
                 };
             }
             catch (Exception exception)
@@ -127,7 +159,8 @@ namespace Sundoll.Infrastructure
                     loaded = false,
                     diagnostic = "Workspace 状态读取失败，已使用默认状态：" + exception.Message,
                     currentTool = "画笔",
-                    currentLayerId = knownLayerIds[0]
+                    currentLayerId = knownLayerIds[0],
+                    currentWorkspace = "map"
                 };
             }
         }
@@ -140,7 +173,7 @@ namespace Sundoll.Infrastructure
                 throw new ArgumentNullException(nameof(state));
             }
 
-            Save(mapId, state, layerIds, "画笔", null, 1f, 0f, 0f);
+            Save(mapId, state, layerIds, "画笔", null, 1f, 0f, 0f, "map", null);
         }
 
         public void Save(
@@ -152,6 +185,21 @@ namespace Sundoll.Infrastructure
             float zoom,
             float panX,
             float panY)
+        {
+            Save(mapId, state, layerIds, currentTool, currentLayerId, zoom, panX, panY, "map", null);
+        }
+
+        public void Save(
+            string mapId,
+            M3LayerEditState state,
+            IEnumerable<string> layerIds,
+            string currentTool,
+            string currentLayerId,
+            float zoom,
+            float panX,
+            float panY,
+            string currentWorkspace,
+            IDictionary<string, string> selectedContentIds)
         {
             ValidateMapId(mapId);
             if (state == null)
@@ -180,7 +228,8 @@ namespace Sundoll.Infrastructure
                 currentLayerId = currentLayerId,
                 zoom = zoom > 0f ? zoom : 1f,
                 panX = panX,
-                panY = panY
+                panY = panY,
+                currentWorkspace = string.IsNullOrWhiteSpace(currentWorkspace) ? "map" : currentWorkspace
             };
             foreach (var layerId in knownLayerIds)
             {
@@ -192,6 +241,16 @@ namespace Sundoll.Infrastructure
                 if (state.IsLocked(layerId))
                 {
                     document.lockedLayerIds.Add(layerId);
+                }
+
+                if (selectedContentIds != null && selectedContentIds.TryGetValue(layerId, out var contentId) &&
+                    !string.IsNullOrWhiteSpace(contentId))
+                {
+                    document.selectedContentIds.Add(new M3LayerContentSelectionDocument
+                    {
+                        layerId = layerId,
+                        contentId = contentId
+                    });
                 }
             }
 

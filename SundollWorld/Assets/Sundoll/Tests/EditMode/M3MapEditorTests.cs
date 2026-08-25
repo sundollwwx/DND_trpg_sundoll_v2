@@ -623,7 +623,7 @@ namespace Sundoll.Tests.EditMode
         }
 
         [Test]
-        public void WorkspaceStateFormat2RestoresOrderToolAndView()
+        public void WorkspaceStateFormat3RestoresOrderToolViewWorkspaceAndMaterials()
         {
             var layerIds = new[]
             {
@@ -636,7 +636,22 @@ namespace Sundoll.Tests.EditMode
             var state = new M3LayerEditState(layerIds);
             state.MoveLayer(M3MapLayerIds.Terrain, 1);
             var store = new M3WorkspaceStateStore(root);
-            store.Save("map-m3", state, layerIds, "选择", M3MapLayerIds.Object, 12.5f, 4f, 5f);
+            var selectedContentIds = new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                { M3MapLayerIds.Terrain, "terrain-water" },
+                { M3MapLayerIds.Object, "object-crate" }
+            };
+            store.Save(
+                "map-m3",
+                state,
+                layerIds,
+                "选择",
+                M3MapLayerIds.Object,
+                12.5f,
+                4f,
+                5f,
+                "pieces",
+                selectedContentIds);
 
             var loaded = store.Load("map-m3", layerIds);
             Assert.That(loaded.loaded, Is.True);
@@ -645,6 +660,44 @@ namespace Sundoll.Tests.EditMode
             Assert.That(loaded.zoom, Is.EqualTo(12.5f));
             Assert.That(loaded.panX, Is.EqualTo(4f));
             Assert.That(loaded.state.LayerOrder[1], Is.EqualTo(M3MapLayerIds.Terrain));
+            Assert.That(loaded.currentWorkspace, Is.EqualTo("pieces"));
+            Assert.That(loaded.selectedContentIds[M3MapLayerIds.Terrain], Is.EqualTo("terrain-water"));
+            Assert.That(loaded.selectedContentIds[M3MapLayerIds.Object], Is.EqualTo("object-crate"));
+            StringAssert.Contains("\"formatVersion\": 3", File.ReadAllText(store.StatePath));
+        }
+
+        [Test]
+        public void WorkspaceStateFormat2MigratesToWorkspace3Defaults()
+        {
+            var layerIds = new[]
+            {
+                M3MapLayerIds.Terrain,
+                M3MapLayerIds.Wall,
+                M3MapLayerIds.Object,
+                M3MapLayerIds.Interaction,
+                M3MapLayerIds.StaticAnnotation
+            };
+            var store = new M3WorkspaceStateStore(root);
+            Directory.CreateDirectory(root);
+            File.WriteAllText(
+                store.StatePath,
+                "{\"formatVersion\":2,\"mapId\":\"map-v2\",\"hiddenLayerIds\":[\"wall\"]," +
+                "\"lockedLayerIds\":[\"object\"],\"layerOrder\":[\"wall\",\"terrain\",\"object\"," +
+                "\"interaction\",\"static-annotation\"],\"currentTool\":\"选择\"," +
+                "\"currentLayerId\":\"object\",\"zoom\":8.5,\"panX\":2,\"panY\":3}");
+
+            var loaded = store.Load("map-v2", layerIds);
+
+            Assert.That(loaded.loaded, Is.True);
+            Assert.That(loaded.state.IsVisible(M3MapLayerIds.Wall), Is.False);
+            Assert.That(loaded.state.IsLocked(M3MapLayerIds.Object), Is.True);
+            Assert.That(loaded.currentTool, Is.EqualTo("选择"));
+            Assert.That(loaded.currentLayerId, Is.EqualTo(M3MapLayerIds.Object));
+            Assert.That(loaded.zoom, Is.EqualTo(8.5f));
+            Assert.That(loaded.panX, Is.EqualTo(2f));
+            Assert.That(loaded.panY, Is.EqualTo(3f));
+            Assert.That(loaded.currentWorkspace, Is.EqualTo("map"));
+            Assert.That(loaded.selectedContentIds, Is.Empty);
         }
 
         private static M1MapCell FindCell(M1MapDocument map, int x, int y)

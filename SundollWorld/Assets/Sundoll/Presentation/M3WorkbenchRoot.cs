@@ -27,6 +27,7 @@ namespace Sundoll.Presentation
         private readonly Dictionary<string, Button> layerButtons = new Dictionary<string, Button>(StringComparer.Ordinal);
         private readonly Dictionary<string, Button> layerVisibilityButtons = new Dictionary<string, Button>(StringComparer.Ordinal);
         private readonly Dictionary<string, Button> layerLockButtons = new Dictionary<string, Button>(StringComparer.Ordinal);
+        private readonly Dictionary<string, string> selectedContentIds = new Dictionary<string, string>(StringComparer.Ordinal);
         private readonly List<M3CellMutation> pendingStroke = new List<M3CellMutation>();
         private readonly HashSet<M3MapCellKey> pendingStrokeKeys = new HashSet<M3MapCellKey>();
         private ProjectWorkspaceService workspaceService;
@@ -40,6 +41,7 @@ namespace Sundoll.Presentation
         private M3LayerEditState layerEditState;
         private M3WorkspaceStateStore workspaceStateStore;
         private M3WorkbenchMapProjection projection;
+        private M7BuiltinMapVisualCatalog mapVisualCatalog;
         private UIDocument uiDocument;
         private PanelSettings panelSettings;
         private Label saveStatusLabel;
@@ -52,6 +54,7 @@ namespace Sundoll.Presentation
         private M4WorkbenchPieceProjection pieceProjection;
         private M5WorkbenchConsoleProjection consoleProjection;
         private Label pieceLibraryLabel;
+        private VisualElement materialPaletteContainer;
         private TextField pieceSearchField;
         private TextField pieceCategoryField;
         private TextField pieceTagsField;
@@ -89,6 +92,8 @@ namespace Sundoll.Presentation
         private Label hostModeLabel;
         private bool hostPreviewMode;
         private M7ProjectCenterPanel projectCenterPanel;
+        private M7WorkbenchTabController leftTabController;
+        private string currentWorkspace = "map";
         private Vector2Int contextMenuCell;
         private string selectedMapObjectId;
         // These containers are rebuilt only when their authoritative inputs change.
@@ -125,7 +130,9 @@ namespace Sundoll.Presentation
                 projection = gridObject.AddComponent<M3WorkbenchMapProjection>();
             }
 
-            projection.Bind(editor, layerEditState);
+            mapVisualCatalog = new M7BuiltinMapVisualCatalog();
+            EnsureSelectedContentDefaults();
+            projection.Bind(editor, layerEditState, mapVisualCatalog);
             pieceProjection = GetComponentInChildren<M4WorkbenchPieceProjection>();
             if (pieceProjection == null)
             {
@@ -255,6 +262,15 @@ namespace Sundoll.Presentation
             currentLayerId = string.IsNullOrWhiteSpace(workspaceLoad.currentLayerId)
                 ? LayerIds[0]
                 : workspaceLoad.currentLayerId;
+            currentWorkspace = NormalizeWorkspaceId(workspaceLoad.currentWorkspace);
+            selectedContentIds.Clear();
+            if (workspaceLoad.selectedContentIds != null)
+            {
+                foreach (var pair in workspaceLoad.selectedContentIds)
+                {
+                    selectedContentIds[pair.Key] = pair.Value;
+                }
+            }
             hasLoadedWorkspaceView = workspaceLoad.loaded && workspaceLoad.zoom > 1f;
             loadedWorkspaceZoom = workspaceLoad.zoom;
             loadedWorkspacePan = new Vector2(workspaceLoad.panX, workspaceLoad.panY);
@@ -274,10 +290,12 @@ namespace Sundoll.Presentation
             if (refreshViews)
             {
                 EnsureCamera();
-                projection.Bind(editor, layerEditState);
+                EnsureSelectedContentDefaults();
+                projection.Bind(editor, layerEditState, mapVisualCatalog);
                 pieceProjection.Bind(commandBus, pieceAssetCatalog);
                 consoleProjection.Bind(commandBus);
                 projectTitleLabel.text = nextSession.ProjectDisplayName;
+                leftTabController?.Select(currentWorkspace, false);
                 RefreshUiState();
             }
 
@@ -401,20 +419,32 @@ namespace Sundoll.Presentation
 
         private VisualElement BuildToolPanel()
         {
-            var panel = CreatePanel(new Color(0.08f, 0.095f, 0.125f, 0.98f), 220f);
+            var panel = CreatePanel(new Color(0.08f, 0.095f, 0.125f, 0.98f), 260f);
+            panel.name = "WorkbenchLeftPanel";
+            panel.AddToClassList("sw-side-panel");
             panel.style.paddingLeft = 12f;
             panel.style.paddingRight = 12f;
-            panel.Add(new Label("工具 / 图层") { name = "ToolTitle" });
+            leftTabController = new M7WorkbenchTabController();
+            leftTabController.TabChanged += SelectWorkspaceTab;
+            panel.Add(leftTabController.TabBar);
+
+            var sectionHost = new VisualElement { name = "WorkbenchSectionHost" };
+            sectionHost.style.flexGrow = 1f;
+            sectionHost.style.minHeight = 0f;
+            panel.Add(sectionHost);
+
+            var mapSection = CreateWorkspaceSection("ToolPanelScroll");
+            mapSection.Add(new Label("地图工具") { name = "ToolTitle" });
             foreach (var tool in new[] { "选择", "画笔", "橡皮擦", "直线", "矩形", "填充" })
             {
                 var toolButton = new Button(() => SelectTool(tool)) { text = tool };
                 toolButton.style.marginTop = 5f;
-                panel.Add(toolButton);
+                mapSection.Add(toolButton);
             }
 
             var layerTitle = new Label("内容层") { name = "LayerTitle" };
             layerTitle.style.marginTop = 18f;
-            panel.Add(layerTitle);
+            mapSection.Add(layerTitle);
             foreach (var layerId in LayerIds)
             {
                 var row = new VisualElement();
@@ -432,120 +462,183 @@ namespace Sundoll.Presentation
                 lockButton.style.width = 42f;
                 layerLockButtons.Add(layerId, lockButton);
                 row.Add(lockButton);
-                panel.Add(row);
+                mapSection.Add(row);
             }
+
+            var materialTitle = new Label("地图素材") { name = "MapVisualPaletteTitle" };
+            materialTitle.style.marginTop = 14f;
+            mapSection.Add(materialTitle);
+            materialPaletteContainer = new VisualElement { name = "MapVisualPalette" };
+            materialPaletteContainer.AddToClassList("sw-material-palette");
+            mapSection.Add(materialPaletteContainer);
+            RefreshMaterialPalette();
 
             var resetButton = new Button(ResetView) { text = "复位视口" };
             resetButton.style.marginTop = 18f;
-            panel.Add(resetButton);
+            mapSection.Add(resetButton);
+
+            var pieceSection = CreateWorkspaceSection("PieceLibraryScroll");
             var pieceTitle = new Label("棋子库") { name = "PieceLibraryTitle" };
-            pieceTitle.style.marginTop = 18f;
-            panel.Add(pieceTitle);
+            pieceSection.Add(pieceTitle);
             pieceSearchField = new TextField { name = "PieceSearch", tooltip = "按名称、分类或标签搜索" };
             pieceSearchField.style.marginTop = 5f;
             pieceSearchField.RegisterValueChangedCallback(_ => RefreshPieceLibraryList());
-            panel.Add(pieceSearchField);
+            pieceSection.Add(pieceSearchField);
             pieceCategoryField = new TextField("分类") { name = "PieceCategory" };
             pieceCategoryField.style.marginTop = 4f;
-            panel.Add(pieceCategoryField);
+            pieceSection.Add(pieceCategoryField);
             pieceTagsField = new TextField("标签") { name = "PieceTags" };
             pieceTagsField.style.marginTop = 4f;
-            panel.Add(pieceTagsField);
+            pieceSection.Add(pieceTagsField);
             var updateDefinitionButton = new Button(SaveSelectedPieceDefinition) { text = "保存定义分类/标签" };
             updateDefinitionButton.style.marginTop = 4f;
-            panel.Add(updateDefinitionButton);
+            pieceSection.Add(updateDefinitionButton);
             var createPieceButton = new Button(CreatePlaceholderPiece) { text = "新增占位定义" };
             createPieceButton.style.marginTop = 5f;
-            panel.Add(createPieceButton);
+            pieceSection.Add(createPieceButton);
             var createInstanceButton = new Button(CreateInstanceFromSelectedDefinition) { text = "创建实例并放置" };
             createInstanceButton.style.marginTop = 5f;
-            panel.Add(createInstanceButton);
+            pieceSection.Add(createInstanceButton);
             pieceImagePathField = new TextField("图片路径") { name = "PieceImagePath" };
             pieceImagePathField.style.marginTop = 6f;
-            panel.Add(pieceImagePathField);
+            pieceSection.Add(pieceImagePathField);
             var pickImageButton = new Button(PickPieceImageFile) { text = "选择图片文件" };
             pickImageButton.name = "PickPieceImageFile";
             pickImageButton.style.marginTop = 4f;
-            panel.Add(pickImageButton);
+            pieceSection.Add(pickImageButton);
             var importImageButton = new Button(ImportPieceImageFromPath) { text = "导入图片路径" };
             importImageButton.style.marginTop = 4f;
-            panel.Add(importImageButton);
+            pieceSection.Add(importImageButton);
             pieceLibraryLabel = new Label { name = "PieceLibraryBody" };
             pieceLibraryLabel.style.marginTop = 8f;
             pieceLibraryLabel.style.whiteSpace = WhiteSpace.Normal;
-            panel.Add(pieceLibraryLabel);
+            pieceSection.Add(pieceLibraryLabel);
             pieceListContainer = new ScrollView(ScrollViewMode.Vertical) { name = "PieceLibraryList" };
             pieceListContainer.style.marginTop = 6f;
-            pieceListContainer.style.maxHeight = 250f;
-            panel.Add(pieceListContainer);
+            pieceListContainer.style.minHeight = 180f;
+            pieceListContainer.style.flexGrow = 1f;
+            pieceSection.Add(pieceListContainer);
+
+            var hostSection = CreateWorkspaceSection("HostToolsScroll");
+            hostSection.Add(new Label("主持工具") { name = "HostToolsTitle" });
             mapIdField = new TextField("地图 ID") { name = "HostMapId" };
             mapIdField.style.marginTop = 8f;
-            panel.Add(mapIdField);
+            hostSection.Add(mapIdField);
             mapNameField = new TextField("地图名称") { name = "HostMapName" };
             mapNameField.style.marginTop = 4f;
-            panel.Add(mapNameField);
+            hostSection.Add(mapNameField);
             var switchMapButton = new Button(SwitchHostMap) { text = "切换主持地图" };
             switchMapButton.style.marginTop = 4f;
-            panel.Add(switchMapButton);
+            hostSection.Add(switchMapButton);
             var renameMapButton = new Button(RenameHostMap) { text = "重命名当前地图" };
             renameMapButton.name = "RenameHostMap";
             renameMapButton.style.marginTop = 4f;
-            panel.Add(renameMapButton);
+            hostSection.Add(renameMapButton);
             consoleLabel = new Label { name = "HostConsoleBody" };
             consoleLabel.style.marginTop = 6f;
             consoleLabel.style.whiteSpace = WhiteSpace.Normal;
-            panel.Add(consoleLabel);
+            hostSection.Add(consoleLabel);
+
+            var hierarchySection = CreateWorkspaceSection("HierarchyScroll");
+            hierarchySection.Add(new Label("层级与地图") { name = "HierarchyTitle" });
             mapListContainer = new ScrollView(ScrollViewMode.Vertical) { name = "HostMapList" };
             mapListContainer.style.marginTop = 5f;
-            mapListContainer.style.maxHeight = 100f;
-            panel.Add(mapListContainer);
-
-            var hierarchyTitle = new Label("Hierarchy") { name = "HierarchyTitle" };
-            hierarchyTitle.style.marginTop = 10f;
-            panel.Add(hierarchyTitle);
+            mapListContainer.style.maxHeight = 160f;
+            hierarchySection.Add(mapListContainer);
             hierarchyContainer = new ScrollView(ScrollViewMode.Vertical) { name = "HostHierarchy" };
             hierarchyContainer.style.marginTop = 5f;
-            hierarchyContainer.style.maxHeight = 220f;
-            panel.Add(hierarchyContainer);
+            hierarchyContainer.style.flexGrow = 1f;
+            hierarchyContainer.style.minHeight = 220f;
+            hierarchySection.Add(hierarchyContainer);
 
             var fogTitle = new Label("迷雾 / 标注 / 交互");
             fogTitle.style.marginTop = 10f;
-            panel.Add(fogTitle);
+            hostSection.Add(fogTitle);
             fogXField = new TextField("格子 X") { name = "FogX" };
             fogXField.style.marginTop = 4f;
-            panel.Add(fogXField);
+            hostSection.Add(fogXField);
             fogYField = new TextField("格子 Y") { name = "FogY" };
             fogYField.style.marginTop = 4f;
-            panel.Add(fogYField);
+            hostSection.Add(fogYField);
             var hideFogButton = new Button(() => SetFogFromUi(false)) { text = "隐藏格子" };
             hideFogButton.style.marginTop = 4f;
-            panel.Add(hideFogButton);
+            hostSection.Add(hideFogButton);
             var revealFogButton = new Button(() => SetFogFromUi(true)) { text = "揭示格子" };
             revealFogButton.style.marginTop = 4f;
-            panel.Add(revealFogButton);
+            hostSection.Add(revealFogButton);
             annotationIdField = new TextField("标注 ID") { name = "AnnotationId" };
             annotationIdField.style.marginTop = 5f;
-            panel.Add(annotationIdField);
+            hostSection.Add(annotationIdField);
             annotationTextField = new TextField("标注文本") { name = "AnnotationText" };
             annotationTextField.style.marginTop = 4f;
-            panel.Add(annotationTextField);
+            hostSection.Add(annotationTextField);
             var upsertAnnotationButton = new Button(UpsertAnnotationFromUi) { text = "保存动态标注" };
             upsertAnnotationButton.style.marginTop = 4f;
-            panel.Add(upsertAnnotationButton);
+            hostSection.Add(upsertAnnotationButton);
             var removeAnnotationButton = new Button(RemoveAnnotationFromUi) { text = "删除动态标注" };
             removeAnnotationButton.style.marginTop = 4f;
-            panel.Add(removeAnnotationButton);
+            hostSection.Add(removeAnnotationButton);
             interactionObjectField = new TextField("对象 ID") { name = "InteractionObjectId" };
             interactionObjectField.style.marginTop = 5f;
-            panel.Add(interactionObjectField);
+            hostSection.Add(interactionObjectField);
             var openInteractionButton = new Button(() => SetInteractionFromUi(true)) { text = "打开对象" };
             openInteractionButton.style.marginTop = 4f;
-            panel.Add(openInteractionButton);
+            hostSection.Add(openInteractionButton);
             var closeInteractionButton = new Button(() => SetInteractionFromUi(false)) { text = "关闭对象" };
             closeInteractionButton.style.marginTop = 4f;
-            panel.Add(closeInteractionButton);
-            WrapPanelChildrenInScrollView(panel, "ToolPanelScroll");
+            hostSection.Add(closeInteractionButton);
+
+            leftTabController.Add("map", "地图", mapSection);
+            leftTabController.Add("pieces", "棋子", pieceSection);
+            leftTabController.Add("hierarchy", "层级", hierarchySection);
+            leftTabController.Add("host", "主持", hostSection);
+            sectionHost.Add(mapSection);
+            sectionHost.Add(pieceSection);
+            sectionHost.Add(hierarchySection);
+            sectionHost.Add(hostSection);
+            leftTabController.Select(currentWorkspace, false);
             return panel;
+        }
+
+        private static ScrollView CreateWorkspaceSection(string name)
+        {
+            var section = new ScrollView(ScrollViewMode.Vertical) { name = name };
+            section.style.flexGrow = 1f;
+            section.style.minHeight = 0f;
+            section.AddToClassList("sw-workspace-section");
+            return section;
+        }
+
+        private void SelectWorkspaceTab(string tabId)
+        {
+            currentWorkspace = NormalizeWorkspaceId(tabId);
+            PersistWorkspaceState();
+            status = "工作区：" + WorkspaceLabel(currentWorkspace);
+            RefreshUiState();
+        }
+
+        private static string NormalizeWorkspaceId(string tabId)
+        {
+            switch (tabId)
+            {
+                case "pieces":
+                case "hierarchy":
+                case "host":
+                    return tabId;
+                default:
+                    return "map";
+            }
+        }
+
+        private static string WorkspaceLabel(string tabId)
+        {
+            switch (tabId)
+            {
+                case "pieces": return "棋子库";
+                case "hierarchy": return "层级";
+                case "host": return "主持台";
+                default: return "地图制作";
+            }
         }
 
         private VisualElement BuildMapPanel()
@@ -991,7 +1084,55 @@ namespace Sundoll.Presentation
         {
             currentLayerId = layerId;
             status = "当前图层：" + LayerLabel(layerId);
+            RefreshMaterialPalette();
             RefreshUiState();
+        }
+
+        private void SelectMapVisual(string contentId)
+        {
+            if (mapVisualCatalog == null || !mapVisualCatalog.TryGet(contentId, out var definition) ||
+                !string.Equals(definition.layerId, currentLayerId, StringComparison.Ordinal))
+            {
+                status = "素材与当前图层不匹配。";
+                return;
+            }
+
+            selectedContentIds[currentLayerId] = contentId;
+            PersistWorkspaceState();
+            status = "当前素材：" + definition.displayName;
+            RefreshMaterialPalette();
+            RefreshUiState();
+        }
+
+        private void RefreshMaterialPalette()
+        {
+            if (materialPaletteContainer == null || mapVisualCatalog == null)
+            {
+                return;
+            }
+
+            materialPaletteContainer.Clear();
+            var currentContent = ContentForLayer(currentLayerId);
+            foreach (var definition in mapVisualCatalog.GetForLayer(currentLayerId))
+            {
+                var contentId = definition.contentId;
+                var button = new Button(() => SelectMapVisual(contentId))
+                {
+                    text = (string.Equals(currentContent, contentId, StringComparison.Ordinal) ? "◆ " : string.Empty) +
+                           definition.displayName,
+                    tooltip = contentId
+                };
+                button.name = "MapVisual_" + contentId;
+                button.AddToClassList("sw-material-button");
+                button.style.backgroundColor = definition.primaryColor;
+                var luminance = definition.primaryColor.r * 0.299f +
+                                definition.primaryColor.g * 0.587f +
+                                definition.primaryColor.b * 0.114f;
+                button.style.color = luminance > 0.54f
+                    ? new Color(0.08f, 0.09f, 0.1f, 1f)
+                    : new Color(0.95f, 0.94f, 0.9f, 1f);
+                materialPaletteContainer.Add(button);
+            }
         }
 
         private void ToggleLayer(string layerId)
@@ -2067,20 +2208,33 @@ namespace Sundoll.Presentation
                 Mathf.Max(first.y, second.y));
         }
 
-        private static string ContentForLayer(string layerId)
+        private string ContentForLayer(string layerId)
         {
-            switch (layerId)
+            if (selectedContentIds.TryGetValue(layerId, out var contentId) && !string.IsNullOrWhiteSpace(contentId))
             {
-                case M3MapLayerIds.Wall:
-                    return "wall-solid";
-                case M3MapLayerIds.Object:
-                    return "object-marker";
-                case M3MapLayerIds.Interaction:
-                    return "interaction-trigger";
-                case M3MapLayerIds.StaticAnnotation:
-                    return "annotation-note";
-                default:
-                    return "terrain-ground";
+                return contentId;
+            }
+
+            return mapVisualCatalog == null
+                ? "terrain-ground"
+                : mapVisualCatalog.GetDefaultContentId(layerId);
+        }
+
+        private void EnsureSelectedContentDefaults()
+        {
+            if (mapVisualCatalog == null)
+            {
+                return;
+            }
+
+            foreach (var layerId in LayerIds)
+            {
+                if (!selectedContentIds.TryGetValue(layerId, out var contentId) ||
+                    !mapVisualCatalog.TryGet(contentId, out var definition) ||
+                    !string.Equals(definition.layerId, layerId, StringComparison.Ordinal))
+                {
+                    selectedContentIds[layerId] = mapVisualCatalog.GetDefaultContentId(layerId);
+                }
             }
         }
 
@@ -2100,7 +2254,9 @@ namespace Sundoll.Presentation
                 currentLayerId,
                 camera == null ? 1f : camera.orthographicSize,
                 camera == null ? 0f : camera.transform.position.x,
-                camera == null ? 0f : camera.transform.position.y);
+                camera == null ? 0f : camera.transform.position.y,
+                currentWorkspace,
+                selectedContentIds);
         }
 
         private void RefreshUiState()

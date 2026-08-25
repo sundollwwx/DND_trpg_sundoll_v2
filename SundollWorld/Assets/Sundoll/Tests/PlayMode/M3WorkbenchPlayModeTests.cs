@@ -17,6 +17,28 @@ namespace Sundoll.Tests.PlayMode
 {
     public sealed class M3WorkbenchPlayModeTests
     {
+        [Test]
+        public void M7WorkbenchTabsShowOnlyTheSelectedPanel()
+        {
+            var controller = new M7WorkbenchTabController();
+            var mapPanel = new VisualElement();
+            var piecePanel = new VisualElement();
+            var changedTo = string.Empty;
+            controller.TabChanged += tabId => changedTo = tabId;
+            controller.Add("map", "地图", mapPanel);
+            controller.Add("pieces", "棋子", piecePanel);
+
+            Assert.That(controller.Select("map"), Is.True);
+            Assert.That(mapPanel.style.display.value, Is.EqualTo(DisplayStyle.Flex));
+            Assert.That(piecePanel.style.display.value, Is.EqualTo(DisplayStyle.None));
+            Assert.That(controller.Select("pieces"), Is.True);
+            Assert.That(mapPanel.style.display.value, Is.EqualTo(DisplayStyle.None));
+            Assert.That(piecePanel.style.display.value, Is.EqualTo(DisplayStyle.Flex));
+            Assert.That(controller.CurrentTabId, Is.EqualTo("pieces"));
+            Assert.That(changedTo, Is.EqualTo("pieces"));
+            Assert.That(controller.Select("missing"), Is.False);
+        }
+
         [UnityTest]
         public IEnumerator WorkbenchBootsProjectsLayersAndCanRebuildView()
         {
@@ -32,6 +54,13 @@ namespace Sundoll.Tests.PlayMode
             Assert.That(document.rootVisualElement.Q<VisualElement>("PieceLibraryList"), Is.Not.Null);
             Assert.That(document.rootVisualElement.Q<Button>("PickPieceImageFile"), Is.Not.Null);
             Assert.That(document.rootVisualElement.Q<ScrollView>("ToolPanelScroll"), Is.Not.Null);
+            Assert.That(document.rootVisualElement.Q<Button>("WorkbenchTab_map"), Is.Not.Null);
+            Assert.That(document.rootVisualElement.Q<Button>("WorkbenchTab_pieces"), Is.Not.Null);
+            Assert.That(document.rootVisualElement.Q<Button>("WorkbenchTab_hierarchy"), Is.Not.Null);
+            Assert.That(document.rootVisualElement.Q<Button>("WorkbenchTab_host"), Is.Not.Null);
+            Assert.That(document.rootVisualElement.Q<VisualElement>("MapVisualPalette"), Is.Not.Null);
+            Assert.That(document.rootVisualElement.Q<Button>("MapVisual_terrain-ground"), Is.Not.Null);
+            Assert.That(document.rootVisualElement.Q<Button>("MapVisual_terrain-water"), Is.Not.Null);
             Assert.That(document.rootVisualElement.Q<ScrollView>("InspectorScroll"), Is.Not.Null);
             Assert.That(document.rootVisualElement.Q<VisualElement>("HostMapList"), Is.Not.Null);
             Assert.That(document.rootVisualElement.Q<VisualElement>("HostHierarchy"), Is.Not.Null);
@@ -82,6 +111,15 @@ namespace Sundoll.Tests.PlayMode
             Assert.That(initialTerrain.accepted, Is.True);
             projection.RefreshRegion(root.Editor.LastDirtyBounds);
             Assert.That(projection.Tilemaps["terrain"].HasTile(new Vector3Int(2, 3, 0)), Is.True);
+            var waterTerrain = root.Editor.PaintCell(3, 3, "terrain", "terrain-water");
+            Assert.That(waterTerrain.accepted, Is.True);
+            projection.RefreshRegion(root.Editor.LastDirtyBounds);
+            var groundTile = projection.Tilemaps["terrain"].GetTile<Tile>(new Vector3Int(2, 3, 0));
+            var waterTile = projection.Tilemaps["terrain"].GetTile<Tile>(new Vector3Int(3, 3, 0));
+            Assert.That(groundTile, Is.Not.Null);
+            Assert.That(waterTile, Is.Not.Null);
+            Assert.That(waterTile, Is.Not.SameAs(groundTile));
+            Assert.That(waterTile.sprite.texture, Is.Not.SameAs(groundTile.sprite.texture));
 
             var revisionBefore = root.Editor.State.revision;
             var receipt = root.Editor.PaintCell(1, 1, "wall", "wall-solid");
@@ -105,6 +143,7 @@ namespace Sundoll.Tests.PlayMode
 
             Object.Destroy(root.gameObject);
             yield return null;
+            Assert.That(root == null, Is.True);
         }
 
         [UnityTest]
