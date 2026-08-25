@@ -40,6 +40,34 @@ namespace Sundoll.Tests.PlayMode
             Assert.That(document.rootVisualElement.Q<TextField>("FogX"), Is.Not.Null);
             Assert.That(document.rootVisualElement.Q<TextField>("AnnotationText"), Is.Not.Null);
             Assert.That(document.rootVisualElement.Q<TextField>("InteractionObjectId"), Is.Not.Null);
+            var mapList = document.rootVisualElement.Q<VisualElement>("HostMapList");
+            var hierarchy = document.rootVisualElement.Q<VisualElement>("HostHierarchy");
+            var pieceList = document.rootVisualElement.Q<VisualElement>("PieceLibraryList");
+            var mapListCount = mapList.childCount;
+            var hierarchyCount = hierarchy.childCount;
+            var pieceListCount = pieceList.childCount;
+            VisualElement mapListFirstChild = mapListCount == 0 ? null : mapList.ElementAt(0);
+            VisualElement hierarchyFirstChild = hierarchyCount == 0 ? null : hierarchy.ElementAt(0);
+            VisualElement pieceListFirstChild = pieceListCount == 0 ? null : pieceList.ElementAt(0);
+            yield return new WaitForSecondsRealtime(0.35f);
+            Assert.That(mapList.childCount, Is.EqualTo(mapListCount));
+            Assert.That(hierarchy.childCount, Is.EqualTo(hierarchyCount));
+            Assert.That(pieceList.childCount, Is.EqualTo(pieceListCount));
+            if (mapListFirstChild != null)
+            {
+                Assert.That(mapList.ElementAt(0), Is.SameAs(mapListFirstChild));
+            }
+
+            if (hierarchyFirstChild != null)
+            {
+                Assert.That(hierarchy.ElementAt(0), Is.SameAs(hierarchyFirstChild));
+            }
+
+            if (pieceListFirstChild != null)
+            {
+                Assert.That(pieceList.ElementAt(0), Is.SameAs(pieceListFirstChild));
+            }
+
             // The real Workbench deliberately restores local visibility state;
             // normalize the shared test profile before exercising projection.
             root.LayerEditState.SetVisible("terrain", true);

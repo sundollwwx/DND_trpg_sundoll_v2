@@ -87,6 +87,17 @@ namespace Sundoll.Presentation
         private bool hostPreviewMode;
         private Vector2Int contextMenuCell;
         private string selectedMapObjectId;
+        // These containers are rebuilt only when their authoritative inputs change.
+        // RefreshUiState still updates lightweight status labels on its timer, but
+        // avoids repeating UI Toolkit allocations during idle editing.
+        private int lastHierarchyRevision = -1;
+        private string lastHierarchySelectedMapObjectId;
+        private string lastHierarchySelectedPieceInstanceId;
+        private int lastMapListRevision = -1;
+        private int lastPieceListRevision = -1;
+        private string lastPieceListSearch;
+        private string lastPieceListDefinitionId;
+        private string lastPieceListInstanceId;
 
         public M3MapEditorFacade Editor => editor;
         public M2SaveSession SaveSession => saveSession;
@@ -2075,7 +2086,16 @@ namespace Sundoll.Presentation
                                          "缺少图片时保留数据并显示占位色块。";
             }
 
-            RefreshHierarchy();
+            var worldRevision = editor.State.revision;
+            if (lastHierarchyRevision != worldRevision ||
+                !string.Equals(lastHierarchySelectedMapObjectId, selectedMapObjectId, StringComparison.Ordinal) ||
+                !string.Equals(lastHierarchySelectedPieceInstanceId, selectedPieceInstanceId, StringComparison.Ordinal))
+            {
+                RefreshHierarchy();
+                lastHierarchyRevision = worldRevision;
+                lastHierarchySelectedMapObjectId = selectedMapObjectId;
+                lastHierarchySelectedPieceInstanceId = selectedPieceInstanceId;
+            }
 
             if (consoleLabel != null)
             {
@@ -2086,7 +2106,7 @@ namespace Sundoll.Presentation
                                     " · 动态标注 " + (console == null ? 0 : console.annotations.Count);
             }
 
-            if (mapListContainer != null)
+            if (mapListContainer != null && lastMapListRevision != worldRevision)
             {
                 mapListContainer.Clear();
                 var console = commandBus.State.m5Console;
@@ -2114,9 +2134,22 @@ namespace Sundoll.Presentation
                         mapListContainer.Add(mapButton);
                     }
                 }
+
+                lastMapListRevision = worldRevision;
             }
 
-            RefreshPieceLibraryList();
+            var pieceSearch = pieceSearchField == null ? string.Empty : pieceSearchField.value ?? string.Empty;
+            if (lastPieceListRevision != worldRevision ||
+                !string.Equals(lastPieceListSearch, pieceSearch, StringComparison.Ordinal) ||
+                !string.Equals(lastPieceListDefinitionId, selectedPieceDefinitionId, StringComparison.Ordinal) ||
+                !string.Equals(lastPieceListInstanceId, selectedPieceInstanceId, StringComparison.Ordinal))
+            {
+                RefreshPieceLibraryList();
+                lastPieceListRevision = worldRevision;
+                lastPieceListSearch = pieceSearch;
+                lastPieceListDefinitionId = selectedPieceDefinitionId;
+                lastPieceListInstanceId = selectedPieceInstanceId;
+            }
 
             if (historyLabel != null)
             {
