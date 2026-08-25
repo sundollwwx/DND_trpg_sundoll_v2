@@ -30,6 +30,7 @@ namespace Sundoll.Tests.PlayMode
             Assert.That(document, Is.Not.Null);
             Assert.That(document.rootVisualElement.Q<TextField>("PieceSearch"), Is.Not.Null);
             Assert.That(document.rootVisualElement.Q<VisualElement>("PieceLibraryList"), Is.Not.Null);
+            Assert.That(document.rootVisualElement.Q<Button>("PickPieceImageFile"), Is.Not.Null);
             Assert.That(document.rootVisualElement.Q<VisualElement>("HostMapList"), Is.Not.Null);
             Assert.That(document.rootVisualElement.Q<VisualElement>("HostHierarchy"), Is.Not.Null);
             Assert.That(document.rootVisualElement.Q<VisualElement>("HostContextMenu"), Is.Not.Null);

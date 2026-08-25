@@ -71,7 +71,7 @@
 
 ## Testing And Validation
 
-- EditMode tests: 76 first-party tests; 76 passed, 0 failed, 0 ignored in the latest completed Unity Editor run. The suite contains M1-M4 coverage plus M5 multi-map/console tests, M6A/M6B rule and Loopback tests, and M7 migration/frozen-save/pool tests.
+- EditMode tests: 78 first-party tests; 78 passed, 0 failed, 0 ignored in the latest completed Unity Editor run. The suite contains M1-M4 coverage plus M5 multi-map/console tests, M6A/M6B rule and Loopback tests, and M7 migration/frozen-save/pool tests.
 - PlayMode validation: 5/5 passed in `M3Workbench.unity`, covering startup, five Tilemap projections, edit and dirty-region refresh, hidden/locked layer behavior, M4 placeholder piece projection, M5 fog/annotation projection, Workbench UI controls, runtime image import/thumbnail generation, M7 texture cache lifecycle and View destruction cleanup. Batch validation is headless; real-window visual layout and mouse feel remain unverified.
 - CI/build validation: no CI configuration detected. M7 macOS universal IL2CPP build result is Success and the M5 projection-inclusive Player Smoke passed; Unity BuildReport has a TypeDB duplicate-type diagnostic count that remains a release caveat. Details are in `Docs/M7-结果报告.md`. Latest test evidence is `SundollWorld/TestResults_EditMode_20260825_m5_hierarchy_context.xml` (78/78) and `SundollWorld/TestResults_PlayMode_20260825_m5_hierarchy_context.xml` (5/5); macOS baselines cover batch edit, Snapshot, Revision save and 10,000 Journal recovery, while 60 FPS/allocation, Windows build, independent-process forced-exit recovery and cross-platform save exchange remain unverified.
 

@@ -56,8 +56,10 @@ namespace Sundoll.Presentation
                     renderer.sprite = fogSprite;
                     renderer.color = new Color(0.01f, 0.015f, 0.025f, 0.78f);
                     renderer.sortingOrder = 400;
-                    renderer.drawMode = SpriteDrawMode.Sliced;
-                    renderer.size = Vector2.one * 0.98f;
+                    // The runtime 1x1 fog sprite is a simple full-cell quad;
+                    // Sliced mode emits a Full Rect import warning for it.
+                    renderer.drawMode = SpriteDrawMode.Simple;
+                    view.transform.localScale = Vector3.one * 0.98f;
                     fogViews[id] = view;
                 }
 

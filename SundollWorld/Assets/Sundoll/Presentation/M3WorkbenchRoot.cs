@@ -370,6 +370,10 @@ namespace Sundoll.Presentation
             pieceImagePathField = new TextField("图片路径") { name = "PieceImagePath" };
             pieceImagePathField.style.marginTop = 6f;
             panel.Add(pieceImagePathField);
+            var pickImageButton = new Button(PickPieceImageFile) { text = "选择图片文件" };
+            pickImageButton.name = "PickPieceImageFile";
+            pickImageButton.style.marginTop = 4f;
+            panel.Add(pickImageButton);
             var importImageButton = new Button(ImportPieceImageFromPath) { text = "导入图片路径" };
             importImageButton.style.marginTop = 4f;
             panel.Add(importImageButton);
@@ -517,6 +521,25 @@ namespace Sundoll.Presentation
         {
             var operation = saveSession.QueueSave("Workbench 手动保存 Snapshot");
             status = operation.Status == M2SaveStatus.Saving ? "Workbench Snapshot 保存中" : saveSession.LastAction;
+            RefreshUiState();
+        }
+
+        private void PickPieceImageFile()
+        {
+            if (M4NativeFilePicker.TryPickImageFile(out var path, out var diagnostic))
+            {
+                if (pieceImagePathField != null)
+                {
+                    pieceImagePathField.SetValueWithoutNotify(path);
+                }
+
+                status = "已选择图片文件，可继续导入";
+            }
+            else
+            {
+                status = diagnostic;
+            }
+
             RefreshUiState();
         }
 
@@ -1352,7 +1375,7 @@ namespace Sundoll.Presentation
             var path = pieceImagePathField == null ? string.Empty : pieceImagePathField.value;
             if (string.IsNullOrWhiteSpace(path) || !File.Exists(path.Trim()))
             {
-                status = "请输入存在的图片文件路径；当前版本未绑定原生文件选择器";
+                status = "请输入存在的图片文件路径，或先使用“选择图片文件”";
                 RefreshUiState();
                 return;
             }
