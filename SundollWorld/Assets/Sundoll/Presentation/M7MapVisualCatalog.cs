@@ -60,11 +60,18 @@ namespace Sundoll.Presentation
             AddTerrain("terrain-sand", "沙地", "#C2A66A", "#8F7747", MapVisualPattern.Diagonal);
             AddTerrain("terrain-water", "水面", "#477A8F", "#274D62", MapVisualPattern.Wave);
             AddTerrain("terrain-void", "虚空", "#222832", "#10151C", MapVisualPattern.Checker);
+            AddTerrain("terrain-cobble", "鹅卵石", "#85817A", "#4D4A46", MapVisualPattern.Marker);
+            AddTerrain("terrain-marble", "大理石", "#C7C3B8", "#817D75", MapVisualPattern.Diagonal);
+            AddTerrain("terrain-snow", "雪地", "#D8DEE0", "#9EAFB5", MapVisualPattern.Wave);
+            AddTerrain("terrain-lava", "熔岩", "#9E3F2E", "#E1963B", MapVisualPattern.Wave);
 
             Add("wall-solid", M3MapLayerIds.Wall, "石墙", "#665D54", "#2E2A27", MapVisualPattern.Brick);
             Add("wall-brick", M3MapLayerIds.Wall, "砖墙", "#805449", "#412D29", MapVisualPattern.Brick);
             Add("wall-wood", M3MapLayerIds.Wall, "木墙", "#725039", "#35261E", MapVisualPattern.Plank);
             Add("wall-ruin", M3MapLayerIds.Wall, "残墙", "#77736B", "#353432", MapVisualPattern.Diagonal);
+            Add("wall-metal", M3MapLayerIds.Wall, "金属墙", "#65717A", "#303942", MapVisualPattern.Plank);
+            Add("wall-hedge", M3MapLayerIds.Wall, "树篱", "#526B43", "#293A25", MapVisualPattern.Diagonal);
+            Add("wall-cliff", M3MapLayerIds.Wall, "崖壁", "#776554", "#3E342C", MapVisualPattern.Marker);
 
             Add("object-marker", M3MapLayerIds.Object, "物件标记", "#547394", "#24394F", MapVisualPattern.Marker);
             Add("object-crate", M3MapLayerIds.Object, "木箱", "#90643D", "#3F2B20", MapVisualPattern.Cross);
@@ -72,17 +79,26 @@ namespace Sundoll.Presentation
             Add("object-pillar", M3MapLayerIds.Object, "石柱", "#99958B", "#4C4A46", MapVisualPattern.Marker);
             Add("object-stairs", M3MapLayerIds.Object, "楼梯", "#7D7B75", "#3E3D3A", MapVisualPattern.Diagonal);
             Add("object-torch", M3MapLayerIds.Object, "火炬", "#D38A3A", "#6B3425", MapVisualPattern.Marker);
+            Add("object-door", M3MapLayerIds.Object, "门", "#815A3D", "#34251D", MapVisualPattern.Cross);
+            Add("object-chest", M3MapLayerIds.Object, "宝箱", "#A2733D", "#432D1D", MapVisualPattern.Marker);
+            Add("object-chair", M3MapLayerIds.Object, "椅子", "#75513A", "#33231B", MapVisualPattern.Cross);
+            Add("object-barrel", M3MapLayerIds.Object, "木桶", "#815D3F", "#3D2B20", MapVisualPattern.Plank);
+            Add("object-statue", M3MapLayerIds.Object, "雕像", "#96938A", "#4B4944", MapVisualPattern.Marker);
 
             Add("interaction-trigger", M3MapLayerIds.Interaction, "触发区域", "#C19A4E", "#654B22", MapVisualPattern.Cross);
             Add("interaction-trap", M3MapLayerIds.Interaction, "陷阱", "#B95E4C", "#5B2C28", MapVisualPattern.Cross);
             Add("interaction-secret", M3MapLayerIds.Interaction, "秘密", "#75649D", "#362D51", MapVisualPattern.Marker);
             Add("interaction-entry", M3MapLayerIds.Interaction, "入口", "#4F8E78", "#21483B", MapVisualPattern.Marker);
+            Add("interaction-exit", M3MapLayerIds.Interaction, "出口", "#4D7997", "#233D50", MapVisualPattern.Marker);
+            Add("interaction-locked", M3MapLayerIds.Interaction, "锁定", "#A87543", "#4F3420", MapVisualPattern.Cross);
 
             Add("annotation-note", M3MapLayerIds.StaticAnnotation, "备注", "#CBAA61", "#624A22", MapVisualPattern.Marker);
             Add("annotation-danger", M3MapLayerIds.StaticAnnotation, "危险", "#C15C55", "#5E2928", MapVisualPattern.Cross);
             Add("annotation-objective", M3MapLayerIds.StaticAnnotation, "目标", "#5E8DB1", "#27445D", MapVisualPattern.Marker);
             Add("annotation-start", M3MapLayerIds.StaticAnnotation, "起点", "#62946A", "#294D32", MapVisualPattern.Marker);
             Add("annotation-number", M3MapLayerIds.StaticAnnotation, "编号", "#8A76A6", "#433553", MapVisualPattern.Checker);
+            Add("annotation-text", M3MapLayerIds.StaticAnnotation, "文字", "#B09A74", "#54452F", MapVisualPattern.Plank);
+            Add("annotation-warning", M3MapLayerIds.StaticAnnotation, "警告", "#B96742", "#582F24", MapVisualPattern.Diagonal);
         }
 
         public IReadOnlyList<MapVisualDefinition> Definitions => definitions;

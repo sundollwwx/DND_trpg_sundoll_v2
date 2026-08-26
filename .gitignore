@@ -50,5 +50,7 @@ SundollWorld/TestResults_*.xml
 !SundollWorld/TestResults_PlayMode_20260825_m5_hierarchy_context.xml
 !SundollWorld/TestResults_EditMode_20260826_workspace3_full.xml
 !SundollWorld/TestResults_PlayMode_20260826_workspace3_full.xml
+!SundollWorld/TestResults_EditMode_20260826_starter_full.xml
+!SundollWorld/TestResults_PlayMode_20260826_starter_full.xml
 *.tmp
 *.bak

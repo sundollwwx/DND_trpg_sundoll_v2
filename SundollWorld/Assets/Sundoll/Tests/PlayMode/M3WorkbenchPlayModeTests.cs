@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using System;
 using System.IO;
 using NUnit.Framework;
@@ -17,6 +18,89 @@ namespace Sundoll.Tests.PlayMode
 {
     public sealed class M3WorkbenchPlayModeTests
     {
+        [Test]
+        public void M7StarterManifestHasUniqueAuditableRecords()
+        {
+            var manifest = M7StarterContentManifest.CreateBuiltIn();
+            var ids = new HashSet<string>(StringComparer.Ordinal);
+            var mapVisuals = 0;
+            var pieceTokens = 0;
+            foreach (var record in manifest.Records)
+            {
+                Assert.That(ids.Add(record.ContentId), Is.True, record.ContentId);
+                Assert.That(record.Author, Is.Not.Empty);
+                Assert.That(record.Source, Is.Not.Empty);
+                Assert.That(record.License, Is.Not.Empty);
+                Assert.That(record.Attribution, Is.Not.Empty);
+                Assert.That(record.Sha256, Does.Match("^[0-9a-f]{64}$"));
+                if (record.Kind == M7StarterContentKind.MapVisual)
+                {
+                    mapVisuals++;
+                }
+                else if (record.Kind == M7StarterContentKind.PieceToken)
+                {
+                    pieceTokens++;
+                }
+            }
+
+            Assert.That(manifest.Records, Has.Count.EqualTo(55));
+            Assert.That(mapVisuals, Is.EqualTo(43));
+            Assert.That(pieceTokens, Is.EqualTo(12));
+            Assert.That(manifest.PieceDefinitions, Has.Count.EqualTo(12));
+        }
+
+        [UnityTest]
+        public IEnumerator M7StarterInstallerUsesBlobPipelineAndIsIdempotent()
+        {
+            var projectRoot = Path.Combine(Path.GetTempPath(), "Sundoll-M7-Starter-" + Guid.NewGuid().ToString("N"));
+            WorkbenchSession session = null;
+            try
+            {
+                var saveSession = M2SaveSession.Open(projectRoot, M1VerticalSlice.CreateDemoBus().State);
+                session = new WorkbenchSession(saveSession);
+                var manifest = M7StarterContentManifest.CreateBuiltIn();
+
+                var first = StarterContentInstaller.InstallMissing(session, manifest);
+                Assert.That(first.Accepted, Is.True, string.Join("; ", first.Diagnostics));
+                Assert.That(first.RegisteredAssets, Is.EqualTo(12));
+                Assert.That(first.InstalledDefinitions, Is.EqualTo(12));
+                Assert.That(session.CommandBus.State.pieceAssets, Has.Count.EqualTo(12));
+                Assert.That(session.CommandBus.State.pieceDefinitions, Has.Count.EqualTo(12));
+                foreach (var starter in manifest.PieceDefinitions)
+                {
+                    var definition = M4PieceQueries.FindDefinition(session.CommandBus.State, starter.DefinitionId);
+                    var asset = M4PieceQueries.FindAsset(session.CommandBus.State, definition == null ? null : definition.assetId);
+                    Assert.That(definition, Is.Not.Null, starter.DefinitionId);
+                    Assert.That(asset, Is.Not.Null, starter.DefinitionId);
+                    Assert.That(session.PieceAssetCatalog.IsAssetAvailable(asset), Is.True, starter.DefinitionId);
+                    Assert.That(session.PieceAssetCatalog.IsThumbnailAvailable(asset), Is.True, starter.DefinitionId);
+                }
+
+                var hashBeforeSecondInstall = M2CanonicalStateHasher.Compute(session.CommandBus.State);
+                var second = StarterContentInstaller.InstallMissing(session, manifest);
+                Assert.That(second.Accepted, Is.True, string.Join("; ", second.Diagnostics));
+                Assert.That(second.Changed, Is.False);
+                Assert.That(second.SkippedDefinitions, Is.EqualTo(12));
+                Assert.That(M2CanonicalStateHasher.Compute(session.CommandBus.State), Is.EqualTo(hashBeforeSecondInstall));
+
+                session.SaveSession.Save(session.CommandBus.State);
+                var reloaded = session.SaveSession.Reload();
+                Assert.That(
+                    M2CanonicalStateHasher.Compute(reloaded.state),
+                    Is.EqualTo(M2CanonicalStateHasher.Compute(session.CommandBus.State)));
+            }
+            finally
+            {
+                session?.Dispose();
+                if (Directory.Exists(projectRoot))
+                {
+                    Directory.Delete(projectRoot, true);
+                }
+            }
+
+            yield return null;
+        }
+
         [Test]
         public void M7WorkbenchTabsShowOnlyTheSelectedPanel()
         {
@@ -53,6 +137,7 @@ namespace Sundoll.Tests.PlayMode
             Assert.That(document.rootVisualElement.Q<TextField>("PieceSearch"), Is.Not.Null);
             Assert.That(document.rootVisualElement.Q<VisualElement>("PieceLibraryList"), Is.Not.Null);
             Assert.That(document.rootVisualElement.Q<Button>("PickPieceImageFile"), Is.Not.Null);
+            Assert.That(document.rootVisualElement.Q<Button>("InstallStarterContent"), Is.Not.Null);
             Assert.That(document.rootVisualElement.Q<ScrollView>("ToolPanelScroll"), Is.Not.Null);
             Assert.That(document.rootVisualElement.Q<Button>("WorkbenchTab_map"), Is.Not.Null);
             Assert.That(document.rootVisualElement.Q<Button>("WorkbenchTab_pieces"), Is.Not.Null);

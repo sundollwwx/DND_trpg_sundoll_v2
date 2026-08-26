@@ -42,6 +42,7 @@ namespace Sundoll.Presentation
         private M3WorkspaceStateStore workspaceStateStore;
         private M3WorkbenchMapProjection projection;
         private M7BuiltinMapVisualCatalog mapVisualCatalog;
+        private M7StarterContentManifest starterContentManifest;
         private UIDocument uiDocument;
         private PanelSettings panelSettings;
         private Label saveStatusLabel;
@@ -131,6 +132,7 @@ namespace Sundoll.Presentation
             }
 
             mapVisualCatalog = new M7BuiltinMapVisualCatalog();
+            starterContentManifest = M7StarterContentManifest.CreateBuiltIn(mapVisualCatalog);
             EnsureSelectedContentDefaults();
             projection.Bind(editor, layerEditState, mapVisualCatalog);
             pieceProjection = GetComponentInChildren<M4WorkbenchPieceProjection>();
@@ -480,6 +482,14 @@ namespace Sundoll.Presentation
             var pieceSection = CreateWorkspaceSection("PieceLibraryScroll");
             var pieceTitle = new Label("棋子库") { name = "PieceLibraryTitle" };
             pieceSection.Add(pieceTitle);
+            var starterContentButton = new Button(InstallStarterContent) { text = "安装 / 修复内置中性棋子" };
+            starterContentButton.name = "InstallStarterContent";
+            starterContentButton.tooltip = "安装 12 个项目原创中性棋子；重复执行只补缺失内容";
+            starterContentButton.style.marginTop = 5f;
+            pieceSection.Add(starterContentButton);
+            var starterContentNote = new Label("内置素材为项目原创程序化内容，无外部归属要求。");
+            starterContentNote.AddToClassList("sw-muted");
+            pieceSection.Add(starterContentNote);
             pieceSearchField = new TextField { name = "PieceSearch", tooltip = "按名称、分类或标签搜索" };
             pieceSearchField.style.marginTop = 5f;
             pieceSearchField.RegisterValueChangedCallback(_ => RefreshPieceLibraryList());
@@ -1588,6 +1598,32 @@ namespace Sundoll.Presentation
             RefreshUiState();
         }
 
+        private void InstallStarterContent()
+        {
+            if (workbenchSession == null || starterContentManifest == null)
+            {
+                status = "当前项目尚未准备好安装内置素材";
+                RefreshUiState();
+                return;
+            }
+
+            var result = StarterContentInstaller.InstallMissing(workbenchSession, starterContentManifest);
+            if (string.IsNullOrWhiteSpace(selectedPieceDefinitionId) && starterContentManifest.PieceDefinitions.Count > 0)
+            {
+                selectedPieceDefinitionId = starterContentManifest.PieceDefinitions[0].DefinitionId;
+                SyncSelectedPieceDefinitionFields();
+            }
+
+            pieceProjection?.RefreshAll();
+            lastPieceListRevision = -1;
+            status = result.Accepted
+                ? "内置棋子已检查：新增定义 " + result.InstalledDefinitions +
+                  "，修复 " + result.RepairedDefinitions +
+                  "，已有 " + result.SkippedDefinitions
+                : "内置棋子部分安装失败：" + string.Join("；", result.Diagnostics);
+            RefreshUiState();
+        }
+
         private void CreateInstanceFromSelectedDefinition()
         {
             if (pieceLibrary == null)
@@ -2321,7 +2357,8 @@ namespace Sundoll.Presentation
             {
                 pieceLibraryLabel.text = "定义 " + (editor.State.pieceDefinitions == null ? 0 : editor.State.pieceDefinitions.Count) +
                                          " · 实例 " + (editor.State.pieceInstances == null ? 0 : editor.State.pieceInstances.Count) + "\n" +
-                                         "缺少图片时保留数据并显示占位色块。";
+                                         "内置内容 " + (starterContentManifest == null ? 0 : starterContentManifest.Records.Count) +
+                                         " 项 · 缺少图片时保留数据并显示占位色块。";
             }
 
             var worldRevision = editor.State.revision;
