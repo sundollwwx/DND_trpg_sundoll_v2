@@ -19,6 +19,7 @@
 - `scripts/unity-run-tests.sh`：固定使用 `/Applications/Unity/Hub/Editor/6000.3.22f1/Unity.app/Contents/MacOS/Unity` 启动 batchmode，生成带时间戳的测试 XML 和日志。
 - `scripts/unity-run-tests.sh` 在 Unity 未产出 XML 时会自动打印最近 License/UPM/IPC 线索并调用 Doctor，避免“只知道失败、不知道卡在哪里”。
 - `scripts/unity-run-tests.sh` 增加 watchdog：默认 900 秒整体超时，180 秒 License 崩溃/重连循环保护；触发时停止本次 batchmode 子进程并保留日志。退出码 `124` 表示整体超时，`125` 表示 License 重连循环。
+- `scripts/unity-run-tests.sh` 在发现 `UnityLockfile` 时先检查精确的 Unity Editor 进程：确认没有 Editor 才把明确的临时锁移动到 `/private/tmp/SundollWorld_UnityLockfile_<时间>.stale` 备份；若 Editor 正在运行，仍然停止并要求先关闭。
 
 ## 2026-08-27 15:33 复查
 
@@ -27,7 +28,8 @@
 - 当前仍未检测到 MCP bridge 或官方 relay；Codex 不能实时读取 Editor Console/Hierarchy。
 - Licensing 日志仍有 `401 Token not found in cache`、`No ULF license found` 和 `assigned update failed` 记录；Editor 日志也有证书校验噪声，但同一轮日志显示 entitlement 能成功解析。
 - 本轮复现一次 batchmode 卡在 License Client：日志包含 `Timed-out after 60.00s`、`ObjectDisposedException` 和 `The re-connection attempt was UN-successful`；中止后残留一个空 `Temp/UnityLockfile` 和孤立 Licensing Client。已手动结束孤立客户端，并将空锁移动到 `/private/tmp/SundollWorld_UnityLockfile_20260827_153828.stale`。
-- 清理后用授权的系统权限复跑 `scripts/unity-run-tests.sh all`，最新 EditMode `83/83`、PlayMode `11/11` 均通过，XML 为 `TestResults_EditMode_20260827_155030.xml` 和 `TestResults_PlayMode_20260827_155030.xml`。
+- 清理后用授权的系统权限复跑 `scripts/unity-run-tests.sh all`，历史基线 EditMode `83/83`、PlayMode `11/11` 均通过，XML 为 `TestResults_EditMode_20260827_155030.xml` 和 `TestResults_PlayMode_20260827_155030.xml`。
+- 22:01 的复跑再次确认：沙箱会阻止 `/tmp/Unity-Upm-*.sock`，导致 Package Manager IPC 失败；获得必要系统权限后，第一次仍因孤立 Licensing Client 进程触发 `ObjectDisposedException` 和 60 秒重连超时。结束该次验证遗留的孤立客户端、移走临时锁后，22:05 的复跑在 0.45 秒内完成 Licensing 握手并通过 EditMode `84/84`、PlayMode `12/12`；新增性能测试后 22:11 再通过 EditMode `84/84`、PlayMode `13/13`。
 - 因此本项目侧采用“固定 batchmode + XML/日志证据”的稳定验证链路；若要实时 Editor 控制，需要另行确认并安装一个 Unity MCP provider。
 
 ## 日常使用
@@ -49,6 +51,7 @@ UNITY_LICENSE_STALL_SECONDS=240 UNITY_TEST_TIMEOUT_SECONDS=1200 scripts/unity-ru
 
 - 自动化验证优先使用精确的 Unity `6000.3.22f1` 路径，不依赖 Hub 当前选中的项目行。
 - 交互式 Editor 打开时不要并行跑 batchmode 测试；若 `Temp/UnityLockfile` 存在，先关闭 Editor。
+- 若上次 Unity 异常退出遗留锁，验证脚本会在没有活动 Editor 时自动备份并移走该临时锁；不要手动删除正在运行 Editor 的锁文件。
 - 不在项目中同时安装多个 Unity MCP provider，避免工具重复和连接状态混乱。
 - 如果后续需要 Codex 直接读 Unity Console、查场景层级或操作 GameObject，需要单独选择一个 Unity MCP provider；当前不在未经确认的情况下修改 Unity 包配置。
 

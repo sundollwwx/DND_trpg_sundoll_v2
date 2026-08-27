@@ -17,6 +17,9 @@ namespace Sundoll.Presentation
         private readonly Dictionary<string, GameObject> views = new Dictionary<string, GameObject>(StringComparer.Ordinal);
         private readonly Dictionary<string, Sprite> viewSprites = new Dictionary<string, Sprite>(StringComparer.Ordinal);
         private readonly Dictionary<string, string> viewAssetIds = new Dictionary<string, string>(StringComparer.Ordinal);
+        private readonly HashSet<string> activeIds = new HashSet<string>(StringComparer.Ordinal);
+        private readonly List<string> staleIds = new List<string>();
+        private readonly HashSet<string> positionVisited = new HashSet<string>(StringComparer.Ordinal);
         private M1CommandBus commandBus;
         private M4PieceAssetCatalog assetCatalog;
         private M1WorldState audienceProjectionState;
@@ -61,7 +64,7 @@ namespace Sundoll.Presentation
 
             EnsurePlaceholderSprite();
             var state = audienceProjectionState ?? commandBus.State;
-            var activeIds = new HashSet<string>(StringComparer.Ordinal);
+            activeIds.Clear();
             if (state.pieceInstances != null)
             {
                 foreach (var instance in state.pieceInstances)
@@ -93,7 +96,7 @@ namespace Sundoll.Presentation
                 }
             }
 
-            var staleIds = new List<string>();
+            staleIds.Clear();
             foreach (var pair in views)
             {
                 if (!activeIds.Contains(pair.Key))
@@ -180,9 +183,9 @@ namespace Sundoll.Presentation
 
         private bool TryResolveBoardPosition(M1WorldState state, string instanceId, out Vector3 position)
         {
-            var visited = new HashSet<string>(StringComparer.Ordinal);
+            positionVisited.Clear();
             var current = M4PieceQueries.FindInstance(state, instanceId);
-            while (current != null && current.location != null && visited.Add(current.id))
+            while (current != null && current.location != null && positionVisited.Add(current.id))
             {
                 switch (current.location.kind)
                 {

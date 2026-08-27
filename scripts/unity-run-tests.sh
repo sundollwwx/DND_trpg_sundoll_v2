@@ -84,11 +84,26 @@ run_mode() {
   fi
 
   if [ -f "${PROJECT_ROOT}/Temp/UnityLockfile" ]; then
-    printf 'UnityLockfile is present; close the interactive Editor before batch validation.\n' >&2
-    if command -v ps >/dev/null 2>&1; then
-      ps aux 2>/dev/null | grep -Ei 'Unity|Unity Hub|UnityLicensing|UnityPackageManager|UnityPackage' | grep -v grep >&2 || true
+    local editor_processes=""
+    if command -v pgrep >/dev/null 2>&1; then
+      editor_processes="$(pgrep -f '/Unity\.app/Contents/MacOS/Unity( |$)' 2>/dev/null || true)"
     fi
-    return 3
+
+    if [ -n "${editor_processes}" ]; then
+      printf 'UnityLockfile is present and an interactive Editor is running; close it before batch validation.\n' >&2
+      if command -v pgrep >/dev/null 2>&1; then
+        pgrep -fl '/Unity\.app/Contents/MacOS/Unity( |$)' >&2 || true
+      fi
+      return 3
+    fi
+
+    local stale_lock_path="/private/tmp/SundollWorld_UnityLockfile_${STAMP}.stale"
+    if mv "${PROJECT_ROOT}/Temp/UnityLockfile" "${stale_lock_path}" 2>/dev/null; then
+      printf 'Moved stale UnityLockfile to %s; no Unity Editor process was detected.\n' "${stale_lock_path}" >&2
+    else
+      printf 'UnityLockfile is present and could not be moved safely; inspect the Editor state before retrying.\n' >&2
+      return 3
+    fi
   fi
 
   run_unity_with_watchdog "${log_path}" \

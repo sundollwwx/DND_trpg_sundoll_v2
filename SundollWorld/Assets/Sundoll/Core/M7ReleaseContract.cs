@@ -140,6 +140,14 @@ namespace Sundoll.Core
         public double maxMilliseconds;
     }
 
+    public sealed class M7AllocationSample
+    {
+        public int sampleCount;
+        public long p50Bytes;
+        public long p95Bytes;
+        public long maxBytes;
+    }
+
     public static class M7PerformanceProbe
     {
         public static M7PerformanceSample Measure(Action action, int sampleCount = 20)
@@ -172,7 +180,45 @@ namespace Sundoll.Core
             };
         }
 
+        public static M7AllocationSample MeasureAllocations(Action action, int sampleCount = 20)
+        {
+            if (action == null)
+            {
+                throw new ArgumentNullException(nameof(action));
+            }
+
+            if (sampleCount < 1)
+            {
+                throw new ArgumentOutOfRangeException(nameof(sampleCount));
+            }
+
+            var samples = new List<long>(sampleCount);
+            for (var index = 0; index < sampleCount; index++)
+            {
+                var before = GC.GetAllocatedBytesForCurrentThread();
+                action();
+                var after = GC.GetAllocatedBytesForCurrentThread();
+                samples.Add(Math.Max(0L, after - before));
+            }
+
+            samples.Sort();
+            return new M7AllocationSample
+            {
+                sampleCount = samples.Count,
+                p50Bytes = PercentileBytes(samples, 0.50),
+                p95Bytes = PercentileBytes(samples, 0.95),
+                maxBytes = samples[samples.Count - 1]
+            };
+        }
+
         private static double Percentile(List<double> sorted, double percentile)
+        {
+            var index = (int)Math.Ceiling(sorted.Count * percentile) - 1;
+            index = Math.Max(0, Math.Min(sorted.Count - 1, index));
+            return sorted[index];
+        }
+
+        private static long PercentileBytes(List<long> sorted, double percentile)
         {
             var index = (int)Math.Ceiling(sorted.Count * percentile) - 1;
             index = Math.Max(0, Math.Min(sorted.Count - 1, index));
