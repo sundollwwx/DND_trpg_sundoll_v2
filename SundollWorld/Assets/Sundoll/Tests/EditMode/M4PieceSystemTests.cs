@@ -90,6 +90,24 @@ namespace Sundoll.Tests.EditMode
         }
 
         [Test]
+        public void TopmostVisibleBoardInstanceCanBePickedAtCell()
+        {
+            var bus = CreateBusWithDefinition();
+            Execute(bus, new M4CreatePieceInstanceCommand("m4-pick-a", bus.State.revision, "definition-token", "pick-a"));
+            Execute(bus, new M4CreatePieceInstanceCommand("m4-pick-b", bus.State.revision, "definition-token", "pick-b"));
+            Execute(bus, new M4PlacePieceCommand("m4-pick-place-a", bus.State.revision, "pick-a", 2, 2));
+            Execute(bus, new M4PlacePieceCommand("m4-pick-place-b", bus.State.revision, "pick-b", 2, 2));
+
+            var topmost = M4PieceQueries.FindTopmostBoardInstanceAt(bus.State, bus.State.map.id, 2, 2);
+            Assert.That(topmost.id, Is.EqualTo("pick-b"));
+
+            Execute(bus, new M4SetPiecePresentationCommand(
+                "m4-pick-hide", bus.State.revision, "pick-b", topmost.rotation, topmost.flipped, false));
+            var next = M4PieceQueries.FindTopmostBoardInstanceAt(bus.State, bus.State.map.id, 2, 2);
+            Assert.That(next.id, Is.EqualTo("pick-a"));
+        }
+
+        [Test]
         public void StackOrderCanBeAdjustedWithoutSortingTheWholeWorldState()
         {
             var bus = CreateBusWithDefinition();

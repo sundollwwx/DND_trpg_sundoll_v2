@@ -1743,6 +1743,28 @@ namespace Sundoll.Presentation
             RefreshUiState();
         }
 
+        public bool TrySelectPieceAtScreen(Vector2 screenPosition)
+        {
+            if (hostPreviewMode || commandBus == null || editor == null || editor.State == null ||
+                editor.State.map == null || !TryScreenToCell(screenPosition, out var cell))
+            {
+                return false;
+            }
+
+            var instance = M4PieceQueries.FindTopmostBoardInstanceAt(
+                editor.State,
+                editor.State.map.id,
+                cell.x,
+                cell.y);
+            if (instance == null)
+            {
+                return false;
+            }
+
+            SelectPieceInstance(instance.id);
+            return true;
+        }
+
         public void CopySelection()
         {
             clipboard = editor.CopySelection(selection, layerEditState);

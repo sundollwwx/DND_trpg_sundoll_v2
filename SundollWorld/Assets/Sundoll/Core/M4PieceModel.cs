@@ -412,6 +412,40 @@ namespace Sundoll.Core
             return null;
         }
 
+        public static M4PieceInstance FindTopmostBoardInstanceAt(
+            M1WorldState state,
+            string boardId,
+            int x,
+            int y,
+            bool visibleOnly = true)
+        {
+            if (state == null || state.pieceInstances == null || string.IsNullOrWhiteSpace(boardId))
+            {
+                return null;
+            }
+
+            M4PieceInstance topmost = null;
+            var topmostStackOrder = int.MinValue;
+            foreach (var instance in state.pieceInstances)
+            {
+                if (instance == null || string.IsNullOrWhiteSpace(instance.id) ||
+                    (visibleOnly && !instance.visible) || instance.location == null ||
+                    instance.location.kind != M1PieceLocationKind.OnBoard ||
+                    instance.location.boardId != boardId || instance.location.x != x || instance.location.y != y)
+                {
+                    continue;
+                }
+
+                if (topmost == null || instance.location.stackOrder >= topmostStackOrder)
+                {
+                    topmost = instance;
+                    topmostStackOrder = instance.location.stackOrder;
+                }
+            }
+
+            return topmost;
+        }
+
         public static int NextStackOrder(M1WorldState state, string boardId, int x, int y, string ignoredInstanceId = null)
         {
             var next = 0;

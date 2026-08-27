@@ -70,8 +70,15 @@ namespace Sundoll.Presentation
             if (mouse.leftButton.wasPressedThisFrame && !panning && root.IsPointerOverMap(position))
             {
                 root.DismissContextMenu();
-                if (keyboard != null && (keyboard.leftAltKey.isPressed || keyboard.rightAltKey.isPressed) &&
-                    root.TryScreenToCell(position, out var pickedCell))
+                var altPick = keyboard != null &&
+                              (keyboard.leftAltKey.isPressed || keyboard.rightAltKey.isPressed);
+                if (!altPick && root.TrySelectPieceAtScreen(position))
+                {
+                    pointerAction = false;
+                    return;
+                }
+
+                if (altPick && root.TryScreenToCell(position, out var pickedCell))
                 {
                     pointerCell = pickedCell;
                     root.PickAt(pointerCell);
