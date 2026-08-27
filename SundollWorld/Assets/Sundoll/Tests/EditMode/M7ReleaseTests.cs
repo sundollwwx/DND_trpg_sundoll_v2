@@ -46,7 +46,7 @@ namespace Sundoll.Tests.EditMode
         [Test]
         public void PerformanceProbeReportsPercentilesAndPoolReusesObjects()
         {
-            var sample = M7PerformanceProbe.Measure(() => { var value = 1 + 1; }, 5);
+            var sample = M7PerformanceProbe.Measure(() => GC.KeepAlive(1 + 1), 5);
             Assert.That(sample.sampleCount, Is.EqualTo(5));
             Assert.That(sample.p95Milliseconds, Is.GreaterThanOrEqualTo(sample.p50Milliseconds));
 

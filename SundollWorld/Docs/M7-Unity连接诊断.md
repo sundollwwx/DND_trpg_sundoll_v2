@@ -17,6 +17,18 @@
 
 - `scripts/unity-doctor.sh`：检查 Unity 版本、Editor 路径、Git 状态、活跃 Unity 进程、项目锁、MCP/relay 痕迹，以及最近 Licensing/Editor/UPM 日志。
 - `scripts/unity-run-tests.sh`：固定使用 `/Applications/Unity/Hub/Editor/6000.3.22f1/Unity.app/Contents/MacOS/Unity` 启动 batchmode，生成带时间戳的测试 XML 和日志。
+- `scripts/unity-run-tests.sh` 在 Unity 未产出 XML 时会自动打印最近 License/UPM/IPC 线索并调用 Doctor，避免“只知道失败、不知道卡在哪里”。
+- `scripts/unity-run-tests.sh` 增加 watchdog：默认 900 秒整体超时，180 秒 License 崩溃/重连循环保护；触发时停止本次 batchmode 子进程并保留日志。退出码 `124` 表示整体超时，`125` 表示 License 重连循环。
+
+## 2026-08-27 15:33 复查
+
+- Unity `6000.3.22f1` 路径存在，项目 `ProjectVersion.txt` 匹配。
+- 当前没有 Unity/Hub/PackageManager 活跃进程，项目下没有 `UnityLockfile` 或其他锁文件。
+- 当前仍未检测到 MCP bridge 或官方 relay；Codex 不能实时读取 Editor Console/Hierarchy。
+- Licensing 日志仍有 `401 Token not found in cache`、`No ULF license found` 和 `assigned update failed` 记录；Editor 日志也有证书校验噪声，但同一轮日志显示 entitlement 能成功解析。
+- 本轮复现一次 batchmode 卡在 License Client：日志包含 `Timed-out after 60.00s`、`ObjectDisposedException` 和 `The re-connection attempt was UN-successful`；中止后残留一个空 `Temp/UnityLockfile` 和孤立 Licensing Client。已手动结束孤立客户端，并将空锁移动到 `/private/tmp/SundollWorld_UnityLockfile_20260827_153828.stale`。
+- 清理后用授权的系统权限复跑 `scripts/unity-run-tests.sh all`，最新 EditMode `83/83`、PlayMode `11/11` 均通过，XML 为 `TestResults_EditMode_20260827_155030.xml` 和 `TestResults_PlayMode_20260827_155030.xml`。
+- 因此本项目侧采用“固定 batchmode + XML/日志证据”的稳定验证链路；若要实时 Editor 控制，需要另行确认并安装一个 Unity MCP provider。
 
 ## 日常使用
 
@@ -25,6 +37,12 @@ scripts/unity-doctor.sh
 scripts/unity-run-tests.sh editmode
 scripts/unity-run-tests.sh playmode
 scripts/unity-run-tests.sh all
+```
+
+如需临时调整 watchdog：
+
+```bash
+UNITY_LICENSE_STALL_SECONDS=240 UNITY_TEST_TIMEOUT_SECONDS=1200 scripts/unity-run-tests.sh all
 ```
 
 ## 操作原则

@@ -8,6 +8,63 @@ PROJECT_ROOT="${REPO_ROOT}/SundollWorld"
 UNITY_EDITOR="/Applications/Unity/Hub/Editor/${EXPECTED_UNITY_VERSION}/Unity.app/Contents/MacOS/Unity"
 MODE="${1:-playmode}"
 STAMP="$(date +%Y%m%d_%H%M%S)"
+UNITY_TEST_TIMEOUT_SECONDS="${UNITY_TEST_TIMEOUT_SECONDS:-900}"
+UNITY_LICENSE_STALL_SECONDS="${UNITY_LICENSE_STALL_SECONDS:-180}"
+
+print_connection_diagnostics() {
+  local log_path="$1"
+
+  printf '\n== Unity connection diagnostics ==\n' >&2
+  if [ -f "${log_path}" ]; then
+    printf 'Recent signals from %s:\n' "${log_path}" >&2
+    grep -E 'Licensing|LicenseClient|Entitlement|Token|Package Manager|UPM|IPC|Timed-out|ObjectDisposedException|Curl error|No ULF|Access token|Aborting batchmode|Fatal|Error' "${log_path}" | tail -n 40 >&2 || true
+  else
+    printf 'Unity log was not created: %s\n' "${log_path}" >&2
+  fi
+
+  if [ -x "${SCRIPT_DIR}/unity-doctor.sh" ]; then
+    "${SCRIPT_DIR}/unity-doctor.sh" >&2 || true
+  else
+    printf 'unity-doctor.sh is unavailable.\n' >&2
+  fi
+}
+
+run_unity_with_watchdog() {
+  local log_path="$1"
+  shift
+  local start_seconds="${SECONDS}"
+  local elapsed_seconds=0
+
+  "$@" &
+  local unity_pid=$!
+
+  while kill -0 "${unity_pid}" 2>/dev/null; do
+    elapsed_seconds=$((SECONDS - start_seconds))
+
+    if [ "${elapsed_seconds}" -ge "${UNITY_TEST_TIMEOUT_SECONDS}" ]; then
+      printf 'Unity batchmode exceeded timeout after %s seconds; stopping process %s.\n' "${elapsed_seconds}" "${unity_pid}" >&2
+      kill "${unity_pid}" 2>/dev/null || true
+      wait "${unity_pid}" 2>/dev/null || true
+      return 124
+    fi
+
+    if [ "${elapsed_seconds}" -ge "${UNITY_LICENSE_STALL_SECONDS}" ] && [ -f "${log_path}" ]; then
+      if grep -q 'Licensing initialization failed' "${log_path}" \
+        && grep -q 'ObjectDisposedException' "${log_path}" \
+        && grep -q 'The re-connection attempt was UN-successful' "${log_path}"; then
+        printf 'Unity Licensing Client appears stuck after %s seconds; stopping batchmode process %s.\n' "${elapsed_seconds}" "${unity_pid}" >&2
+        kill "${unity_pid}" 2>/dev/null || true
+        wait "${unity_pid}" 2>/dev/null || true
+        return 125
+      fi
+    fi
+
+    sleep 5
+  done
+
+  wait "${unity_pid}"
+  return "$?"
+}
 
 run_mode() {
   local mode_name="$1"
@@ -19,6 +76,7 @@ run_mode() {
   printf 'Running %s tests with Unity %s\n' "${platform_name}" "${EXPECTED_UNITY_VERSION}"
   printf 'Result: %s\n' "${result_path}"
   printf 'Log:    %s\n' "${log_path}"
+  printf 'Timeout: %ss; license stall guard: %ss\n' "${UNITY_TEST_TIMEOUT_SECONDS}" "${UNITY_LICENSE_STALL_SECONDS}"
 
   if [ ! -x "${UNITY_EDITOR}" ]; then
     printf 'Missing Unity editor: %s\n' "${UNITY_EDITOR}" >&2
@@ -27,10 +85,14 @@ run_mode() {
 
   if [ -f "${PROJECT_ROOT}/Temp/UnityLockfile" ]; then
     printf 'UnityLockfile is present; close the interactive Editor before batch validation.\n' >&2
+    if command -v ps >/dev/null 2>&1; then
+      ps aux 2>/dev/null | grep -Ei 'Unity|Unity Hub|UnityLicensing|UnityPackageManager|UnityPackage' | grep -v grep >&2 || true
+    fi
     return 3
   fi
 
-  "${UNITY_EDITOR}" \
+  run_unity_with_watchdog "${log_path}" \
+    "${UNITY_EDITOR}" \
     -batchmode \
     -nographics \
     -projectPath "${PROJECT_ROOT}" \
@@ -42,6 +104,10 @@ run_mode() {
 
   if [ ! -f "${result_path}" ]; then
     printf 'Unity exited with %s but did not create a test XML. Inspect the log above.\n' "${unity_exit}" >&2
+    print_connection_diagnostics "${log_path}"
+    if [ "${unity_exit}" -ne 0 ]; then
+      return "${unity_exit}"
+    fi
     return 4
   fi
 
