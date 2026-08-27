@@ -5,7 +5,7 @@
 ## Project Summary
 
 - Project root: `/Users/sundoll/Desktop/SundollUnity/SundollWorld`
-- Last analyzed: 2026-08-25
+- Last analyzed: 2026-08-27
 - Git root: `/Users/sundoll/Desktop/SundollUnity`; latest audit covers the formal M4-M7 implementation slices and M3 Workbench integration
 - This is the formal M7 Unity project. `M0-Spike` remains disposable validation material; M1/M2 core, the M3 Workbench, M4 piece library, M5 console slice, M6A/M6B proofs and the first M7 hardening slice are implemented with cross-platform validation pending.
 
@@ -71,15 +71,15 @@
 
 ## Testing And Validation
 
-- EditMode tests: 78 first-party tests; 78 passed, 0 failed, 0 ignored in the latest completed Unity Editor run. The suite contains M1-M4 coverage plus M5 multi-map/console tests, M6A/M6B rule and Loopback tests, and M7 migration/frozen-save/pool tests.
-- PlayMode validation: 6/6 passed in `M3Workbench.unity`, covering startup, five Tilemap projections, edit and dirty-region refresh, hidden/locked layer behavior, M4 placeholder piece projection, M4 64-piece texture sharing baseline, M5 fog/annotation projection, Workbench UI controls, runtime image import/thumbnail generation, M7 texture cache lifecycle and View destruction cleanup. Batch validation is headless; real-window visual layout and mouse feel remain unverified.
-- CI/build validation: no CI configuration detected. M7 macOS universal IL2CPP build result is Success and the M5 projection-inclusive Player Smoke passed; Unity BuildReport has a TypeDB duplicate-type diagnostic count that remains a release caveat. Details are in `Docs/M7-结果报告.md`. Latest test evidence is `SundollWorld/TestResults_EditMode_20260825_m5_hierarchy_context.xml` (78/78) and `SundollWorld/TestResults_PlayMode_20260825_m5_hierarchy_context.xml` (6/6); macOS baselines cover batch edit, Snapshot, Revision save, 10,000 Journal recovery and 64-piece texture sharing, while 60 FPS/allocation, Windows build, independent-process forced-exit recovery and cross-platform save exchange remain unverified.
+- EditMode tests: 83 first-party tests; 83 passed, 0 failed, 0 ignored in the latest completed Unity Editor run. The suite contains M1-M4 coverage plus M5 multi-map/console tests, M6A/M6B rule and Loopback tests, M7 migration/frozen-save/pool tests, project workspace tests and starter-content tests.
+- PlayMode validation: 11/11 passed in `M3Workbench.unity`, covering startup, five Tilemap projections, edit and dirty-region refresh, hidden/locked layer behavior, M4 placeholder piece projection, M4 64-piece texture sharing baseline, M5 fog/annotation projection, Workbench UI controls, runtime image import/thumbnail generation, M7 texture cache lifecycle, View destruction cleanup, virtualized piece-library grid filtering and bounded thumbnail LRU behavior. Batch validation is headless; real-window mouse feel remains unverified.
+- CI/build validation: no CI configuration detected. M7 macOS universal IL2CPP build result is Success and the M5 projection-inclusive Player Smoke passed; Unity BuildReport has a TypeDB duplicate-type diagnostic count that remains a release caveat. Details are in `Docs/M7-结果报告.md`. Latest test evidence is `SundollWorld/TestResults_EditMode_20260827_150046.xml` (83/83) and `SundollWorld/TestResults_PlayMode_20260827_150000.xml` (11/11); macOS baselines cover batch edit, Snapshot, Revision save, 10,000 Journal recovery, 64-piece texture sharing and piece-thumbnail LRU behavior, while 60 FPS/allocation, Windows build, independent-process forced-exit recovery and cross-platform save exchange remain unverified.
 
 ## Available Unity Tooling
 
 | Capability | Status | Evidence |
 | --- | --- | --- |
-| `unity.connection.status` | unavailable | no Unity MCP bridge detected |
+| `unity.connection.status` | unavailable | no Unity MCP bridge/relay detected; use `scripts/unity-doctor.sh` for local diagnostics |
 | `unity.editor.version` | available | Unity Editor/Hub and `ProjectVersion.txt` |
 | `unity.console.read` | available | Console can be read through local Computer Use; no MCP bridge |
 | `unity.scene.list` | available | `EditorBuildSettings.asset` and local Editor |
@@ -88,8 +88,8 @@
 | `unity.gameobject.inspect` | available | local Editor/serialized scene; no MCP bridge |
 | `unity.asset.search` | available | filesystem and Unity Project window |
 | `unity.package.read` | available | `Packages/manifest.json` and lock file |
-| `unity.tests.list` | available | Unity Test Framework installed; 48 first-party EditMode tests present |
-| `unity.tests.run` | available | via Unity Test Framework/Editor; no MCP bridge |
+| `unity.tests.list` | available | Unity Test Framework installed; latest first-party run contains 83 EditMode and 11 PlayMode tests |
+| `unity.tests.run` | available | via `scripts/unity-run-tests.sh`; no MCP bridge |
 | `unity.playmode.read` | available | local Editor; no MCP bridge |
 | `unity.profiler.read` | unverified | M2 performance budget and long-session profiling remain deferred |
 
@@ -107,7 +107,7 @@
 - M1 domain schema and exact command set: implementation decision, documented in code and tests.
 - Final boot scene composition and runtime UI layout: not established yet.
 - Windows Editor/module availability: not verified in the formal project.
-- Unity MCP bridge: not installed or configured; repository-only and local Computer Use workflows are available.
+- Unity MCP bridge: not installed or configured; repository-only, fixed Unity batchmode scripts and local Computer Use workflows are available.
 
 ## Source Files Inspected
 

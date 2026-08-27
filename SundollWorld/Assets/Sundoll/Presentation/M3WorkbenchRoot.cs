@@ -54,6 +54,7 @@ namespace Sundoll.Presentation
         private M3WorkbenchInput input;
         private M4WorkbenchPieceProjection pieceProjection;
         private M5WorkbenchConsoleProjection consoleProjection;
+        private M7PieceLibraryGridController pieceLibraryGrid;
         private Label pieceLibraryLabel;
         private VisualElement materialPaletteContainer;
         private TextField pieceSearchField;
@@ -63,6 +64,7 @@ namespace Sundoll.Presentation
         private TextField pieceRelationTargetField;
         private TextField pieceAttachmentSlotField;
         private VisualElement pieceListContainer;
+        private VisualElement pieceInstanceListContainer;
         private string currentTool = "画笔";
         private string currentLayerId = M3MapLayerIds.Terrain;
         private string status = "Workbench 初始化中";
@@ -185,6 +187,8 @@ namespace Sundoll.Presentation
         private void OnDestroy()
         {
             PersistWorkspaceState();
+            pieceLibraryGrid?.Dispose();
+            pieceLibraryGrid = null;
             workbenchSession?.Dispose();
             workbenchSession = null;
             saveSession = null;
@@ -296,6 +300,7 @@ namespace Sundoll.Presentation
                 projection.Bind(editor, layerEditState, mapVisualCatalog);
                 pieceProjection.Bind(commandBus, pieceAssetCatalog);
                 consoleProjection.Bind(commandBus);
+                pieceLibraryGrid?.Bind(nextSession);
                 projectTitleLabel.text = nextSession.ProjectDisplayName;
                 leftTabController?.Select(currentWorkspace, false);
                 RefreshUiState();
@@ -516,18 +521,28 @@ namespace Sundoll.Presentation
             pickImageButton.name = "PickPieceImageFile";
             pickImageButton.style.marginTop = 4f;
             pieceSection.Add(pickImageButton);
-            var importImageButton = new Button(ImportPieceImageFromPath) { text = "导入图片路径" };
+            var importImageButton = new Button(ImportPieceImageFromPath) { text = "导入并重新绑定当前定义" };
+            importImageButton.name = "RebindPieceImage";
             importImageButton.style.marginTop = 4f;
             pieceSection.Add(importImageButton);
             pieceLibraryLabel = new Label { name = "PieceLibraryBody" };
             pieceLibraryLabel.style.marginTop = 8f;
             pieceLibraryLabel.style.whiteSpace = WhiteSpace.Normal;
             pieceSection.Add(pieceLibraryLabel);
-            pieceListContainer = new ScrollView(ScrollViewMode.Vertical) { name = "PieceLibraryList" };
+            pieceLibraryGrid = new M7PieceLibraryGridController(SelectPieceDefinition);
+            pieceLibraryGrid.Bind(workbenchSession);
+            pieceListContainer = pieceLibraryGrid.Element;
             pieceListContainer.style.marginTop = 6f;
-            pieceListContainer.style.minHeight = 180f;
+            pieceListContainer.style.minHeight = 220f;
             pieceListContainer.style.flexGrow = 1f;
             pieceSection.Add(pieceListContainer);
+            var instanceHeader = new Label("棋盘实例") { name = "PieceInstanceHeader" };
+            instanceHeader.style.marginTop = 8f;
+            pieceSection.Add(instanceHeader);
+            pieceInstanceListContainer = new ScrollView(ScrollViewMode.Vertical) { name = "PieceInstanceList" };
+            pieceInstanceListContainer.style.minHeight = 90f;
+            pieceInstanceListContainer.style.maxHeight = 160f;
+            pieceSection.Add(pieceInstanceListContainer);
 
             var hostSection = CreateWorkspaceSection("HostToolsScroll");
             hostSection.Add(new Label("主持工具") { name = "HostToolsTitle" });
@@ -1688,6 +1703,7 @@ namespace Sundoll.Presentation
                 }
 
                 var existing = M4PieceQueries.FindAsset(pieceLibrary.State, result.asset.id);
+                var duplicateAsset = existing != null;
                 var assetReceipt = existing == null ? pieceLibrary.RegisterAsset(result.asset) : null;
                 if (assetReceipt != null && !assetReceipt.accepted)
                 {
@@ -1713,11 +1729,17 @@ namespace Sundoll.Presentation
                         definition.footprintWidth,
                         definition.footprintHeight);
                     CommitPieceReceipt(update);
-                    status = update.accepted ? "图片已导入并绑定到当前定义" : update.message;
+                    status = update.accepted
+                        ? duplicateAsset
+                            ? "检测到重复图片，已复用现有内容并重新绑定当前定义"
+                            : "图片已导入并重新绑定到当前定义"
+                        : update.message;
                 }
                 else
                 {
-                    status = "图片已导入；请选择定义后再绑定";
+                    status = duplicateAsset
+                        ? "检测到重复图片，已复用现有内容；请选择定义后再绑定"
+                        : "图片已导入；请选择定义后再绑定";
                 }
             }
             catch (Exception exception)
@@ -1958,37 +1980,21 @@ namespace Sundoll.Presentation
 
         private void RefreshPieceLibraryList()
         {
-            if (pieceListContainer == null || pieceLibrary == null)
+            if (pieceLibraryGrid == null || pieceLibrary == null)
             {
                 return;
             }
 
-            pieceListContainer.Clear();
             var search = pieceSearchField == null ? string.Empty : pieceSearchField.value ?? string.Empty;
-            var definitions = pieceLibrary.State.pieceDefinitions;
-            if (definitions != null)
+            pieceLibraryGrid.SetSearch(search);
+            pieceLibraryGrid.SetSelectedDefinition(selectedPieceDefinitionId);
+            pieceLibraryGrid.Refresh();
+            if (pieceInstanceListContainer == null)
             {
-                foreach (var definition in definitions)
-                {
-                    if (definition == null || !MatchesPieceSearch(definition, search))
-                    {
-                        continue;
-                    }
-
-                    var definitionId = definition.id;
-                    var definitionButton = new Button(() => SelectPieceDefinition(definitionId))
-                    {
-                        text = (definitionId == selectedPieceDefinitionId ? "▶ " : "") +
-                               (string.IsNullOrWhiteSpace(definition.displayName) ? definitionId : definition.displayName)
-                    };
-                    definitionButton.style.marginTop = 3f;
-                    pieceListContainer.Add(definitionButton);
-                }
+                return;
             }
 
-            var instanceHeader = new Label("实例") { name = "PieceInstanceHeader" };
-            instanceHeader.style.marginTop = 8f;
-            pieceListContainer.Add(instanceHeader);
+            pieceInstanceListContainer.Clear();
             var instances = pieceLibrary.State.pieceInstances;
             if (instances != null)
             {
@@ -2006,7 +2012,7 @@ namespace Sundoll.Presentation
                                " · " + (instance.location == null ? "未知" : instance.location.kind.ToString())
                     };
                     instanceButton.style.marginTop = 3f;
-                    pieceListContainer.Add(instanceButton);
+                    pieceInstanceListContainer.Add(instanceButton);
                 }
             }
         }
@@ -2160,33 +2166,6 @@ namespace Sundoll.Presentation
 
             status = "已选择动态标注：" + annotation.id;
             RefreshUiState();
-        }
-
-        private static bool MatchesPieceSearch(M4PieceDefinition definition, string search)
-        {
-            if (string.IsNullOrWhiteSpace(search))
-            {
-                return true;
-            }
-
-            if ((definition.displayName ?? string.Empty).IndexOf(search, StringComparison.OrdinalIgnoreCase) >= 0 ||
-                (definition.category ?? string.Empty).IndexOf(search, StringComparison.OrdinalIgnoreCase) >= 0)
-            {
-                return true;
-            }
-
-            if (definition.tags != null)
-            {
-                foreach (var tag in definition.tags)
-                {
-                    if ((tag ?? string.Empty).IndexOf(search, StringComparison.OrdinalIgnoreCase) >= 0)
-                    {
-                        return true;
-                    }
-                }
-            }
-
-            return false;
         }
 
         private void CommitPieceReceipt(M1CommandReceipt receipt)

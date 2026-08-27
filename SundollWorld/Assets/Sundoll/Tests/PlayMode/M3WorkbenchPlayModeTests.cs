@@ -101,6 +101,122 @@ namespace Sundoll.Tests.PlayMode
             yield return null;
         }
 
+        [UnityTest]
+        public IEnumerator M7PieceLibraryGridFiltersVirtualizedRows()
+        {
+            var projectRoot = Path.Combine(Path.GetTempPath(), "Sundoll-M7-PieceGrid-" + Guid.NewGuid().ToString("N"));
+            WorkbenchSession session = null;
+            M7PieceLibraryGridController controller = null;
+            try
+            {
+                session = new WorkbenchSession(M2SaveSession.Open(projectRoot, M1VerticalSlice.CreateDemoBus().State));
+                foreach (var definition in new[]
+                         {
+                             new[] { "grid-red", "红色守卫", "守卫", "红色" },
+                             new[] { "grid-blue", "蓝色法师", "法师", "蓝色" },
+                             new[] { "grid-green", "绿色守卫", "守卫", "绿色" }
+                         })
+                {
+                    var receipt = session.PieceLibrary.CreateDefinition(
+                        definition[0],
+                        definition[1],
+                        definition[2],
+                        new[] { definition[3], "测试" });
+                    Assert.That(receipt.accepted, Is.True, receipt.message);
+                    session.SaveSession.RecordAccepted(receipt, session.CommandBus.State);
+                }
+
+                controller = new M7PieceLibraryGridController(_ => { });
+                controller.Bind(session);
+                Assert.That(controller.Element.virtualizationMethod, Is.EqualTo(CollectionVirtualizationMethod.FixedHeight));
+                Assert.That(controller.FilteredDefinitionCount, Is.EqualTo(3));
+                Assert.That(controller.Element.itemsSource.Count, Is.EqualTo(2));
+
+                controller.SetSearch("守卫");
+                controller.Refresh();
+                Assert.That(controller.FilteredDefinitionCount, Is.EqualTo(2));
+                Assert.That(controller.Element.itemsSource.Count, Is.EqualTo(1));
+
+                controller.SetSearch("蓝色");
+                controller.Refresh();
+                Assert.That(controller.FilteredDefinitionCount, Is.EqualTo(1));
+                controller.SetSearch("不存在");
+                controller.Refresh();
+                Assert.That(controller.FilteredDefinitionCount, Is.Zero);
+            }
+            finally
+            {
+                controller?.Dispose();
+                session?.Dispose();
+                if (Directory.Exists(projectRoot))
+                {
+                    Directory.Delete(projectRoot, true);
+                }
+            }
+
+            yield return null;
+        }
+
+        [UnityTest]
+        public IEnumerator M7PieceThumbnailCacheUsesBoundedLruAndRejectsMissingProxy()
+        {
+            var projectRoot = Path.Combine(Path.GetTempPath(), "Sundoll-M7-ThumbCache-" + Guid.NewGuid().ToString("N"));
+            M7PieceThumbnailCache cache = null;
+            try
+            {
+                var catalog = new M4PieceAssetCatalog(projectRoot);
+                var assets = new List<M4PieceAsset>();
+                byte[] lastPng = null;
+                for (var index = 0; index < 5; index++)
+                {
+                    var source = new Texture2D(128, 128, TextureFormat.RGBA32, false);
+                    var color = Color.HSVToRGB(index / 5f, 0.7f, 0.9f);
+                    var pixels = new Color[128 * 128];
+                    for (var pixel = 0; pixel < pixels.Length; pixel++)
+                    {
+                        pixels[pixel] = color;
+                    }
+
+                    source.SetPixels(pixels);
+                    source.Apply(false, false);
+                    lastPng = source.EncodeToPNG();
+                    Object.Destroy(source);
+                    var imported = M4RuntimeImageImporter.Import(catalog, lastPng, "png", "image/png");
+                    Assert.That(imported.accepted, Is.True, imported.diagnostic);
+                    assets.Add(imported.asset);
+                }
+
+                cache = new M7PieceThumbnailCache(256L * 1024L);
+                foreach (var asset in assets)
+                {
+                    Assert.That(cache.TryAcquire(asset, catalog, out var texture, out var diagnostic), Is.True, diagnostic);
+                    Assert.That(texture.width, Is.LessThanOrEqualTo(128));
+                    Assert.That(texture.height, Is.LessThanOrEqualTo(128));
+                    cache.Release(asset.id);
+                }
+
+                Assert.That(cache.ResidentBytes, Is.LessThanOrEqualTo(256L * 1024L));
+                Assert.That(cache.Count, Is.LessThanOrEqualTo(4));
+
+                cache.Clear();
+                var withoutThumbnail = catalog.Import(lastPng, "png", "image/png");
+                Assert.That(
+                    cache.TryAcquire(withoutThumbnail, catalog, out _, out var missingDiagnostic),
+                    Is.False);
+                Assert.That(missingDiagnostic, Does.Contain("缩略图"));
+            }
+            finally
+            {
+                cache?.Dispose();
+                if (Directory.Exists(projectRoot))
+                {
+                    Directory.Delete(projectRoot, true);
+                }
+            }
+
+            yield return null;
+        }
+
         [Test]
         public void M7WorkbenchTabsShowOnlyTheSelectedPanel()
         {
@@ -138,6 +254,9 @@ namespace Sundoll.Tests.PlayMode
             Assert.That(document.rootVisualElement.Q<VisualElement>("PieceLibraryList"), Is.Not.Null);
             Assert.That(document.rootVisualElement.Q<Button>("PickPieceImageFile"), Is.Not.Null);
             Assert.That(document.rootVisualElement.Q<Button>("InstallStarterContent"), Is.Not.Null);
+            Assert.That(document.rootVisualElement.Q<Button>("RebindPieceImage"), Is.Not.Null);
+            Assert.That(document.rootVisualElement.Q<ListView>("PieceLibraryList"), Is.Not.Null);
+            Assert.That(document.rootVisualElement.Q<VisualElement>("PieceInstanceList"), Is.Not.Null);
             Assert.That(document.rootVisualElement.Q<ScrollView>("ToolPanelScroll"), Is.Not.Null);
             Assert.That(document.rootVisualElement.Q<Button>("WorkbenchTab_map"), Is.Not.Null);
             Assert.That(document.rootVisualElement.Q<Button>("WorkbenchTab_pieces"), Is.Not.Null);

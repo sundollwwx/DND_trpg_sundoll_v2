@@ -127,6 +127,78 @@
     white-space: normal;
 }
 
+.sw-piece-grid {
+    min-height: 220px;
+    background-color: #111821;
+    border-top-width: 1px;
+    border-right-width: 1px;
+    border-bottom-width: 1px;
+    border-left-width: 1px;
+    border-top-color: #2d3947;
+    border-right-color: #2d3947;
+    border-bottom-color: #2d3947;
+    border-left-color: #2d3947;
+}
+
+.sw-piece-grid-row {
+    height: 116px;
+    min-height: 116px;
+    flex-direction: row;
+    padding-left: 3px;
+    padding-right: 3px;
+    padding-top: 3px;
+    padding-bottom: 3px;
+}
+
+.sw-root .sw-piece-card {
+    min-width: 0;
+    min-height: 108px;
+    flex-grow: 1;
+    margin-left: 2px;
+    margin-right: 2px;
+    padding-left: 5px;
+    padding-right: 5px;
+    padding-top: 5px;
+    padding-bottom: 4px;
+    background-color: #1a2430;
+    border-top-color: #334253;
+    border-right-color: #334253;
+    border-bottom-color: #334253;
+    border-left-color: #334253;
+}
+
+.sw-root .sw-piece-card-selected {
+    background-color: #293342;
+    border-top-color: #c99a52;
+    border-right-color: #c99a52;
+    border-bottom-color: #c99a52;
+    border-left-color: #c99a52;
+}
+
+.sw-piece-card-image {
+    width: 54px;
+    height: 54px;
+    align-self: center;
+    background-color: #0e141c;
+}
+
+.sw-piece-card-title {
+    height: 28px;
+    margin-top: 2px;
+    color: #ece7db;
+    font-size: 11px;
+    -unity-text-align: middle-center;
+    white-space: normal;
+}
+
+.sw-piece-card-status {
+    height: 16px;
+    color: #8f9dac;
+    font-size: 9px;
+    -unity-text-align: middle-center;
+    overflow: hidden;
+}
+
 .sw-button-quiet {
     background-color: #18212c;
     border-top-color: #2f3a48;
