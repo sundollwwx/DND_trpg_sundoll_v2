@@ -107,6 +107,8 @@ namespace Sundoll.Presentation
         private string currentWorkspace = "map";
         private Vector2Int contextMenuCell;
         private string selectedMapObjectId;
+
+        private const int WorkbenchTargetFrameRate = 60;
         // These containers are rebuilt only when their authoritative inputs change.
         // RefreshUiState still updates lightweight status labels on its timer, but
         // avoids repeating UI Toolkit allocations during idle editing.
@@ -127,9 +129,21 @@ namespace Sundoll.Presentation
         public M3GridBounds Selection => selection;
         public M3MapClipboard Clipboard => clipboard;
 
+        // The desktop performance harness is an opt-in diagnostic surface. It
+        // reads the already-composed session without becoming a production UI
+        // dependency or bypassing the normal command bus.
+        internal M1CommandBus CommandBusForDiagnostics => commandBus;
+        internal M4PieceLibraryFacade PieceLibraryForDiagnostics => pieceLibrary;
+        internal M4WorkbenchPieceProjection PieceProjectionForDiagnostics => pieceProjection;
+        internal Camera WorkbenchCameraForDiagnostics => GetComponentInChildren<Camera>();
+
         private void Awake()
         {
             DontDestroyOnLoad(gameObject);
+            // Use Unity's software frame cap for predictable desktop pacing.
+            // The Standalone quality profile disables vSync so a missed display
+            // interval cannot turn one frame into an avoidable ~33 ms spike.
+            UnityEngine.Application.targetFrameRate = WorkbenchTargetFrameRate;
             InitializeDomain();
             EnsureCamera();
             projection = GetComponentInChildren<M3WorkbenchMapProjection>();
@@ -172,6 +186,12 @@ namespace Sundoll.Presentation
 
             input.Bind(this, GetComponentInChildren<Camera>(), projection);
             status = string.IsNullOrEmpty(status) ? "Workbench 已就绪" : status;
+
+            if (M7DesktopPerformanceCapture.IsRequested())
+            {
+                var performanceCapture = gameObject.AddComponent<M7DesktopPerformanceCapture>();
+                performanceCapture.Begin(this);
+            }
         }
 
         private void Update()
@@ -216,10 +236,11 @@ namespace Sundoll.Presentation
         private void InitializeDomain()
         {
             var productRoot = Path.Combine(UnityEngine.Application.persistentDataPath, "SundollWorld");
-            if (UnityEngine.Application.isBatchMode)
+            if (UnityEngine.Application.isBatchMode || M7DesktopPerformanceCapture.IsRequested())
             {
-                // Automated scene runs must never open or mutate a person's
-                // desktop projects. Each batch process gets an isolated root.
+                // Automated scene runs and opt-in desktop performance captures
+                // must never open or mutate a person's desktop projects. Each
+                // process gets an isolated root.
                 productRoot = Path.Combine(
                     UnityEngine.Application.temporaryCachePath,
                     "SundollWorld-Tests",
@@ -229,6 +250,25 @@ namespace Sundoll.Presentation
             workspaceService = new ProjectWorkspaceService(
                 Path.Combine(productRoot, "Projects"),
                 Path.Combine(productRoot, "Workspace"));
+
+            if (M7DesktopPerformanceCapture.IsRequested())
+            {
+                var performanceProjectRoot = Path.Combine(
+                    productRoot,
+                    "Projects",
+                    "M7DesktopPerformance");
+                var performanceSession = M2SaveSession.Open(
+                    performanceProjectRoot,
+                    M1VerticalSlice.CreateDemoBus().State);
+                AdoptSession(new ProjectWorkspaceOpenResult
+                {
+                    projectRoot = performanceProjectRoot,
+                    saveSession = performanceSession,
+                    created = true,
+                    diagnostic = "M7 desktop performance isolated project"
+                }, false);
+                return;
+            }
 
             ProjectWorkspaceOpenResult openResult = null;
             foreach (var recent in workspaceService.GetRecentProjects())

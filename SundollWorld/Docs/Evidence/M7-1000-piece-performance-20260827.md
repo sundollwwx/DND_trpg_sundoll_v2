@@ -6,7 +6,7 @@
 
 - Unity：`6000.3.22f1`
 - 测试：`M7PieceProjectionMeasures1000VisiblePiecesAndSteadyStateAllocations`
-- XML：`../TestResults_PlayMode_20260827_221144.xml`
+- XML：`../TestResults_PlayMode_20260825_m5_hierarchy_context.xml`（最新交互式 Editor 刷新结果）
 - 运行入口：`scripts/unity-run-tests.sh all`
 - 目标视口：`2560×1440`
 - 目标帧率：`60 FPS`
@@ -16,8 +16,8 @@
 ## 结果
 
 - PlayMode 全套：`13/13` 通过，0 失败，0 跳过。
-- 预热后的投影刷新 p95：`12.198 ms`。
-- 预热后的投影刷新最大值：`12.198 ms`。
+- 预热后的投影刷新 p95：`12.494 ms`。
+- 预热后的投影刷新最大值：`12.494 ms`。
 - 稳态刷新分配 p95：`0 B`。
 - 稳态刷新分配最大值：`0 B`。
 - 样本数：刷新和分配各 10 次。
