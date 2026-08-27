@@ -29,12 +29,14 @@ namespace Sundoll.Presentation
         private M3MapEditorFacade editor;
         private M3LayerEditState layerEditState;
         private IMapVisualCatalog visualCatalog;
+        private M1WorldState audienceProjectionState;
         private Tilemap mapObjectTilemap;
         private Tile mapObjectTile;
         private Texture2D tileTexture;
         private Sprite tileSprite;
 
         public IReadOnlyDictionary<string, Tilemap> Tilemaps => tilemaps;
+        public bool IsAudienceProjectionActive => audienceProjectionState != null;
 
         public void Bind(
             M3MapEditorFacade nextEditor,
@@ -49,9 +51,16 @@ namespace Sundoll.Presentation
             RefreshAll();
         }
 
+        public void SetAudienceProjection(M1WorldState nextState)
+        {
+            audienceProjectionState = nextState;
+            RefreshAll();
+        }
+
         public void RefreshAll()
         {
-            if (editor == null || editor.State == null || editor.State.map == null)
+            var state = ViewState;
+            if (state == null || state.map == null)
             {
                 return;
             }
@@ -67,7 +76,7 @@ namespace Sundoll.Presentation
                 mapObjectTilemap.ClearAllTiles();
             }
 
-            foreach (var cell in editor.State.map.cells)
+            foreach (var cell in state.map.cells)
             {
                 if (cell == null || string.IsNullOrWhiteSpace(cell.contentId))
                 {
@@ -83,9 +92,9 @@ namespace Sundoll.Presentation
                 tilemap.SetTile(new Vector3Int(cell.x, cell.y, 0), GetTile(cell.contentId, layerId));
             }
 
-            if (mapObjectTilemap != null && editor.State.map.objects != null)
+            if (mapObjectTilemap != null && state.map.objects != null)
             {
-                foreach (var mapObject in editor.State.map.objects)
+                foreach (var mapObject in state.map.objects)
                 {
                     if (mapObject != null)
                     {
@@ -105,7 +114,8 @@ namespace Sundoll.Presentation
                 return;
             }
 
-            if (editor == null || editor.State == null || editor.State.map == null)
+            var state = ViewState;
+            if (state == null || state.map == null)
             {
                 return;
             }
@@ -129,7 +139,7 @@ namespace Sundoll.Presentation
                 ClearRegion(mapObjectTilemap, bounds);
             }
 
-            foreach (var cell in editor.State.map.cells)
+            foreach (var cell in state.map.cells)
             {
                 if (cell == null || !region.Contains(cell.x, cell.y))
                 {
@@ -143,9 +153,9 @@ namespace Sundoll.Presentation
                 }
             }
 
-            if (mapObjectTilemap != null && editor.State.map.objects != null)
+            if (mapObjectTilemap != null && state.map.objects != null)
             {
-                foreach (var mapObject in editor.State.map.objects)
+                foreach (var mapObject in state.map.objects)
                 {
                     if (mapObject != null && region.Contains(mapObject.x, mapObject.y))
                     {
@@ -156,6 +166,8 @@ namespace Sundoll.Presentation
 
             ApplyLayerState();
         }
+
+        private M1WorldState ViewState => audienceProjectionState ?? (editor == null ? null : editor.State);
 
         private static void ClearRegion(Tilemap tilemap, BoundsInt bounds)
         {

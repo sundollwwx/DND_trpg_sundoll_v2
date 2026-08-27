@@ -169,6 +169,34 @@ namespace Sundoll.Core
         }
     }
 
+    /// <summary>
+    /// One cell mutation captured by the host fog brush. The map ID belongs to
+    /// the enclosing command so a whole brush stroke is one atomic operation.
+    /// </summary>
+    [Serializable]
+    public sealed class M5FogCellMutation
+    {
+        public int x;
+        public int y;
+        public bool revealed;
+
+        public M5FogCellMutation()
+        {
+        }
+
+        public M5FogCellMutation(int x, int y, bool revealed)
+        {
+            this.x = x;
+            this.y = y;
+            this.revealed = revealed;
+        }
+
+        public M5FogCellMutation DeepClone()
+        {
+            return new M5FogCellMutation(x, y, revealed);
+        }
+    }
+
     [Serializable]
     public sealed class M5DynamicAnnotation
     {

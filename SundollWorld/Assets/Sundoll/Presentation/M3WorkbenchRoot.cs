@@ -30,6 +30,8 @@ namespace Sundoll.Presentation
         private readonly Dictionary<string, string> selectedContentIds = new Dictionary<string, string>(StringComparer.Ordinal);
         private readonly List<M3CellMutation> pendingStroke = new List<M3CellMutation>();
         private readonly HashSet<M3MapCellKey> pendingStrokeKeys = new HashSet<M3MapCellKey>();
+        private readonly List<M5FogCellMutation> pendingFogStroke = new List<M5FogCellMutation>();
+        private readonly HashSet<string> pendingFogStrokeKeys = new HashSet<string>(StringComparer.Ordinal);
         private ProjectWorkspaceService workspaceService;
         private WorkbenchSession workbenchSession;
         private M1CommandBus commandBus;
@@ -54,6 +56,7 @@ namespace Sundoll.Presentation
         private M3WorkbenchInput input;
         private M4WorkbenchPieceProjection pieceProjection;
         private M5WorkbenchConsoleProjection consoleProjection;
+        private M1WorldState audienceProjectionState;
         private M7PieceLibraryGridController pieceLibraryGrid;
         private Label pieceLibraryLabel;
         private VisualElement materialPaletteContainer;
@@ -85,6 +88,7 @@ namespace Sundoll.Presentation
         private TextField mapNameField;
         private TextField fogXField;
         private TextField fogYField;
+        private TextField fogRadiusField;
         private TextField annotationIdField;
         private TextField annotationTextField;
         private TextField interactionObjectField;
@@ -94,6 +98,10 @@ namespace Sundoll.Presentation
         private VisualElement contextMenuContainer;
         private Label hostModeLabel;
         private bool hostPreviewMode;
+        private bool fogStrokeActive;
+        private bool annotationDragActive;
+        private string annotationDragId;
+        private Vector2Int lastAnnotationDragCell;
         private M7ProjectCenterPanel projectCenterPanel;
         private M7WorkbenchTabController leftTabController;
         private string currentWorkspace = "map";
@@ -289,6 +297,17 @@ namespace Sundoll.Presentation
             selectedPieceDefinitionId = null;
             selectedPieceInstanceId = null;
             selectedMapObjectId = null;
+            hostPreviewMode = false;
+            audienceProjectionState = null;
+            strokeActive = false;
+            fogStrokeActive = false;
+            annotationDragActive = false;
+            annotationDragId = null;
+            selectionActive = false;
+            pendingStroke.Clear();
+            pendingStrokeKeys.Clear();
+            pendingFogStroke.Clear();
+            pendingFogStrokeKeys.Clear();
             lastHierarchyRevision = -1;
             lastMapListRevision = -1;
             lastPieceListRevision = -1;
@@ -300,6 +319,7 @@ namespace Sundoll.Presentation
                 projection.Bind(editor, layerEditState, mapVisualCatalog);
                 pieceProjection.Bind(commandBus, pieceAssetCatalog);
                 consoleProjection.Bind(commandBus);
+                RefreshAudienceProjection();
                 pieceLibraryGrid?.Bind(nextSession);
                 projectTitleLabel.text = nextSession.ProjectDisplayName;
                 leftTabController?.Select(currentWorkspace, false);
@@ -579,6 +599,31 @@ namespace Sundoll.Presentation
             var fogTitle = new Label("迷雾 / 标注 / 交互");
             fogTitle.style.marginTop = 10f;
             hostSection.Add(fogTitle);
+            fogRadiusField = new TextField("迷雾笔刷半径") { name = "FogBrushRadius" };
+            fogRadiusField.value = "1";
+            fogRadiusField.style.marginTop = 4f;
+            hostSection.Add(fogRadiusField);
+            var revealFogBrushButton = new Button(() => SelectTool("迷雾揭示"))
+            {
+                name = "RevealFogBrush",
+                text = "使用揭示迷雾笔刷"
+            };
+            revealFogBrushButton.style.marginTop = 4f;
+            hostSection.Add(revealFogBrushButton);
+            var hideFogBrushButton = new Button(() => SelectTool("迷雾隐藏"))
+            {
+                name = "HideFogBrush",
+                text = "使用隐藏迷雾笔刷"
+            };
+            hideFogBrushButton.style.marginTop = 4f;
+            hostSection.Add(hideFogBrushButton);
+            var moveAnnotationButton = new Button(() => SelectTool("标注移动"))
+            {
+                name = "MoveAnnotationTool",
+                text = "拖动动态标注"
+            };
+            moveAnnotationButton.style.marginTop = 4f;
+            hostSection.Add(moveAnnotationButton);
             fogXField = new TextField("格子 X") { name = "FogX" };
             fogXField.style.marginTop = 4f;
             hostSection.Add(fogXField);
@@ -832,11 +877,40 @@ namespace Sundoll.Presentation
             RefreshUiState();
         }
 
-        private void ToggleHostPreviewMode()
+        public bool HostPreviewMode => hostPreviewMode;
+
+        public void ToggleHostPreviewMode()
         {
             hostPreviewMode = !hostPreviewMode;
-            status = hostPreviewMode ? "已进入主持预览：迷雾与动态标注可直接检查" : "已回到地图编辑模式";
+            RefreshAudienceProjection();
+            status = hostPreviewMode ? "已进入玩家预览：隐藏棋子与迷雾内容已按 Audience Projection 过滤" : "已回到地图编辑模式";
             RefreshUiState();
+        }
+
+        private void RefreshAudienceProjection()
+        {
+            if (commandBus == null)
+            {
+                return;
+            }
+
+            audienceProjectionState = null;
+            if (hostPreviewMode)
+            {
+                var snapshot = M6ProjectionBuilder.CreateSnapshot(
+                    commandBus.State,
+                    "workbench-player-preview",
+                    new M6AudiencePolicy
+                    {
+                        revealAllFog = false,
+                        includeHiddenPieces = false
+                    });
+                audienceProjectionState = JsonUtility.FromJson<M1WorldState>(snapshot.stateJson);
+            }
+
+            projection?.SetAudienceProjection(audienceProjectionState);
+            pieceProjection?.SetAudienceProjection(audienceProjectionState);
+            consoleProjection?.SetAudiencePreview(hostPreviewMode);
         }
 
         private VisualElement BuildContextMenu()
@@ -867,6 +941,13 @@ namespace Sundoll.Presentation
 
         public void ShowMapContextMenu(Vector2Int cell, Vector2 screenPosition)
         {
+            if (hostPreviewMode)
+            {
+                status = "玩家预览为只读，不能打开编辑菜单";
+                RefreshUiState();
+                return;
+            }
+
             if (contextMenuContainer == null)
             {
                 return;
@@ -942,6 +1023,13 @@ namespace Sundoll.Presentation
 
         public void AddMapObjectAt(Vector2Int cell, M3MapObjectKind kind)
         {
+            if (hostPreviewMode)
+            {
+                status = "玩家预览为只读";
+                RefreshUiState();
+                return;
+            }
+
             var prefix = kind == M3MapObjectKind.Door ? "door-" : "chest-";
             var objectId = prefix + Guid.NewGuid().ToString("N").Substring(0, 10);
             var receipt = editor.AddMapObject(objectId, kind, cell.x, cell.y);
@@ -1086,14 +1174,15 @@ namespace Sundoll.Presentation
             if (receipt.accepted)
             {
                 saveSession.RecordAccepted(receipt, consoleFacade.State);
-                projection.RefreshAll();
-                if (consoleProjection != null)
+                if (hostPreviewMode)
                 {
-                    consoleProjection.RefreshAll();
+                    RefreshAudienceProjection();
                 }
-                if (pieceProjection != null)
+                else
                 {
-                    pieceProjection.RefreshAll();
+                    projection.RefreshAll();
+                    consoleProjection?.RefreshAll();
+                    pieceProjection?.RefreshAll();
                 }
             }
         }
@@ -1259,6 +1348,25 @@ namespace Sundoll.Presentation
 
         public void BeginPointerAction(Vector2Int cell)
         {
+            if (hostPreviewMode)
+            {
+                status = "玩家预览为只读";
+                RefreshUiState();
+                return;
+            }
+
+            if (IsFogBrushTool(currentTool))
+            {
+                BeginFogBrush(cell);
+                return;
+            }
+
+            if (currentTool == "标注移动")
+            {
+                BeginAnnotationDrag(cell);
+                return;
+            }
+
             if (currentTool == "选择")
             {
                 selectionStartCell = cell;
@@ -1289,6 +1397,26 @@ namespace Sundoll.Presentation
 
         public void ContinuePointerAction(Vector2Int cell)
         {
+            if (fogStrokeActive)
+            {
+                foreach (var point in M3GridStrokeRasterizer.Rasterize(lastStrokeCell.x, lastStrokeCell.y, cell.x, cell.y))
+                {
+                    AddFogBrushCells(new Vector2Int(point.x, point.y));
+                }
+
+                lastStrokeCell = cell;
+                status = "迷雾笔刷预览：" + pendingFogStroke.Count + " 格";
+                return;
+            }
+
+            if (annotationDragActive)
+            {
+                lastAnnotationDragCell = cell;
+                selection = new M3GridBounds(cell.x, cell.y, cell.x, cell.y);
+                status = "标注移动预览：" + cell.x + "," + cell.y;
+                return;
+            }
+
             if (selectionActive)
             {
                 selection = CreateSelection(selectionStartCell, cell);
@@ -1311,6 +1439,27 @@ namespace Sundoll.Presentation
 
         public void EndPointerAction(Vector2Int cell)
         {
+            if (fogStrokeActive)
+            {
+                foreach (var point in M3GridStrokeRasterizer.Rasterize(lastStrokeCell.x, lastStrokeCell.y, cell.x, cell.y))
+                {
+                    AddFogBrushCells(new Vector2Int(point.x, point.y));
+                }
+
+                lastStrokeCell = cell;
+                fogStrokeActive = false;
+                CommitPendingFogStroke();
+                return;
+            }
+
+            if (annotationDragActive)
+            {
+                lastAnnotationDragCell = cell;
+                annotationDragActive = false;
+                CommitAnnotationDrag();
+                return;
+            }
+
             if (selectionActive)
             {
                 selection = CreateSelection(selectionStartCell, cell);
@@ -1358,11 +1507,185 @@ namespace Sundoll.Presentation
         public void CancelPointerAction()
         {
             strokeActive = false;
+            fogStrokeActive = false;
+            annotationDragActive = false;
+            annotationDragId = null;
             selectionActive = false;
             pendingStroke.Clear();
             pendingStrokeKeys.Clear();
+            pendingFogStroke.Clear();
+            pendingFogStrokeKeys.Clear();
             status = "已取消当前操作";
             RefreshUiState();
+        }
+
+        private static bool IsFogBrushTool(string tool)
+        {
+            return tool == "迷雾揭示" || tool == "迷雾隐藏";
+        }
+
+        private void BeginFogBrush(Vector2Int cell)
+        {
+            pendingFogStroke.Clear();
+            pendingFogStrokeKeys.Clear();
+            fogStrokeActive = true;
+            lastStrokeCell = cell;
+            AddFogBrushCells(cell);
+            status = "迷雾笔刷预览：" + pendingFogStroke.Count + " 格";
+            RefreshUiState();
+        }
+
+        private void AddFogBrushCells(Vector2Int center)
+        {
+            if (editor == null || editor.State == null || editor.State.map == null)
+            {
+                return;
+            }
+
+            var radius = ReadFogBrushRadius();
+            var revealed = currentTool == "迷雾揭示";
+            for (var x = center.x - radius; x <= center.x + radius; x++)
+            {
+                for (var y = center.y - radius; y <= center.y + radius; y++)
+                {
+                    var distanceX = x - center.x;
+                    var distanceY = y - center.y;
+                    if (distanceX * distanceX + distanceY * distanceY > radius * radius ||
+                        x < 0 || y < 0 || x >= editor.State.map.width || y >= editor.State.map.height)
+                    {
+                        continue;
+                    }
+
+                    var key = x + ":" + y;
+                    if (pendingFogStrokeKeys.Add(key))
+                    {
+                        pendingFogStroke.Add(new M5FogCellMutation(x, y, revealed));
+                    }
+                }
+            }
+        }
+
+        private int ReadFogBrushRadius()
+        {
+            if (!int.TryParse(fogRadiusField == null ? string.Empty : fogRadiusField.value, out var radius))
+            {
+                return 1;
+            }
+
+            return Mathf.Clamp(radius, 0, 32);
+        }
+
+        private void CommitPendingFogStroke()
+        {
+            if (pendingFogStroke.Count == 0)
+            {
+                status = "没有可提交的迷雾格";
+                RefreshUiState();
+                return;
+            }
+
+            var console = M5ConsoleQueries.Ensure(commandBus.State);
+            var count = pendingFogStroke.Count;
+            var receipt = consoleFacade.SetFogBatch(console.activeMapId, pendingFogStroke);
+            CommitConsoleReceipt(receipt);
+            status = receipt.accepted
+                ? (currentTool == "迷雾揭示" ? "已揭示" : "已隐藏") + "迷雾笔刷覆盖的 " + count + " 格"
+                : receipt.message;
+            pendingFogStroke.Clear();
+            pendingFogStrokeKeys.Clear();
+            RefreshUiState();
+        }
+
+        private void BeginAnnotationDrag(Vector2Int cell)
+        {
+            var console = M5ConsoleQueries.Ensure(commandBus.State);
+            var annotation = FindAnnotationAt(console.activeMapId, cell);
+            if (annotation == null)
+            {
+                status = "该格没有可拖动的动态标注";
+                RefreshUiState();
+                return;
+            }
+
+            annotationDragActive = true;
+            annotationDragId = annotation.id;
+            lastAnnotationDragCell = cell;
+            selection = new M3GridBounds(cell.x, cell.y, cell.x, cell.y);
+            if (annotationIdField != null)
+            {
+                annotationIdField.SetValueWithoutNotify(annotation.id);
+            }
+
+            if (annotationTextField != null)
+            {
+                annotationTextField.SetValueWithoutNotify(annotation.text ?? string.Empty);
+            }
+
+            status = "开始拖动动态标注：" + annotation.id;
+            RefreshUiState();
+        }
+
+        private void CommitAnnotationDrag()
+        {
+            if (string.IsNullOrWhiteSpace(annotationDragId))
+            {
+                return;
+            }
+
+            var console = M5ConsoleQueries.Ensure(commandBus.State);
+            var annotation = console.FindAnnotation(annotationDragId);
+            if (annotation == null)
+            {
+                status = "动态标注已不存在：" + annotationDragId;
+                annotationDragId = null;
+                RefreshUiState();
+                return;
+            }
+
+            var target = lastAnnotationDragCell;
+            if (annotation.x == target.x && annotation.y == target.y)
+            {
+                status = "动态标注位置未改变";
+                annotationDragId = null;
+                RefreshUiState();
+                return;
+            }
+
+            var receipt = consoleFacade.UpsertAnnotation(
+                annotation.id,
+                annotation.mapId,
+                target.x,
+                target.y,
+                annotation.text,
+                annotation.colorHex,
+                annotation.visible);
+            CommitConsoleReceipt(receipt);
+            status = receipt.accepted
+                ? "动态标注已移动到 " + target.x + "," + target.y
+                : receipt.message;
+            annotationDragId = null;
+            RefreshUiState();
+        }
+
+        private M5DynamicAnnotation FindAnnotationAt(string mapId, Vector2Int cell)
+        {
+            var console = commandBus == null ? null : M5ConsoleQueries.Ensure(commandBus.State);
+            if (console == null || console.annotations == null)
+            {
+                return null;
+            }
+
+            for (var index = console.annotations.Count - 1; index >= 0; index--)
+            {
+                var annotation = console.annotations[index];
+                if (annotation != null && annotation.mapId == mapId && annotation.visible &&
+                    annotation.x == cell.x && annotation.y == cell.y)
+                {
+                    return annotation;
+                }
+            }
+
+            return null;
         }
 
         public void PickAt(Vector2Int cell)
@@ -1389,6 +1712,13 @@ namespace Sundoll.Presentation
 
         public void CutSelection()
         {
+            if (hostPreviewMode)
+            {
+                status = "玩家预览为只读";
+                RefreshUiState();
+                return;
+            }
+
             var receipt = editor.CutSelection(selection, layerEditState, out var cutClipboard);
             if (cutClipboard != null && !cutClipboard.IsEmpty)
             {
@@ -1400,11 +1730,25 @@ namespace Sundoll.Presentation
 
         public void PasteAt(Vector2Int anchor)
         {
+            if (hostPreviewMode)
+            {
+                status = "玩家预览为只读";
+                RefreshUiState();
+                return;
+            }
+
             CommitReceipt(editor.PasteClipboard(clipboard, anchor.x, anchor.y, layerEditState));
         }
 
         public void RotateClipboard()
         {
+            if (hostPreviewMode)
+            {
+                status = "玩家预览为只读";
+                RefreshUiState();
+                return;
+            }
+
             if (clipboard == null || clipboard.IsEmpty)
             {
                 CopySelection();
@@ -1421,9 +1765,23 @@ namespace Sundoll.Presentation
 
         public void Undo()
         {
+            if (hostPreviewMode)
+            {
+                status = "玩家预览为只读";
+                RefreshUiState();
+                return;
+            }
+
             if (editor.Undo())
             {
-                projection.RefreshRegion(editor.LastDirtyBounds);
+                if (hostPreviewMode)
+                {
+                    RefreshAudienceProjection();
+                }
+                else
+                {
+                    projection.RefreshRegion(editor.LastDirtyBounds);
+                }
                 if (pieceProjection != null)
                 {
                     pieceProjection.RefreshAll();
@@ -1437,9 +1795,23 @@ namespace Sundoll.Presentation
 
         public void Redo()
         {
+            if (hostPreviewMode)
+            {
+                status = "玩家预览为只读";
+                RefreshUiState();
+                return;
+            }
+
             if (editor.Redo())
             {
-                projection.RefreshRegion(editor.LastDirtyBounds);
+                if (hostPreviewMode)
+                {
+                    RefreshAudienceProjection();
+                }
+                else
+                {
+                    projection.RefreshRegion(editor.LastDirtyBounds);
+                }
                 if (pieceProjection != null)
                 {
                     pieceProjection.RefreshAll();
@@ -1453,6 +1825,13 @@ namespace Sundoll.Presentation
 
         public void ToggleObjectAt(Vector2Int cell)
         {
+            if (hostPreviewMode)
+            {
+                status = "玩家预览为只读";
+                RefreshUiState();
+                return;
+            }
+
             var mapObject = FindObjectAt(cell);
             if (mapObject == null)
             {
@@ -1466,6 +1845,13 @@ namespace Sundoll.Presentation
 
         public void OpenObjectAt(Vector2Int cell)
         {
+            if (hostPreviewMode)
+            {
+                status = "玩家预览为只读";
+                RefreshUiState();
+                return;
+            }
+
             var mapObject = FindObjectAt(cell);
             if (mapObject != null)
             {
@@ -1475,6 +1861,13 @@ namespace Sundoll.Presentation
 
         public void CloseObjectAt(Vector2Int cell)
         {
+            if (hostPreviewMode)
+            {
+                status = "玩家预览为只读";
+                RefreshUiState();
+                return;
+            }
+
             var mapObject = FindObjectAt(cell);
             if (mapObject != null)
             {
@@ -1484,6 +1877,13 @@ namespace Sundoll.Presentation
 
         public void RotateObjectAt(Vector2Int cell)
         {
+            if (hostPreviewMode)
+            {
+                status = "玩家预览为只读";
+                RefreshUiState();
+                return;
+            }
+
             var mapObject = FindObjectAt(cell);
             if (mapObject != null)
             {
@@ -1574,7 +1974,14 @@ namespace Sundoll.Presentation
             if (receipt.accepted)
             {
                 saveSession.RecordAccepted(receipt, editor.State);
-                projection.RefreshRegion(editor.LastDirtyBounds);
+                if (hostPreviewMode)
+                {
+                    RefreshAudienceProjection();
+                }
+                else
+                {
+                    projection.RefreshRegion(editor.LastDirtyBounds);
+                }
                 status = receipt.message;
             }
             else
@@ -2181,6 +2588,11 @@ namespace Sundoll.Presentation
                 if (pieceProjection != null)
                 {
                     pieceProjection.RefreshAll();
+                }
+
+                if (hostPreviewMode)
+                {
+                    RefreshAudienceProjection();
                 }
             }
             else

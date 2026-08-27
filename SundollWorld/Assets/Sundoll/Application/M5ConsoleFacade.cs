@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Sundoll.Core;
 
 namespace Sundoll.Application
@@ -55,6 +56,15 @@ namespace Sundoll.Application
                 x,
                 y,
                 revealed));
+        }
+
+        public M1CommandReceipt SetFogBatch(string mapId, IEnumerable<M5FogCellMutation> mutations)
+        {
+            return commandBus.Execute(new M5SetFogBatchCommand(
+                "m5-fog-brush-" + Guid.NewGuid().ToString("N"),
+                State.revision,
+                mapId,
+                mutations));
         }
 
         public M1CommandReceipt UpsertAnnotation(

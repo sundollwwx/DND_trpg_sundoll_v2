@@ -19,12 +19,14 @@ namespace Sundoll.Presentation
         private readonly Dictionary<string, string> viewAssetIds = new Dictionary<string, string>(StringComparer.Ordinal);
         private M1CommandBus commandBus;
         private M4PieceAssetCatalog assetCatalog;
+        private M1WorldState audienceProjectionState;
         private M7TextureCache textureCache;
         private Sprite placeholderSprite;
         private Texture2D placeholderTexture;
 
         public IReadOnlyDictionary<string, GameObject> Views => views;
         public int CachedTextureCount => textureCache == null ? 0 : textureCache.Count;
+        public bool IsAudienceProjectionActive => audienceProjectionState != null;
 
         public void Bind(M1CommandBus nextCommandBus)
         {
@@ -44,6 +46,12 @@ namespace Sundoll.Presentation
             RefreshAll();
         }
 
+        public void SetAudienceProjection(M1WorldState nextState)
+        {
+            audienceProjectionState = nextState;
+            RefreshAll();
+        }
+
         public void RefreshAll()
         {
             if (commandBus == null || commandBus.State == null)
@@ -52,7 +60,7 @@ namespace Sundoll.Presentation
             }
 
             EnsurePlaceholderSprite();
-            var state = commandBus.State;
+            var state = audienceProjectionState ?? commandBus.State;
             var activeIds = new HashSet<string>(StringComparer.Ordinal);
             if (state.pieceInstances != null)
             {

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace Sundoll.Core
 {
@@ -31,6 +32,13 @@ namespace Sundoll.Core
         public int x;
         public int y;
         public bool revealed;
+    }
+
+    [Serializable]
+    public sealed class M5SetFogBatchCommandPayload
+    {
+        public string mapId;
+        public List<M5FogCellMutation> mutations = new List<M5FogCellMutation>();
     }
 
     [Serializable]

@@ -287,6 +287,15 @@ namespace Sundoll.Infrastructure
                         payload.y,
                         payload.revealed);
                 }
+                case "M5.SetFogBatch":
+                {
+                    var payload = ReadPayload<M5SetFogBatchCommandPayload>(envelope);
+                    return new M5SetFogBatchCommand(
+                        envelope.commandId,
+                        envelope.baseRevision,
+                        payload.mapId,
+                        payload.mutations);
+                }
                 case "M5.UpsertAnnotation":
                 {
                     var payload = ReadPayload<M5UpsertAnnotationCommandPayload>(envelope);

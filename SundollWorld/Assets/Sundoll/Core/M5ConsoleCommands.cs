@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace Sundoll.Core
 {
@@ -200,6 +201,110 @@ namespace Sundoll.Core
             else
             {
                 cell.revealed = revealed;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Applies one fog-brush stroke as a single command. Validation is done for
+    /// the complete batch before any cell is changed, preserving atomicity for
+    /// undo/redo and journal replay.
+    /// </summary>
+    public sealed class M5SetFogBatchCommand : M1Command
+    {
+        private readonly string mapId;
+        private readonly List<M5FogCellMutation> mutations;
+
+        public M5SetFogBatchCommand(
+            string commandId,
+            int baseRevision,
+            string mapId,
+            IEnumerable<M5FogCellMutation> mutations)
+            : base(commandId, baseRevision)
+        {
+            this.mapId = mapId;
+            if (mutations == null)
+            {
+                throw new ArgumentNullException(nameof(mutations));
+            }
+
+            this.mutations = new List<M5FogCellMutation>();
+            foreach (var mutation in mutations)
+            {
+                this.mutations.Add(mutation == null ? null : mutation.DeepClone());
+            }
+        }
+
+        public int MutationCount => mutations.Count;
+        public override string Description => (mutations.Count > 0 && mutations[0] != null && mutations[0].revealed
+            ? "揭示"
+            : "隐藏") + "迷雾笔刷（" + mutations.Count + "格）";
+        public override string CommandType => "M5.SetFogBatch";
+        public override int PayloadVersion => 1;
+        public override object CreatePayload()
+        {
+            var payload = new M5SetFogBatchCommandPayload { mapId = mapId };
+            foreach (var mutation in mutations)
+            {
+                payload.mutations.Add(mutation == null ? null : mutation.DeepClone());
+            }
+
+            return payload;
+        }
+
+        public override void Apply(M1WorldState state)
+        {
+            var console = M5CommandSupport.Ensure(state);
+            var map = M5CommandSupport.RequireMap(console, mapId);
+            if (map.map == null || mutations.Count == 0)
+            {
+                throw new InvalidOperationException("A fog brush must contain at least one cell.");
+            }
+
+            var keys = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var mutation in mutations)
+            {
+                if (mutation == null ||
+                    mutation.x < 0 || mutation.y < 0 ||
+                    mutation.x >= map.map.width || mutation.y >= map.map.height)
+                {
+                    throw new InvalidOperationException("Fog brush contains a cell outside the selected map.");
+                }
+
+                if (!keys.Add(mutation.x + ":" + mutation.y))
+                {
+                    throw new InvalidOperationException("Fog brush contains a duplicate cell.");
+                }
+            }
+
+            var existing = new Dictionary<string, M5FogCell>(StringComparer.Ordinal);
+            foreach (var fogCell in console.fogCells)
+            {
+                if (fogCell != null && fogCell.mapId == mapId)
+                {
+                    existing[fogCell.x + ":" + fogCell.y] = fogCell;
+                }
+            }
+
+            foreach (var mutation in mutations)
+            {
+                var key = mutation.x + ":" + mutation.y;
+                if (existing.TryGetValue(key, out var fogCell))
+                {
+                    fogCell.revealed = mutation.revealed;
+                }
+                else
+                {
+                    fogCell = new M5FogCell
+                    {
+                        mapId = mapId,
+                        x = mutation.x,
+                        y = mutation.y,
+                        revealed = mutation.revealed
+                    };
+                    console.fogCells.Add(fogCell);
+                    existing[key] = fogCell;
+                }
             }
         }
     }

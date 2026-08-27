@@ -17,14 +17,22 @@ namespace Sundoll.Presentation
         private M1CommandBus commandBus;
         private Sprite fogSprite;
         private Texture2D fogTexture;
+        private bool audiencePreview;
 
         public IReadOnlyDictionary<string, GameObject> FogViews => fogViews;
         public IReadOnlyDictionary<string, GameObject> AnnotationViews => annotationViews;
+        public bool IsAudiencePreview => audiencePreview;
 
         public void Bind(M1CommandBus nextCommandBus)
         {
             commandBus = nextCommandBus ?? throw new ArgumentNullException(nameof(nextCommandBus));
             EnsureFogSprite();
+            RefreshAll();
+        }
+
+        public void SetAudiencePreview(bool enabled)
+        {
+            audiencePreview = enabled;
             RefreshAll();
         }
 
@@ -71,7 +79,7 @@ namespace Sundoll.Presentation
             var activeAnnotations = new HashSet<string>(StringComparer.Ordinal);
             foreach (var annotation in console.annotations ?? new List<M5DynamicAnnotation>())
             {
-                if (annotation == null || annotation.mapId != mapId || !annotation.visible)
+                if (annotation == null || annotation.mapId != mapId || !annotation.visible || audiencePreview)
                 {
                     continue;
                 }
@@ -93,6 +101,10 @@ namespace Sundoll.Presentation
 
                 var textMesh = view.GetComponent<TextMesh>();
                 textMesh.text = annotation.text ?? string.Empty;
+                if (ColorUtility.TryParseHtmlString(annotation.colorHex, out var annotationColor))
+                {
+                    textMesh.color = annotationColor;
+                }
                 view.transform.position = new Vector3(annotation.x, annotation.y + 0.32f, -0.4f);
             }
 

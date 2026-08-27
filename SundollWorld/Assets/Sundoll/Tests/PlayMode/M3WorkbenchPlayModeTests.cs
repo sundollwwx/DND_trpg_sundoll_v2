@@ -271,6 +271,10 @@ namespace Sundoll.Tests.PlayMode
             Assert.That(document.rootVisualElement.Q<VisualElement>("HostContextMenu"), Is.Not.Null);
             Assert.That(document.rootVisualElement.Q<Button>("RenameHostMap"), Is.Not.Null);
             Assert.That(document.rootVisualElement.Q<TextField>("FogX"), Is.Not.Null);
+            Assert.That(document.rootVisualElement.Q<TextField>("FogBrushRadius"), Is.Not.Null);
+            Assert.That(document.rootVisualElement.Q<Button>("RevealFogBrush"), Is.Not.Null);
+            Assert.That(document.rootVisualElement.Q<Button>("HideFogBrush"), Is.Not.Null);
+            Assert.That(document.rootVisualElement.Q<Button>("MoveAnnotationTool"), Is.Not.Null);
             Assert.That(document.rootVisualElement.Q<TextField>("AnnotationText"), Is.Not.Null);
             Assert.That(document.rootVisualElement.Q<TextField>("InteractionObjectId"), Is.Not.Null);
             var mapList = document.rootVisualElement.Q<VisualElement>("HostMapList");
@@ -348,6 +352,45 @@ namespace Sundoll.Tests.PlayMode
             Object.Destroy(root.gameObject);
             yield return null;
             Assert.That(root == null, Is.True);
+        }
+
+        [UnityTest]
+        public IEnumerator PlayerPreviewUsesAudienceProjectionAndIsReadOnly()
+        {
+            yield return SceneManager.LoadSceneAsync("M3Workbench", LoadSceneMode.Single);
+            yield return null;
+
+            var root = Object.FindFirstObjectByType<M3WorkbenchRoot>();
+            var projection = Object.FindFirstObjectByType<M3WorkbenchMapProjection>();
+            var pieceProjection = Object.FindFirstObjectByType<M4WorkbenchPieceProjection>();
+            var consoleProjection = Object.FindFirstObjectByType<M5WorkbenchConsoleProjection>();
+            Assert.That(root, Is.Not.Null);
+            Assert.That(projection, Is.Not.Null);
+            Assert.That(pieceProjection, Is.Not.Null);
+            Assert.That(consoleProjection, Is.Not.Null);
+            Assert.That(root.HostPreviewMode, Is.False);
+            Assert.That(projection.IsAudienceProjectionActive, Is.False);
+            Assert.That(pieceProjection.IsAudienceProjectionActive, Is.False);
+
+            root.ToggleHostPreviewMode();
+            yield return null;
+            Assert.That(root.HostPreviewMode, Is.True);
+            Assert.That(projection.IsAudienceProjectionActive, Is.True);
+            Assert.That(pieceProjection.IsAudienceProjectionActive, Is.True);
+            Assert.That(consoleProjection.IsAudiencePreview, Is.True);
+
+            var hadTerrainBeforePreviewEdit = root.Editor.State.map.TryGetCell(2, 2, M3MapLayerIds.Terrain, out _);
+            root.BeginPointerAction(new Vector2Int(2, 2));
+            Assert.That(root.Editor.State.map.TryGetCell(2, 2, M3MapLayerIds.Terrain, out _), Is.EqualTo(hadTerrainBeforePreviewEdit));
+            root.ToggleHostPreviewMode();
+            yield return null;
+            Assert.That(root.HostPreviewMode, Is.False);
+            Assert.That(projection.IsAudienceProjectionActive, Is.False);
+            Assert.That(pieceProjection.IsAudienceProjectionActive, Is.False);
+            Assert.That(consoleProjection.IsAudiencePreview, Is.False);
+
+            Object.Destroy(root.gameObject);
+            yield return null;
         }
 
         [UnityTest]

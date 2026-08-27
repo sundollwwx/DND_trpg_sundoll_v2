@@ -64,6 +64,34 @@ namespace Sundoll.Tests.EditMode
         }
 
         [Test]
+        public void FogBrushRoundTripsAsOneVersionedCommand()
+        {
+            var bus = M1VerticalSlice.CreateDemoBus();
+            var console = M5ConsoleQueries.Ensure(bus.State);
+            var command = new M5SetFogBatchCommand(
+                "m5-fog-brush",
+                bus.State.revision,
+                console.activeMapId,
+                new[]
+                {
+                    new M5FogCellMutation(1, 1, false),
+                    new M5FogCellMutation(2, 1, false),
+                    new M5FogCellMutation(2, 2, false)
+                });
+            var envelope = M2CommandEnvelopeCodec.Encode(command);
+            var decoded = M2CommandEnvelopeCodec.Decode(
+                JsonUtility.FromJson<M1CommandEnvelope>(JsonUtility.ToJson(envelope, false)));
+
+            Execute(bus, decoded);
+            Assert.That(bus.State.m5Console.fogCells, Has.Count.EqualTo(3));
+            Assert.That(bus.LastAction, Does.Contain("3格"));
+            Assert.That(bus.Undo(), Is.True);
+            Assert.That(bus.State.m5Console.fogCells, Is.Empty);
+            Assert.That(bus.Redo(), Is.True);
+            Assert.That(bus.State.m5Console.fogCells, Has.Count.EqualTo(3));
+        }
+
+        [Test]
         public void M5MapCommandCanUndoAndRedo()
         {
             var bus = M1VerticalSlice.CreateDemoBus();
