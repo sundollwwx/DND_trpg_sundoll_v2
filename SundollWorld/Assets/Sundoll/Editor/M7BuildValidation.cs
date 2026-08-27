@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using UnityEditor;
+using UnityEditor.Build;
 using UnityEditor.Build.Reporting;
 using UnityEditor.TestTools.TestRunner.Api;
 using UnityEngine;
@@ -24,6 +25,15 @@ namespace Sundoll.EditorTools
             }
 
             EditorUserBuildSettings.SwitchActiveBuildTarget(BuildTargetGroup.Standalone, BuildTarget.StandaloneOSX);
+            var standaloneTarget = NamedBuildTarget.FromBuildTargetGroup(BuildTargetGroup.Standalone);
+            PlayerSettings.SetScriptingBackend(standaloneTarget, ScriptingImplementation.IL2CPP);
+            var scriptingBackend = PlayerSettings.GetScriptingBackend(standaloneTarget);
+            if (scriptingBackend != ScriptingImplementation.IL2CPP)
+            {
+                throw new InvalidOperationException(
+                    "M7 macOS universal build requires IL2CPP, but the active backend is " + scriptingBackend + ".");
+            }
+
             EditorUserBuildSettings.SetPlatformSettings(
                 BuildPipeline.GetBuildTargetName(BuildTarget.StandaloneOSX),
                 "Architecture",
@@ -39,6 +49,7 @@ namespace Sundoll.EditorTools
 
             Debug.Log("M7 macOS universal build result: " + report.summary.result +
                       "; output=" + absoluteOutput +
+                      "; backend=" + scriptingBackend +
                       "; size=" + report.summary.totalSize +
                       "; errors=" + report.summary.totalErrors +
                       "; warnings=" + report.summary.totalWarnings);
