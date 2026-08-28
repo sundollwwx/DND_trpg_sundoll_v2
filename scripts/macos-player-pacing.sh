@@ -12,6 +12,7 @@ OUTPUT_PATH="${SUNDOLL_PROJECT_ROOT}/Logs/Pacing_M7_macos_${STAMP}.json"
 TARGET_FPS="${MACOS_PLAYER_PACING_FPS:-60}"
 WARMUP_FRAMES="${MACOS_PLAYER_PACING_WARMUP_FRAMES:-120}"
 SAMPLE_FRAMES="${MACOS_PLAYER_PACING_SAMPLE_FRAMES:-3600}"
+LAUNCH_MODE="${MACOS_PLAYER_PACING_LAUNCH_MODE:-open}"
 if [ -n "${MACOS_PLAYER_PACING_TIMEOUT_SECONDS:-}" ]; then
   TIMEOUT_SECONDS="${MACOS_PLAYER_PACING_TIMEOUT_SECONDS}"
 elif [ "${TARGET_FPS}" -gt 0 ] 2>/dev/null; then
@@ -20,6 +21,15 @@ elif [ "${TARGET_FPS}" -gt 0 ] 2>/dev/null; then
 else
   TIMEOUT_SECONDS=120
 fi
+
+case "${LAUNCH_MODE}" in
+  open|direct)
+    ;;
+  *)
+    printf 'Unsupported launch mode: %s (expected open or direct).\n' "${LAUNCH_MODE}" >&2
+    exit 2
+    ;;
+esac
 
 if [ ! -d "${APP_PATH}" ]; then
   printf 'Player bundle is missing: %s\n' "${APP_PATH}" >&2
@@ -36,20 +46,28 @@ fi
 printf 'Starting macOS production pacing capture.\n'
 printf 'Target: %s FPS; warmup: %s frames; sample: %s frames.\n' "${TARGET_FPS}" "${WARMUP_FRAMES}" "${SAMPLE_FRAMES}"
 printf 'Timeout: %s seconds.\n' "${TIMEOUT_SECONDS}"
+printf 'Launch mode: %s.\n' "${LAUNCH_MODE}"
 printf 'Executable: %s\n' "${EXECUTABLE_PATH}"
 printf 'Log: %s\n' "${LOG_PATH}"
 printf 'Result: %s\n' "${OUTPUT_PATH}"
 
-"${EXECUTABLE_PATH}" \
-  -screen-width 2560 \
-  -screen-height 1440 \
-  -screen-fullscreen 0 \
-  -sundoll-m7-perf \
-  -sundoll-m7-perf-target-fps "${TARGET_FPS}" \
-  -sundoll-m7-perf-warmup "${WARMUP_FRAMES}" \
-  -sundoll-m7-perf-frames "${SAMPLE_FRAMES}" \
-  -sundoll-m7-perf-output "${OUTPUT_PATH}" \
-  -logFile "${LOG_PATH}" &
+PLAYER_ARGS=(
+  -screen-width 2560
+  -screen-height 1440
+  -screen-fullscreen 0
+  -sundoll-m7-perf
+  -sundoll-m7-perf-target-fps "${TARGET_FPS}"
+  -sundoll-m7-perf-warmup "${WARMUP_FRAMES}"
+  -sundoll-m7-perf-frames "${SAMPLE_FRAMES}"
+  -sundoll-m7-perf-output "${OUTPUT_PATH}"
+  -logFile "${LOG_PATH}"
+)
+
+if [ "${LAUNCH_MODE}" = "open" ]; then
+  /usr/bin/open -n -W "${APP_PATH}" --args "${PLAYER_ARGS[@]}" &
+else
+  "${EXECUTABLE_PATH}" "${PLAYER_ARGS[@]}" &
+fi
 player_pid=$!
 start_seconds="${SECONDS}"
 
@@ -58,6 +76,12 @@ while kill -0 "${player_pid}" 2>/dev/null; do
   if [ "${elapsed_seconds}" -ge "${TIMEOUT_SECONDS}" ]; then
     printf 'Pacing capture exceeded timeout after %s seconds.\n' "${elapsed_seconds}" >&2
     kill -TERM "${player_pid}" 2>/dev/null || true
+    if [ "${LAUNCH_MODE}" = "open" ] && command -v pgrep >/dev/null 2>&1; then
+      opened_player_pids="$(pgrep -f "${EXECUTABLE_PATH}" 2>/dev/null || true)"
+      for opened_player_pid in ${opened_player_pids}; do
+        kill -TERM "${opened_player_pid}" 2>/dev/null || true
+      done
+    fi
     wait "${player_pid}" 2>/dev/null || true
     exit 124
   fi
