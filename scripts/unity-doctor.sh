@@ -1,13 +1,11 @@
 #!/usr/bin/env bash
 set -u
 
-EXPECTED_UNITY_VERSION="6000.3.22f1"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
-PROJECT_ROOT="${REPO_ROOT}/SundollWorld"
-UNITY_EDITOR="/Applications/Unity/Hub/Editor/${EXPECTED_UNITY_VERSION}/Unity.app/Contents/MacOS/Unity"
-USER_NAME="$(id -un)"
-USER_DIR="/Users/${USER_NAME}"
+# shellcheck source=unity-common.sh
+source "${SCRIPT_DIR}/unity-common.sh"
+
+USER_DIR="/Users/${SUNDOLL_UNITY_USER_NAME}"
 UNITY_LOG_DIR="${USER_DIR}/Library/Logs/Unity"
 LICENSING_LOG="${UNITY_LOG_DIR}/Unity.Licensing.Client.log"
 EDITOR_LOG="${UNITY_LOG_DIR}/Editor.log"
@@ -24,27 +22,28 @@ print_section() {
 }
 
 print_section "Sundoll Unity Doctor"
-print_status "Repo root" "${REPO_ROOT}"
-print_status "Project root" "${PROJECT_ROOT}"
+print_status "Repo root" "${SUNDOLL_REPO_ROOT}"
+print_status "Project root" "${SUNDOLL_PROJECT_ROOT}"
+print_status "Pinned license channel" "${SUNDOLL_UNITY_LICENSE_CHANNEL}"
 
-if [ -f "${PROJECT_ROOT}/ProjectSettings/ProjectVersion.txt" ]; then
-  PROJECT_VERSION="$(awk -F': ' '/m_EditorVersion:/ { print $2; exit }' "${PROJECT_ROOT}/ProjectSettings/ProjectVersion.txt")"
+if [ -f "${SUNDOLL_PROJECT_ROOT}/ProjectSettings/ProjectVersion.txt" ]; then
+  PROJECT_VERSION="$(awk -F': ' '/m_EditorVersion:/ { print $2; exit }' "${SUNDOLL_PROJECT_ROOT}/ProjectSettings/ProjectVersion.txt")"
   print_status "Project Unity version" "${PROJECT_VERSION}"
 else
   print_status "Project Unity version" "missing ProjectVersion.txt"
 fi
 
-if [ -x "${UNITY_EDITOR}" ]; then
+if [ -x "${SUNDOLL_UNITY_EDITOR}" ]; then
   print_status "Expected Unity editor" "found"
 else
-  print_status "Expected Unity editor" "missing: ${UNITY_EDITOR}"
+  print_status "Expected Unity editor" "missing: ${SUNDOLL_UNITY_EDITOR}"
 fi
 
 print_section "Git"
-if command -v git >/dev/null 2>&1 && git -C "${REPO_ROOT}" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-  print_status "Branch" "$(git -C "${REPO_ROOT}" branch --show-current 2>/dev/null)"
-  print_status "HEAD" "$(git -C "${REPO_ROOT}" rev-parse --short HEAD 2>/dev/null)"
-  if [ -z "$(git -C "${REPO_ROOT}" status --short 2>/dev/null)" ]; then
+if command -v git >/dev/null 2>&1 && git -C "${SUNDOLL_REPO_ROOT}" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  print_status "Branch" "$(git -C "${SUNDOLL_REPO_ROOT}" branch --show-current 2>/dev/null)"
+  print_status "HEAD" "$(git -C "${SUNDOLL_REPO_ROOT}" rev-parse --short HEAD 2>/dev/null)"
+  if [ -z "$(git -C "${SUNDOLL_REPO_ROOT}" status --short 2>/dev/null)" ]; then
     print_status "Worktree" "clean"
   else
     print_status "Worktree" "has local changes"
@@ -55,18 +54,22 @@ fi
 
 print_section "Live Processes"
 if command -v ps >/dev/null 2>&1; then
-  MATCHES="$(ps aux 2>/dev/null | grep -Ei 'Unity|Unity Hub|UnityLicensing|UnityPackageManager|UnityPackage' | grep -v grep || true)"
-  if [ -n "${MATCHES}" ]; then
-    printf '%s\n' "${MATCHES}"
+  if PROCESS_LIST="$(ps -axo pid=,ppid=,comm= 2>/dev/null)"; then
+    MATCHES="$(printf '%s\n' "${PROCESS_LIST}" | grep -Ei 'Unity|Unity Hub|Unity\.Licensing\.Client|UnityPackageManager|UnityPackage' || true)"
+    if [ -n "${MATCHES}" ]; then
+      printf '%s\n' "${MATCHES}"
+    else
+      print_status "Unity processes" "none"
+    fi
   else
-    print_status "Unity processes" "none"
+    print_status "Unity processes" "unavailable (process inspection denied)"
   fi
 else
   print_status "ps" "not available"
 fi
 
 print_section "Project Locks"
-LOCKS="$(find "${PROJECT_ROOT}" -maxdepth 3 \( -name 'UnityLockfile' -o -name '*.lock' \) 2>/dev/null || true)"
+LOCKS="$(find "${SUNDOLL_PROJECT_ROOT}" -maxdepth 3 \( -name 'UnityLockfile' -o -name '*.lock' \) 2>/dev/null || true)"
 if [ -n "${LOCKS}" ]; then
   printf '%s\n' "${LOCKS}"
 else
@@ -75,7 +78,7 @@ fi
 
 print_section "Unity MCP Bridge"
 MCP_HITS="$(grep -RIEin 'mcp|unity-mcp|coplay|ivanmurzak|codergamester|com\.unity\.ai\.assistant|Unity MCP|AI Assistant' \
-  "${PROJECT_ROOT}/Packages" "${REPO_ROOT}/.mcp.json" "${REPO_ROOT}/.cursor" "${REPO_ROOT}/.vscode" 2>/dev/null || true)"
+  "${SUNDOLL_PROJECT_ROOT}/Packages" "${SUNDOLL_REPO_ROOT}/.mcp.json" "${SUNDOLL_REPO_ROOT}/.cursor" "${SUNDOLL_REPO_ROOT}/.vscode" 2>/dev/null || true)"
 if [ -n "${MCP_HITS}" ]; then
   printf '%s\n' "${MCP_HITS}"
 else
@@ -118,3 +121,5 @@ if [ ! -d "${USER_DIR}/.unity/relay" ] && [ -z "${MCP_HITS}" ]; then
   printf '%s\n' "Use repository tools and Unity batchmode scripts unless one Unity MCP provider is deliberately installed."
 fi
 printf '%s\n' "For validation, prefer scripts/unity-run-tests.sh so the exact Unity 6000.3.22f1 binary is used."
+printf '%s\n' "For interactive work, use Open-SundollWorld.command; for a quick license probe, use scripts/unity-license-check.sh."
+printf '%s\n' "An 'Access token is unavailable' refresh line is non-blocking when the same run resolves local entitlements and initializes licensing."
