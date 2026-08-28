@@ -20,6 +20,7 @@
 - `scripts/unity-run-tests.sh`：复用公共启动策略，生成带时间戳的测试 XML 和日志。
 - `scripts/unity-license-check.sh`：无界面快速验证本机许可证握手和本地 entitlement，不修改许可证文件。
 - `scripts/unity-build-macos.sh`：复用相同通道完成 macOS Universal IL2CPP 构建，并检查双架构、IL2CPP metadata 和 Mono 残留。
+- `scripts/macos-player-smoke.sh`：构建后运行 macOS Player 45 秒，检查播放器运行态和常见运行时异常。
 - `scripts/unity-open.sh` / `Open-SundollWorld.command`：交互式打开正式工程时也强制传入版本专用通道，避免从 Hub 项目行启动造成通道漂移。
 - `scripts/unity-run-tests.sh` 在 Unity 未产出 XML 时会自动打印最近 License/UPM/IPC 线索并调用 Doctor，避免“只知道失败、不知道卡在哪里”。
 - `scripts/unity-run-tests.sh` 增加 watchdog：默认 900 秒整体超时，180 秒 License 崩溃/重连循环保护；触发时停止本次 batchmode 子进程并保留日志。退出码 `124` 表示整体超时，`125` 表示 License 重连循环。
@@ -55,6 +56,7 @@ scripts/unity-run-tests.sh editmode
 scripts/unity-run-tests.sh playmode
 scripts/unity-run-tests.sh all
 scripts/unity-build-macos.sh
+scripts/macos-player-smoke.sh
 ```
 
 如需临时调整 watchdog：
