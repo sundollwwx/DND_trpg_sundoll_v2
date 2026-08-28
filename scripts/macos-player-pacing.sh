@@ -12,7 +12,14 @@ OUTPUT_PATH="${SUNDOLL_PROJECT_ROOT}/Logs/Pacing_M7_macos_${STAMP}.json"
 TARGET_FPS="${MACOS_PLAYER_PACING_FPS:-60}"
 WARMUP_FRAMES="${MACOS_PLAYER_PACING_WARMUP_FRAMES:-120}"
 SAMPLE_FRAMES="${MACOS_PLAYER_PACING_SAMPLE_FRAMES:-3600}"
-TIMEOUT_SECONDS="${MACOS_PLAYER_PACING_TIMEOUT_SECONDS:-120}"
+if [ -n "${MACOS_PLAYER_PACING_TIMEOUT_SECONDS:-}" ]; then
+  TIMEOUT_SECONDS="${MACOS_PLAYER_PACING_TIMEOUT_SECONDS}"
+elif [ "${TARGET_FPS}" -gt 0 ] 2>/dev/null; then
+  EXPECTED_SECONDS=$(( (SAMPLE_FRAMES + WARMUP_FRAMES + TARGET_FPS - 1) / TARGET_FPS ))
+  TIMEOUT_SECONDS=$(( EXPECTED_SECONDS + EXPECTED_SECONDS / 4 + 120 ))
+else
+  TIMEOUT_SECONDS=120
+fi
 
 if [ ! -d "${APP_PATH}" ]; then
   printf 'Player bundle is missing: %s\n' "${APP_PATH}" >&2
@@ -28,6 +35,7 @@ fi
 
 printf 'Starting macOS production pacing capture.\n'
 printf 'Target: %s FPS; warmup: %s frames; sample: %s frames.\n' "${TARGET_FPS}" "${WARMUP_FRAMES}" "${SAMPLE_FRAMES}"
+printf 'Timeout: %s seconds.\n' "${TIMEOUT_SECONDS}"
 printf 'Executable: %s\n' "${EXECUTABLE_PATH}"
 printf 'Log: %s\n' "${LOG_PATH}"
 printf 'Result: %s\n' "${OUTPUT_PATH}"

@@ -34,17 +34,17 @@ MACOS_PLAYER_PACING_TIMEOUT_SECONDS=90 \
 
 ## 长时采样
 
-已启动 60 分钟、`216000` 帧的相同生产 pacing 采样：
+第一次 60 分钟、`216000` 帧的相同生产 pacing 采样在脚本的 `3700` 秒保护上限处终止，未生成 JSON，因此不计为完成的 60 分钟证据；Player 日志在终止前没有已知运行时异常签名。
 
 - 日志：`SundollWorld/Logs/Pacing_M7_macos_20260828_105454.log`
-- 结果：`SundollWorld/Logs/Pacing_M7_macos_20260828_105454.json`
-- 完成后需要补录 Player 是否持续运行、帧时间百分位、分配增长和异常签名。
+- 结果：未生成（超时保护终止）。
+- 脚本已改为按样本量和目标帧率自动加 25% 余量；下一次运行使用 `4600` 秒保护上限。
 
 可复用命令：
 
 ```sh
 MACOS_PLAYER_PACING_SAMPLE_FRAMES=216000 \
-MACOS_PLAYER_PACING_TIMEOUT_SECONDS=3700 \
+MACOS_PLAYER_PACING_TIMEOUT_SECONDS=4600 \
 ./scripts/macos-player-pacing.sh
 ```
 
