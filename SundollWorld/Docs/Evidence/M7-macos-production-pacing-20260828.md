@@ -41,13 +41,37 @@ MACOS_PLAYER_PACING_TIMEOUT_SECONDS=120 \
 
 只将启动方式改为 `/usr/bin/open -n -W` 后，同一构建完成 1800 帧，退出码 `0`，生成 `SundollWorld/Logs/Pacing_M7_macos_open_20260828.json`。因此 pacing 脚本默认使用 `open`；直接执行保留为复现平台启动问题的诊断开关。该证据支持“当前 macOS GUI 直接执行上下文触发 AppKit/LaunchServices 间歇性崩溃”，但不把 macOS 系统组件内部原因误报为项目业务根因。
 
-## 长时采样
+## 60 分钟长时结果
 
-第一次 60 分钟、`216000` 帧的直接启动生产 pacing 采样在约 0.2 秒处触发上述 `SIGABRT`，未生成 JSON，因此不计为完成的 60 分钟证据；第二次 1800 帧直接启动复现同样失败。当前脚本已切换默认 `open` 启动方式，长时证据仍需重新运行。
+命令：
+
+```sh
+MACOS_PLAYER_PACING_SAMPLE_FRAMES=216000 \
+MACOS_PLAYER_PACING_TIMEOUT_SECONDS=4600 \
+./scripts/macos-player-pacing.sh
+```
+
+结果文件：`SundollWorld/Logs/Pacing_M7_macos_20260828_230228.json`
+
+- 采样：216000 帧；目标 60 FPS；vSync `0`；实际窗口 `2560×1440`；1000 个棋子。
+- 运行约 60 分钟；Player 退出码 `0`；日志完成正常 Shutdown，无运行时失败签名或新 `.ips`。
+- 帧时间 p50：`16.6626 ms`。
+- 帧时间 p95：`17.2119 ms`；最大 `55.6641 ms`。
+- 超过 `16.667 ms`：`104853/216000`。
+- 托管分配 p50/p95/最大：`0 B` / `0 B` / `0 B`。
+
+判定：长时持续运行和分配门槛通过；严格生产 60 FPS pacing 门槛仍未通过。脚本随后收紧为只记录本次 `open` 新建的 Player PID，超时清理不会按路径误杀先前存在的同名 Player。
+
+PID 清理修正后的短时复验：`SundollWorld/Logs/Pacing_M7_macos_20260829_000606.json`，1800 帧、Player 退出码 `0`、分配 p95 `0 B`；该复验未触发超时清理，确认默认 `open` 启动路径仍可用。
+
+## 启动诊断期间的失败尝试
+
+此前直接启动的 216000 帧尝试在 `3700` 秒保护上限终止，未生成 JSON：
 
 - 日志：`SundollWorld/Logs/Pacing_M7_macos_20260828_105454.log`
-- 结果：未生成（Player 启动即崩溃）。
-- 脚本已改为按样本量和目标帧率自动加 25% 余量，并默认使用 `open` 启动；下一次运行使用 `4600` 秒保护上限。
+- 结果：未生成（超时保护终止）。
+
+本轮把同一构建切回直接执行做最小复现时，216000 帧和 1800 帧两次均在启动约 0.2 秒处触发上述 `SIGABRT`，对应日志分别为 `SundollWorld/Logs/Pacing_M7_macos_20260828_225051.log` 和 `SundollWorld/Logs/Pacing_M7_macos_20260828_225513.log`，均未生成 JSON。当前脚本已切换默认 `open` 启动方式，并按样本量和目标帧率自动加 25% 余量。
 
 可复用命令：
 

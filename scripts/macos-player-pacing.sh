@@ -64,11 +64,37 @@ PLAYER_ARGS=(
 )
 
 if [ "${LAUNCH_MODE}" = "open" ]; then
+  existing_player_pids=""
+  if command -v pgrep >/dev/null 2>&1; then
+    existing_player_pids="$(pgrep -f "${EXECUTABLE_PATH}" 2>/dev/null || true)"
+  fi
   /usr/bin/open -n -W "${APP_PATH}" --args "${PLAYER_ARGS[@]}" &
+  launcher_pid=$!
+  opened_player_pid=""
+  if command -v pgrep >/dev/null 2>&1; then
+    player_lookup_attempt=0
+    while [ "${player_lookup_attempt}" -lt 50 ]; do
+      candidate_player_pid="$(pgrep -n -f "${EXECUTABLE_PATH}" 2>/dev/null || true)"
+      candidate_is_existing=0
+      for existing_player_pid in ${existing_player_pids}; do
+        if [ "${candidate_player_pid}" = "${existing_player_pid}" ]; then
+          candidate_is_existing=1
+          break
+        fi
+      done
+      if [ -n "${candidate_player_pid}" ] && [ "${candidate_is_existing}" -eq 0 ]; then
+        opened_player_pid="${candidate_player_pid}"
+        break
+      fi
+      sleep 0.1
+      player_lookup_attempt=$((player_lookup_attempt + 1))
+    done
+  fi
+  player_pid="${launcher_pid}"
 else
   "${EXECUTABLE_PATH}" "${PLAYER_ARGS[@]}" &
+  player_pid=$!
 fi
-player_pid=$!
 start_seconds="${SECONDS}"
 
 while kill -0 "${player_pid}" 2>/dev/null; do
@@ -76,11 +102,8 @@ while kill -0 "${player_pid}" 2>/dev/null; do
   if [ "${elapsed_seconds}" -ge "${TIMEOUT_SECONDS}" ]; then
     printf 'Pacing capture exceeded timeout after %s seconds.\n' "${elapsed_seconds}" >&2
     kill -TERM "${player_pid}" 2>/dev/null || true
-    if [ "${LAUNCH_MODE}" = "open" ] && command -v pgrep >/dev/null 2>&1; then
-      opened_player_pids="$(pgrep -f "${EXECUTABLE_PATH}" 2>/dev/null || true)"
-      for opened_player_pid in ${opened_player_pids}; do
-        kill -TERM "${opened_player_pid}" 2>/dev/null || true
-      done
+    if [ "${LAUNCH_MODE}" = "open" ] && [ -n "${opened_player_pid:-}" ]; then
+      kill -TERM "${opened_player_pid}" 2>/dev/null || true
     fi
     wait "${player_pid}" 2>/dev/null || true
     exit 124
