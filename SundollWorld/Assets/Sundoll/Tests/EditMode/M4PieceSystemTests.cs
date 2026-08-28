@@ -98,12 +98,12 @@ namespace Sundoll.Tests.EditMode
             Execute(bus, new M4PlacePieceCommand("m4-pick-place-a", bus.State.revision, "pick-a", 2, 2));
             Execute(bus, new M4PlacePieceCommand("m4-pick-place-b", bus.State.revision, "pick-b", 2, 2));
 
-            var topmost = M4PieceQueries.FindTopmostBoardInstanceAt(bus.State, bus.State.map.id, 2, 2);
+            var topmost = M4PieceQueries.FindTopmostBoardInstanceAt(bus.State, bus.State.board.id, 2, 2);
             Assert.That(topmost.id, Is.EqualTo("pick-b"));
 
             Execute(bus, new M4SetPiecePresentationCommand(
                 "m4-pick-hide", bus.State.revision, "pick-b", topmost.rotation, topmost.flipped, false));
-            var next = M4PieceQueries.FindTopmostBoardInstanceAt(bus.State, bus.State.map.id, 2, 2);
+            var next = M4PieceQueries.FindTopmostBoardInstanceAt(bus.State, bus.State.board.id, 2, 2);
             Assert.That(next.id, Is.EqualTo("pick-a"));
         }
 

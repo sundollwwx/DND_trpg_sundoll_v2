@@ -1753,7 +1753,7 @@ namespace Sundoll.Presentation
 
             var instance = M4PieceQueries.FindTopmostBoardInstanceAt(
                 editor.State,
-                editor.State.map.id,
+                editor.State.board == null ? null : editor.State.board.id,
                 cell.x,
                 cell.y);
             if (instance == null)
