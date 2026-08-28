@@ -61,11 +61,17 @@ sundoll_prepare_project_lock() {
   return 3
 }
 
-sundoll_stop_orphaned_generic_licensing_clients() {
+sundoll_stop_orphaned_licensing_clients() {
   local client_pid=""
   local client_ppid=""
   local client_pids=""
-  local generic_socket="/tmp/${SUNDOLL_UNITY_GENERIC_LICENSE_PIPE}.sock"
+  local socket_path=""
+  local client_sockets=""
+  local expected_socket=""
+  local expected_sockets=(
+    "/tmp/${SUNDOLL_UNITY_LICENSE_PIPE}.sock"
+    "/tmp/${SUNDOLL_UNITY_GENERIC_LICENSE_PIPE}.sock"
+  )
 
   if ! command -v pgrep >/dev/null 2>&1 \
     || ! command -v ps >/dev/null 2>&1 \
@@ -79,11 +85,20 @@ sundoll_stop_orphaned_generic_licensing_clients() {
     if [ "${client_ppid}" != "1" ]; then
       continue
     fi
-    if ! lsof -a -p "${client_pid}" -U -Fn 2>/dev/null | grep -Fqx "n${generic_socket}"; then
+
+    client_sockets="$(lsof -a -p "${client_pid}" -U -Fn 2>/dev/null | sed -n 's/^n//p')"
+    socket_path=""
+    for expected_socket in "${expected_sockets[@]}"; do
+      if printf '%s\n' "${client_sockets}" | grep -Fqx "${expected_socket}"; then
+        socket_path="${expected_socket}"
+        break
+      fi
+    done
+    if [ -z "${socket_path}" ]; then
       continue
     fi
 
-    printf 'Stopping orphaned generic Unity Licensing Client process %s before launch.\n' "${client_pid}" >&2
+    printf 'Stopping orphaned Unity Licensing Client process %s on %s before launch.\n' "${client_pid}" "${socket_path}" >&2
     kill -TERM "${client_pid}" 2>/dev/null || true
     local attempt=0
     while kill -0 "${client_pid}" 2>/dev/null && [ "${attempt}" -lt 20 ]; do
@@ -102,7 +117,7 @@ sundoll_prepare_unity_launch() {
 
   sundoll_require_unity_editor || return $?
   sundoll_prepare_project_lock "${stamp}" || return $?
-  sundoll_stop_orphaned_generic_licensing_clients || return $?
+  sundoll_stop_orphaned_licensing_clients || return $?
 }
 
 sundoll_cleanup_launched_licensing_client() {

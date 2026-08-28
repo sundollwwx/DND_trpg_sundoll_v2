@@ -30,6 +30,7 @@ namespace Sundoll.Presentation
         private Camera workbenchCamera;
         private int warmupFrames;
         private int sampleFrames;
+        private int targetFrameRate;
         private string outputPath;
 
         public static bool IsRequested()
@@ -51,6 +52,9 @@ namespace Sundoll.Presentation
             workbench = nextWorkbench ?? throw new ArgumentNullException(nameof(nextWorkbench));
             warmupFrames = ReadPositiveIntArgument("-sundoll-m7-perf-warmup", DefaultWarmupFrames);
             sampleFrames = ReadPositiveIntArgument("-sundoll-m7-perf-frames", DefaultSampleFrames);
+            targetFrameRate = ReadIntegerArgument(
+                "-sundoll-m7-perf-target-fps",
+                MeasurementTargetFrameRate);
             outputPath = ReadStringArgument(
                 "-sundoll-m7-perf-output",
                 Path.Combine(UnityEngine.Application.temporaryCachePath, "SundollWorld-M7DesktopPerformance.json"));
@@ -172,10 +176,10 @@ namespace Sundoll.Presentation
             workbenchCamera.orthographicSize = 144f;
             workbenchCamera.transform.position = new Vector3(127.5f, 127.5f, -10f);
             QualitySettings.vSyncCount = 0;
-            // Measure sustainable render capacity rather than the sleep/jitter
-            // introduced by a software 60 FPS cap. The production Workbench
-            // still sets its normal target to 60 in M3WorkbenchRoot.Awake().
-            UnityEngine.Application.targetFrameRate = MeasurementTargetFrameRate;
+            // The default remains uncapped so the existing render-capacity gate
+            // is comparable. Passing -sundoll-m7-perf-target-fps 60 measures
+            // production pacing with the same vSync-off policy as the Workbench.
+            UnityEngine.Application.targetFrameRate = targetFrameRate;
 
             var definitionId = "m7-desktop-performance-definition";
             var library = workbench.PieceLibraryForDiagnostics;
@@ -239,7 +243,7 @@ namespace Sundoll.Presentation
                 targetWidth = 2560,
                 targetHeight = 1440,
                 targetFps = 60,
-                measurementTargetFrameRate = MeasurementTargetFrameRate,
+                measurementTargetFrameRate = targetFrameRate,
                 measurementVSyncCount = QualitySettings.vSyncCount,
                 mapWidth = 256,
                 mapHeight = 256,
@@ -307,6 +311,12 @@ namespace Sundoll.Presentation
         {
             var value = ReadStringArgument(name, string.Empty);
             return int.TryParse(value, out var parsed) && parsed > 0 ? parsed : fallback;
+        }
+
+        private static int ReadIntegerArgument(string name, int fallback)
+        {
+            var value = ReadStringArgument(name, string.Empty);
+            return int.TryParse(value, out var parsed) ? parsed : fallback;
         }
 
         private static string ReadStringArgument(string name, string fallback)
