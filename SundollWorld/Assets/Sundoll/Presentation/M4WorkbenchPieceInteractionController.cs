@@ -177,6 +177,18 @@ namespace Sundoll.Presentation
             NotifySelectionChanged();
         }
 
+        /// <summary>
+        /// Map changes own a separate workspace and must not carry a transient
+        /// board selection or a drag preview into another map.
+        /// </summary>
+        public void ClearSelection()
+        {
+            ClearPointerPreview();
+            selectedPieceIds.Clear();
+            primaryPieceId = null;
+            NotifySelectionChanged();
+        }
+
         public bool RotateSelectionClockwise()
         {
             return ApplyPresentation(

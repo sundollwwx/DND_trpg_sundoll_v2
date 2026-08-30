@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Text;
 using Sundoll.Application;
 using UnityEngine;
 
@@ -19,6 +20,7 @@ namespace Sundoll.Infrastructure
         public float zoom = 1f;
         public float panX;
         public float panY;
+        public bool hasViewport;
         public string currentWorkspace;
         public List<M3LayerContentSelectionDocument> selectedContentIds = new List<M3LayerContentSelectionDocument>();
     }
@@ -40,6 +42,7 @@ namespace Sundoll.Infrastructure
         public float zoom = 1f;
         public float panX;
         public float panY;
+        public bool hasViewport;
         public string currentWorkspace = "map";
         public Dictionary<string, string> selectedContentIds = new Dictionary<string, string>(StringComparer.Ordinal);
     }
@@ -60,14 +63,35 @@ namespace Sundoll.Infrastructure
         }
 
         public string RootPath { get; }
+        /// <summary>
+        /// The pre-M5 single-map state location. It remains readable so an
+        /// existing workspace is upgraded lazily the next time it is saved.
+        /// </summary>
         public string StatePath => Path.Combine(RootPath, "workspace-state.json");
+
+        public string GetMapStatePath(string mapId)
+        {
+            ValidateMapId(mapId);
+            // Map IDs are user-facing and may contain path separators or
+            // platform-specific reserved characters. A stable content hash
+            // gives every ID its own portable file without treating it as a
+            // filesystem path.
+            var fileName = M2FileIO.Sha256(Encoding.UTF8.GetBytes(mapId)) + ".json";
+            return Path.Combine(RootPath, "workspace-states", fileName);
+        }
 
         public M3WorkspaceStateLoadResult Load(string mapId, IEnumerable<string> layerIds)
         {
             ValidateMapId(mapId);
             var knownLayerIds = CopyLayerIds(layerIds);
             var defaultState = new M3LayerEditState(knownLayerIds);
-            if (!File.Exists(StatePath))
+            var mapStatePath = GetMapStatePath(mapId);
+            var statePath = File.Exists(mapStatePath)
+                ? mapStatePath
+                : File.Exists(StatePath)
+                    ? StatePath
+                    : null;
+            if (statePath == null)
             {
                 return new M3WorkspaceStateLoadResult
                 {
@@ -81,7 +105,7 @@ namespace Sundoll.Infrastructure
 
             try
             {
-                var document = JsonUtility.FromJson<M3WorkspaceStateDocument>(File.ReadAllText(StatePath));
+                var document = JsonUtility.FromJson<M3WorkspaceStateDocument>(File.ReadAllText(statePath));
                 if (document == null || document.formatVersion < 1 || document.formatVersion > CurrentFormatVersion ||
                     !string.Equals(document.mapId, mapId, StringComparison.Ordinal))
                 {
@@ -145,6 +169,13 @@ namespace Sundoll.Infrastructure
                     zoom = document.formatVersion >= 2 && document.zoom > 0f ? document.zoom : 1f,
                     panX = document.formatVersion >= 2 ? document.panX : 0f,
                     panY = document.formatVersion >= 2 ? document.panY : 0f,
+                    // Older format-2/3 documents did not carry hasViewport.
+                    // Preserve their existing behavior whenever they contain
+                    // a non-default view, while new saves can intentionally
+                    // persist a 1x zoom with a zero pan.
+                    hasViewport = document.formatVersion >= 2 &&
+                                  (document.hasViewport || document.zoom > 1f ||
+                                   Math.Abs(document.panX) > 0.0001f || Math.Abs(document.panY) > 0.0001f),
                     currentWorkspace = document.formatVersion >= 3 && !string.IsNullOrWhiteSpace(document.currentWorkspace)
                         ? document.currentWorkspace
                         : "map",
@@ -229,6 +260,7 @@ namespace Sundoll.Infrastructure
                 zoom = zoom > 0f ? zoom : 1f,
                 panX = panX,
                 panY = panY,
+                hasViewport = true,
                 currentWorkspace = string.IsNullOrWhiteSpace(currentWorkspace) ? "map" : currentWorkspace
             };
             foreach (var layerId in knownLayerIds)
@@ -254,7 +286,7 @@ namespace Sundoll.Infrastructure
                 }
             }
 
-            M2FileIO.WriteUtf8Atomic(StatePath, JsonUtility.ToJson(document, true));
+            M2FileIO.WriteUtf8Atomic(GetMapStatePath(mapId), JsonUtility.ToJson(document, true));
         }
 
         private static void ApplyVisibility(

@@ -366,7 +366,7 @@ namespace Sundoll.Presentation
                     selectedContentIds[pair.Key] = pair.Value;
                 }
             }
-            hasLoadedWorkspaceView = workspaceLoad.loaded && workspaceLoad.zoom > 1f;
+            hasLoadedWorkspaceView = workspaceLoad.loaded && workspaceLoad.hasViewport;
             loadedWorkspaceZoom = workspaceLoad.zoom;
             loadedWorkspacePan = new Vector2(workspaceLoad.panX, workspaceLoad.panY);
             status = string.IsNullOrEmpty(workspaceLoad.diagnostic)
@@ -486,7 +486,8 @@ namespace Sundoll.Presentation
             saveStatusLabel.style.marginLeft = 14f;
             saveStatusLabel.style.marginRight = 18f;
             topBar.Add(saveStatusLabel);
-            var consoleButton = new Button(CreateHostMap) { text = "新建主持地图" };
+            var consoleButton = new Button(CreateHostMapFromUi) { text = "新建主持地图" };
+            consoleButton.name = "CreateHostMap";
             consoleButton.style.marginLeft = 10f;
             topBar.Add(consoleButton);
             var createBoardButton = new Button(() => EnsureCurrentMapHostBoard()) { text = "发布并创建棋盘" };
@@ -658,7 +659,8 @@ namespace Sundoll.Presentation
             mapNameField = new TextField("地图名称") { name = "HostMapName" };
             mapNameField.style.marginTop = 4f;
             hostSection.Add(mapNameField);
-            var switchMapButton = new Button(SwitchHostMap) { text = "切换主持地图" };
+            var switchMapButton = new Button(SwitchHostMapFromUi) { text = "切换主持地图" };
+            switchMapButton.name = "SwitchHostMap";
             switchMapButton.style.marginTop = 4f;
             hostSection.Add(switchMapButton);
             var renameMapButton = new Button(RenameHostMap) { text = "重命名当前地图" };
@@ -913,13 +915,8 @@ namespace Sundoll.Presentation
             RefreshUiState();
         }
 
-        private void CreateHostMap()
+        private void CreateHostMapFromUi()
         {
-            if (consoleFacade == null)
-            {
-                return;
-            }
-
             var id = mapIdField == null ? string.Empty : mapIdField.value;
             if (string.IsNullOrWhiteSpace(id))
             {
@@ -927,10 +924,27 @@ namespace Sundoll.Presentation
             }
 
             var name = mapNameField == null ? id : mapNameField.value;
-            var receipt = consoleFacade.CreateMap(id.Trim(), string.IsNullOrWhiteSpace(name) ? id : name.Trim());
+            CreateHostMap(id.Trim(), string.IsNullOrWhiteSpace(name) ? id : name.Trim());
+        }
+
+        /// <summary>
+        /// Creates an inactive host-map slot. The caller explicitly chooses
+        /// when to enter it through <see cref="TrySwitchHostMap"/>.
+        /// </summary>
+        public bool CreateHostMap(string mapId, string displayName, int width = 64, int height = 64)
+        {
+            if (consoleFacade == null || string.IsNullOrWhiteSpace(mapId))
+            {
+                status = "地图 ID 不能为空";
+                RefreshUiState();
+                return false;
+            }
+
+            var receipt = consoleFacade.CreateMap(mapId.Trim(), displayName, width, height);
             CommitConsoleReceipt(receipt);
-            status = receipt.accepted ? "已创建主持地图：" + id : receipt.message;
+            status = receipt.accepted ? "已创建主持地图：" + mapId : receipt.message;
             RefreshUiState();
+            return receipt.accepted;
         }
 
         /// <summary>
@@ -994,19 +1008,60 @@ namespace Sundoll.Presentation
             return scenarioReceipt.accepted;
         }
 
-        private void SwitchHostMap()
+        private void SwitchHostMapFromUi()
         {
-            if (consoleFacade == null || mapIdField == null || string.IsNullOrWhiteSpace(mapIdField.value))
+            TrySwitchHostMap(mapIdField == null ? null : mapIdField.value);
+        }
+
+        /// <summary>
+        /// Moves to another host-map slot without discarding the current map's
+        /// draft or workspace. The snapshot is queued before the command; the
+        /// accepted switch is then journaled normally, so a close during the
+        /// background write can still recover the complete transition.
+        /// </summary>
+        public bool TrySwitchHostMap(string mapId)
+        {
+            if (consoleFacade == null || saveSession == null || commandBus == null || string.IsNullOrWhiteSpace(mapId))
             {
                 status = "请输入要切换的地图 ID";
                 RefreshUiState();
-                return;
+                return false;
             }
 
-            var receipt = consoleFacade.SwitchMap(mapIdField.value.Trim());
+            mapId = mapId.Trim();
+            var console = M5ConsoleQueries.Ensure(commandBus.State);
+            if (console.FindMap(mapId) == null)
+            {
+                status = "主持地图不存在：" + mapId;
+                RefreshUiState();
+                return false;
+            }
+
+            PersistWorkspaceState();
+            try
+            {
+                saveSession.QueueSave("切换主持地图前保存当前草稿");
+            }
+            catch (Exception exception)
+            {
+                status = "当前草稿无法加入保存队列，已取消切图：" + exception.Message;
+                RefreshUiState();
+                return false;
+            }
+
+            var receipt = consoleFacade.SwitchMap(mapId);
             CommitConsoleReceipt(receipt);
-            status = receipt.accepted ? "已切换主持地图：" + mapIdField.value.Trim() : receipt.message;
+            if (!receipt.accepted)
+            {
+                status = receipt.message;
+                RefreshUiState();
+                return false;
+            }
+
+            RestoreWorkspaceForActiveMap();
+            status = "已切换主持地图：" + mapId;
             RefreshUiState();
+            return true;
         }
 
         private void RenameHostMap()
@@ -2968,6 +3023,63 @@ namespace Sundoll.Presentation
             }
         }
 
+        private void RestoreWorkspaceForActiveMap()
+        {
+            if (workspaceStateStore == null || editor == null || editor.State == null || editor.State.map == null)
+            {
+                return;
+            }
+
+            var workspaceLoad = workspaceStateStore.Load(editor.State.map.id, LayerIds);
+            layerEditState = workspaceLoad.state;
+            currentTool = string.IsNullOrWhiteSpace(workspaceLoad.currentTool) ? "画笔" : workspaceLoad.currentTool;
+            currentLayerId = string.IsNullOrWhiteSpace(workspaceLoad.currentLayerId)
+                ? LayerIds[0]
+                : workspaceLoad.currentLayerId;
+            currentWorkspace = NormalizeWorkspaceId(workspaceLoad.currentWorkspace);
+            selectedContentIds.Clear();
+            if (workspaceLoad.selectedContentIds != null)
+            {
+                foreach (var pair in workspaceLoad.selectedContentIds)
+                {
+                    selectedContentIds[pair.Key] = pair.Value;
+                }
+            }
+
+            hasLoadedWorkspaceView = workspaceLoad.loaded && workspaceLoad.hasViewport;
+            loadedWorkspaceZoom = workspaceLoad.zoom;
+            loadedWorkspacePan = new Vector2(workspaceLoad.panX, workspaceLoad.panY);
+            selection = M3GridBounds.Empty;
+            clipboard = null;
+            selectedMapObjectId = null;
+            selectedPieceDefinitionId = null;
+            selectedPieceInstanceId = null;
+            pieceInteraction?.ClearSelection();
+            lastHierarchyRevision = -1;
+            lastMapListRevision = -1;
+            lastPieceListRevision = -1;
+
+            EnsureCamera();
+            EnsureSelectedContentDefaults();
+            projection.Bind(editor, layerEditState, mapVisualCatalog);
+            pieceProjection.Bind(commandBus, pieceAssetCatalog);
+            pieceInteraction?.Bind(this, pieceLibrary, pieceProjection);
+            consoleProjection.Bind(commandBus);
+            RefreshAudienceProjection();
+            leftTabController?.Select(currentWorkspace, false);
+
+            if (mapIdField != null)
+            {
+                mapIdField.SetValueWithoutNotify(editor.State.map.id);
+            }
+
+            var activeMap = M5ConsoleQueries.Ensure(commandBus.State).FindMap(editor.State.map.id);
+            if (mapNameField != null && activeMap != null)
+            {
+                mapNameField.SetValueWithoutNotify(activeMap.displayName ?? editor.State.map.id);
+            }
+        }
+
         private void PersistWorkspaceState()
         {
             if (workspaceStateStore == null || editor == null || editor.State == null || editor.State.map == null)
@@ -3093,10 +3205,7 @@ namespace Sundoll.Presentation
                         var mapId = mapSlot.id;
                         var mapButton = new Button(() =>
                         {
-                            var receipt = consoleFacade.SwitchMap(mapId);
-                            CommitConsoleReceipt(receipt);
-                            status = receipt.accepted ? "已切换主持地图：" + mapId : receipt.message;
-                            RefreshUiState();
+                            TrySwitchHostMap(mapId);
                         })
                         {
                             text = (console.activeMapId == mapId ? "▶ " : "") + mapSlot.displayName + " [" + mapId + "]"

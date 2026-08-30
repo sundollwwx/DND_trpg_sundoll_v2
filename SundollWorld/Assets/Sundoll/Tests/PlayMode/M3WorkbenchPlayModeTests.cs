@@ -418,6 +418,42 @@ namespace Sundoll.Tests.PlayMode
         }
 
         [UnityTest]
+        public IEnumerator WorkbenchHostMapSwitchSavesDraftAndRestoresPerMapViewport()
+        {
+            yield return SceneManager.LoadSceneAsync("M3Workbench", LoadSceneMode.Single);
+            yield return null;
+
+            var root = Object.FindFirstObjectByType<M3WorkbenchRoot>();
+            var camera = Camera.main;
+            Assert.That(root, Is.Not.Null);
+            Assert.That(camera, Is.Not.Null);
+            var firstMapId = root.Editor.State.map.id;
+            Assert.That(root.CreateHostMap("play-host-second", "第二张主持地图", 20, 16), Is.True);
+
+            camera.orthographicSize = 4f;
+            camera.transform.position = new Vector3(2.5f, 3.5f, -10f);
+            Assert.That(root.TrySwitchHostMap("play-host-second"), Is.True);
+            yield return null;
+            Assert.That(root.Editor.State.map.id, Is.EqualTo("play-host-second"));
+            Assert.That(camera.orthographicSize, Is.EqualTo(9f).Within(0.001f));
+
+            Assert.That(root.TrySwitchHostMap(firstMapId), Is.True);
+            yield return null;
+            Assert.That(root.Editor.State.map.id, Is.EqualTo(firstMapId));
+            Assert.That(camera.orthographicSize, Is.EqualTo(4f).Within(0.001f));
+            Assert.That(camera.transform.position.x, Is.EqualTo(2.5f).Within(0.001f));
+            Assert.That(camera.transform.position.y, Is.EqualTo(3.5f).Within(0.001f));
+
+            root.SaveSession.WaitForSave();
+            var reloaded = root.SaveSession.Reload();
+            Assert.That(reloaded.state.map.id, Is.EqualTo(firstMapId));
+            Assert.That(M5ConsoleQueries.Ensure(reloaded.state).FindMap("play-host-second"), Is.Not.Null);
+
+            Object.Destroy(root.gameObject);
+            yield return null;
+        }
+
+        [UnityTest]
         public IEnumerator PlayerPreviewUsesAudienceProjectionAndIsReadOnly()
         {
             yield return SceneManager.LoadSceneAsync("M3Workbench", LoadSceneMode.Single);

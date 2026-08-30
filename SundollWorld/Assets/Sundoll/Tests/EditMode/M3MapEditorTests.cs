@@ -663,7 +663,54 @@ namespace Sundoll.Tests.EditMode
             Assert.That(loaded.currentWorkspace, Is.EqualTo("pieces"));
             Assert.That(loaded.selectedContentIds[M3MapLayerIds.Terrain], Is.EqualTo("terrain-water"));
             Assert.That(loaded.selectedContentIds[M3MapLayerIds.Object], Is.EqualTo("object-crate"));
-            StringAssert.Contains("\"formatVersion\": 3", File.ReadAllText(store.StatePath));
+            StringAssert.Contains("\"formatVersion\": 3", File.ReadAllText(store.GetMapStatePath("map-m3")));
+        }
+
+        [Test]
+        public void WorkspaceStateUsesIndependentFilesForEachMapAndReadsLegacyState()
+        {
+            var layerIds = new[]
+            {
+                M3MapLayerIds.Terrain,
+                M3MapLayerIds.Wall,
+                M3MapLayerIds.Object,
+                M3MapLayerIds.Interaction,
+                M3MapLayerIds.StaticAnnotation
+            };
+            var store = new M3WorkspaceStateStore(root);
+            var firstState = new M3LayerEditState(layerIds);
+            firstState.SetLocked(M3MapLayerIds.Wall, true);
+            var secondState = new M3LayerEditState(layerIds);
+            secondState.SetVisible(M3MapLayerIds.Object, false);
+
+            store.Save("map/one", firstState, layerIds, "选择", M3MapLayerIds.Wall, 4f, 2.5f, 3.5f);
+            store.Save("map-two", secondState, layerIds, "画笔", M3MapLayerIds.Object, 1f, -1f, 6f);
+
+            Assert.That(store.GetMapStatePath("map/one"), Is.Not.EqualTo(store.GetMapStatePath("map-two")));
+            Assert.That(File.Exists(store.GetMapStatePath("map/one")), Is.True);
+            Assert.That(File.Exists(store.GetMapStatePath("map-two")), Is.True);
+
+            var firstLoaded = store.Load("map/one", layerIds);
+            var secondLoaded = store.Load("map-two", layerIds);
+            Assert.That(firstLoaded.loaded, Is.True);
+            Assert.That(firstLoaded.zoom, Is.EqualTo(4f));
+            Assert.That(firstLoaded.state.IsLocked(M3MapLayerIds.Wall), Is.True);
+            Assert.That(secondLoaded.loaded, Is.True);
+            Assert.That(secondLoaded.zoom, Is.EqualTo(1f));
+            Assert.That(secondLoaded.hasViewport, Is.True);
+            Assert.That(secondLoaded.state.IsVisible(M3MapLayerIds.Object), Is.False);
+
+            var legacyStore = new M3WorkspaceStateStore(Path.Combine(root, "legacy"));
+            Directory.CreateDirectory(legacyStore.RootPath);
+            File.WriteAllText(
+                legacyStore.StatePath,
+                "{\"formatVersion\":3,\"mapId\":\"legacy-map\",\"zoom\":7,\"currentTool\":\"选择\"," +
+                "\"currentLayerId\":\"terrain\",\"hiddenLayerIds\":[],\"lockedLayerIds\":[],\"layerOrder\":[]}");
+
+            var legacyLoaded = legacyStore.Load("legacy-map", layerIds);
+            Assert.That(legacyLoaded.loaded, Is.True);
+            Assert.That(legacyLoaded.zoom, Is.EqualTo(7f));
+            Assert.That(legacyLoaded.currentTool, Is.EqualTo("选择"));
         }
 
         [Test]
