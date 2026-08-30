@@ -341,6 +341,7 @@ namespace Sundoll.Tests.PlayMode
             Assert.That(document.rootVisualElement.Q<Label>("InspectorTitle").text, Is.EqualTo("地图摘要"));
             Assert.That(document.rootVisualElement.Q<Label>("InspectorDiagnosticsBody"), Is.Not.Null);
             Assert.That(document.rootVisualElement.Q<DropdownField>("PieceRelationTarget"), Is.Not.Null);
+            Assert.That(document.rootVisualElement.Q<Button>("DeleteSelectedPieces").enabledSelf, Is.False);
             Assert.That(document.rootVisualElement.Q<Button>("DeleteSelectedPieces"), Is.Not.Null);
             Assert.That(document.rootVisualElement.Q<VisualElement>("HostMapList"), Is.Not.Null);
             Assert.That(document.rootVisualElement.Q<VisualElement>("HostHierarchy"), Is.Not.Null);
@@ -470,11 +471,15 @@ namespace Sundoll.Tests.PlayMode
             var destination = camera.WorldToScreenPoint(new Vector3(3f, 2f, 0f));
             Assert.That(root.BeginPiecePointerAction(first, false), Is.True);
             root.EndPiecePointerAction(first);
-            Assert.That(root.GetComponent<UIDocument>().rootVisualElement.Q<Label>("InspectorTitle").text, Is.EqualTo("棋子状态"));
+            var document = root.GetComponent<UIDocument>();
+            Assert.That(document.rootVisualElement.Q<Label>("InspectorTitle").text, Is.EqualTo("棋子状态"));
+            Assert.That(document.rootVisualElement.Q<Button>("DeleteSelectedPieces").enabledSelf, Is.True);
+            Assert.That(projection.Views["play-interaction-a"].transform.Find("SelectionHighlight-play-interaction-a"), Is.Not.Null);
             Assert.That(root.BeginPiecePointerAction(second, true), Is.True);
             root.EndPiecePointerAction(second);
             Assert.That(root.SelectedPieceCount, Is.EqualTo(2));
             Assert.That(root.GetComponent<UIDocument>().rootVisualElement.Q<Label>("InspectorTitle").text, Is.EqualTo("棋子多选"));
+            Assert.That(document.rootVisualElement.Q<DropdownField>("PieceRelationTarget").enabledSelf, Is.False);
 
             Assert.That(root.BeginPiecePointerAction(first, false), Is.True);
             root.ContinuePiecePointerAction(destination);

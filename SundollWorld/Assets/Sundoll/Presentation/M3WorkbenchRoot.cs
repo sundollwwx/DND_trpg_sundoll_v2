@@ -28,6 +28,7 @@ namespace Sundoll.Presentation
         private readonly Dictionary<string, Button> layerVisibilityButtons = new Dictionary<string, Button>(StringComparer.Ordinal);
         private readonly Dictionary<string, Button> layerLockButtons = new Dictionary<string, Button>(StringComparer.Ordinal);
         private readonly Dictionary<string, Button> mapToolButtons = new Dictionary<string, Button>(StringComparer.Ordinal);
+        private readonly List<Button> inspectorPieceActionButtons = new List<Button>();
         private readonly Dictionary<string, string> selectedContentIds = new Dictionary<string, string>(StringComparer.Ordinal);
         private readonly List<M3CellMutation> pendingStroke = new List<M3CellMutation>();
         private readonly HashSet<M3MapCellKey> pendingStrokeKeys = new HashSet<M3MapCellKey>();
@@ -1199,28 +1200,36 @@ namespace Sundoll.Presentation
             var placeSelectedButton = new Button(PlaceSelectedPiece) { text = "选中棋子放到选区" };
             placeSelectedButton.style.marginTop = 10f;
             panel.Add(placeSelectedButton);
+            inspectorPieceActionButtons.Add(placeSelectedButton);
             var rotateSelectedButton = new Button(RotateSelectedPiece) { text = "旋转选中棋子" };
             rotateSelectedButton.style.marginTop = 5f;
             panel.Add(rotateSelectedButton);
+            inspectorPieceActionButtons.Add(rotateSelectedButton);
             var flipSelectedButton = new Button(FlipSelectedPiece) { text = "翻面选中棋子" };
             flipSelectedButton.style.marginTop = 5f;
             panel.Add(flipSelectedButton);
+            inspectorPieceActionButtons.Add(flipSelectedButton);
             var visibilityButton = new Button(ToggleSelectedPieceVisibility) { text = "切换选中棋子显隐" };
             visibilityButton.style.marginTop = 5f;
             panel.Add(visibilityButton);
+            inspectorPieceActionButtons.Add(visibilityButton);
             var deletePieceButton = new Button(() => DeleteSelectedPieces()) { text = "删除选中棋子" };
             deletePieceButton.name = "DeleteSelectedPieces";
             deletePieceButton.style.marginTop = 5f;
             panel.Add(deletePieceButton);
+            inspectorPieceActionButtons.Add(deletePieceButton);
             var detachButton = new Button(DetachSelectedPiece) { text = "解除选中棋子关系" };
             detachButton.style.marginTop = 5f;
             panel.Add(detachButton);
+            inspectorPieceActionButtons.Add(detachButton);
             var lowerStackButton = new Button(() => MoveSelectedPieceStack(-1)) { text = "堆叠上移" };
             lowerStackButton.style.marginTop = 5f;
             panel.Add(lowerStackButton);
+            inspectorPieceActionButtons.Add(lowerStackButton);
             var raiseStackButton = new Button(() => MoveSelectedPieceStack(1)) { text = "堆叠下移" };
             raiseStackButton.style.marginTop = 5f;
             panel.Add(raiseStackButton);
+            inspectorPieceActionButtons.Add(raiseStackButton);
             pieceRelationTargetField = new DropdownField("关系目标实例", new List<string> { string.Empty }, 0)
             {
                 name = "PieceRelationTarget"
@@ -1233,9 +1242,11 @@ namespace Sundoll.Presentation
             var containerButton = new Button(MoveSelectedPieceToContainer) { text = "收入容器" };
             containerButton.style.marginTop = 4f;
             panel.Add(containerButton);
+            inspectorPieceActionButtons.Add(containerButton);
             var attachButton = new Button(AttachSelectedPiece) { text = "附着到目标" };
             attachButton.style.marginTop = 4f;
             panel.Add(attachButton);
+            inspectorPieceActionButtons.Add(attachButton);
             WrapPanelChildrenInScrollView(panel, "InspectorScroll");
             return panel;
         }
@@ -3750,6 +3761,16 @@ namespace Sundoll.Presentation
                     "sw-map-tool-selected",
                     string.Equals(pair.Key, currentTool, StringComparison.Ordinal));
             }
+
+            var hasPieceSelection = SelectedPieceCount > 0;
+            var hasSinglePieceSelection = SelectedPieceCount == 1;
+            foreach (var button in inspectorPieceActionButtons)
+            {
+                button.SetEnabled(hasPieceSelection);
+            }
+
+            pieceRelationTargetField?.SetEnabled(hasSinglePieceSelection);
+            pieceAttachmentSlotField?.SetEnabled(hasSinglePieceSelection);
 
             if (inspectorLabel != null)
             {

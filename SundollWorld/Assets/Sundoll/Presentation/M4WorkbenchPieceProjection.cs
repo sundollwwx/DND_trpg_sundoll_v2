@@ -15,6 +15,7 @@ namespace Sundoll.Presentation
     public sealed class M4WorkbenchPieceProjection : MonoBehaviour
     {
         private readonly Dictionary<string, GameObject> views = new Dictionary<string, GameObject>(StringComparer.Ordinal);
+        private readonly Dictionary<string, GameObject> selectionHighlights = new Dictionary<string, GameObject>(StringComparer.Ordinal);
         private readonly Dictionary<string, Sprite> viewSprites = new Dictionary<string, Sprite>(StringComparer.Ordinal);
         private readonly Dictionary<string, string> viewAssetIds = new Dictionary<string, string>(StringComparer.Ordinal);
         private readonly HashSet<string> activeIds = new HashSet<string>(StringComparer.Ordinal);
@@ -147,6 +148,7 @@ namespace Sundoll.Presentation
                     renderer.sortingOrder = 100 + Math.Max(0, instance.location == null ? 0 : instance.location.stackOrder);
                     view.transform.rotation = Quaternion.Euler(0f, 0f, instance.rotation);
                     view.transform.localScale = instance.flipped ? new Vector3(-1f, 1f, 1f) : Vector3.one;
+                    UpdateSelectionHighlight(instance.id, view, renderer, selectedIds.Contains(instance.id));
                 }
             }
 
@@ -166,10 +168,56 @@ namespace Sundoll.Presentation
                     Destroy(views[staleId]);
                 }
 
+                selectionHighlights.Remove(staleId);
+
                 ReleaseViewAsset(staleId);
 
                 views.Remove(staleId);
             }
+        }
+
+        private void UpdateSelectionHighlight(
+            string instanceId,
+            GameObject view,
+            SpriteRenderer sourceRenderer,
+            bool selected)
+        {
+            if (!selected)
+            {
+                if (selectionHighlights.TryGetValue(instanceId, out var existing))
+                {
+                    if (existing != null)
+                    {
+                        Destroy(existing);
+                    }
+
+                    selectionHighlights.Remove(instanceId);
+                }
+
+                return;
+            }
+
+            if (!selectionHighlights.TryGetValue(instanceId, out var highlight) || highlight == null)
+            {
+                highlight = new GameObject("SelectionHighlight-" + instanceId);
+                highlight.transform.SetParent(view.transform, false);
+                selectionHighlights[instanceId] = highlight;
+            }
+
+            var renderer = highlight.GetComponent<SpriteRenderer>();
+            if (renderer == null)
+            {
+                renderer = highlight.AddComponent<SpriteRenderer>();
+            }
+
+            renderer.sprite = sourceRenderer.sprite;
+            renderer.drawMode = sourceRenderer.drawMode;
+            renderer.size = sourceRenderer.size;
+            renderer.color = new Color(1f, 0.74f, 0.2f, 0.72f);
+            renderer.sortingOrder = sourceRenderer.sortingOrder - 1;
+            highlight.transform.localPosition = new Vector3(0f, 0f, 0.02f);
+            highlight.transform.localRotation = Quaternion.identity;
+            highlight.transform.localScale = Vector3.one * 1.12f;
         }
 
         private GameObject CreateView(string instanceId)
@@ -317,6 +365,15 @@ namespace Sundoll.Presentation
             }
 
             views.Clear();
+            foreach (var highlight in selectionHighlights.Values)
+            {
+                if (highlight != null)
+                {
+                    Destroy(highlight);
+                }
+            }
+
+            selectionHighlights.Clear();
             foreach (var instanceId in new List<string>(viewAssetIds.Keys))
             {
                 ReleaseViewAsset(instanceId);
