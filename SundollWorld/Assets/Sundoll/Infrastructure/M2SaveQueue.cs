@@ -99,7 +99,9 @@ namespace Sundoll.Infrastructure
     {
         private readonly object syncRoot = new object();
         private readonly M2ProjectStore projectStore;
-        private Task tail = Task.CompletedTask;
+        private readonly SemaphoreSlim saveGate = new SemaphoreSlim(1, 1);
+        private readonly ManualResetEventSlim idle = new ManualResetEventSlim(true);
+        private int pendingOperations;
         private bool disposed;
 
         public M2SaveQueue(M2ProjectStore projectStore)
@@ -133,30 +135,42 @@ namespace Sundoll.Infrastructure
                 // this immutable-for-the-duration snapshot and never the live domain state.
                 var snapshot = state.DeepClone();
                 var operation = new M2SaveOperation(reason, journalOperationSequence, capturedPendingTransactions);
-                var previous = tail;
-                tail = previous.ContinueWith(
-                    _ => Execute(operation, snapshot, journalStreamId, journalOperationSequence, expectedGeneration),
-                    CancellationToken.None,
-                    TaskContinuationOptions.DenyChildAttach,
-                    TaskScheduler.Default);
+                pendingOperations++;
+                idle.Reset();
+                try
+                {
+                    // A semaphore preserves single-writer ordering without
+                    // retaining a completed Task continuation chain and every
+                    // captured snapshot behind it for the process lifetime.
+                    Task.Run(() => ExecuteSerial(
+                        operation,
+                        snapshot,
+                        journalStreamId,
+                        journalOperationSequence,
+                        expectedGeneration));
+                }
+                catch
+                {
+                    pendingOperations--;
+                    if (pendingOperations == 0)
+                    {
+                        idle.Set();
+                    }
+
+                    throw;
+                }
+
                 return operation;
             }
         }
 
         public void WaitForIdle()
         {
-            Task pending;
-            lock (syncRoot)
-            {
-                pending = tail;
-            }
-
-            pending.GetAwaiter().GetResult();
+            idle.Wait();
         }
 
         public void Dispose()
         {
-            Task pending;
             lock (syncRoot)
             {
                 if (disposed)
@@ -165,10 +179,47 @@ namespace Sundoll.Infrastructure
                 }
 
                 disposed = true;
-                pending = tail;
             }
 
-            pending.GetAwaiter().GetResult();
+            WaitForIdle();
+            saveGate.Dispose();
+            idle.Dispose();
+        }
+
+        private void ExecuteSerial(
+            M2SaveOperation operation,
+            M1WorldState snapshot,
+            string journalStreamId,
+            long journalOperationSequence,
+            long? expectedGeneration)
+        {
+            try
+            {
+                saveGate.Wait();
+                try
+                {
+                    Execute(operation, snapshot, journalStreamId, journalOperationSequence, expectedGeneration);
+                }
+                finally
+                {
+                    saveGate.Release();
+                }
+            }
+            catch (Exception exception)
+            {
+                operation.MarkFailed(exception);
+            }
+            finally
+            {
+                lock (syncRoot)
+                {
+                    pendingOperations--;
+                    if (pendingOperations == 0)
+                    {
+                        idle.Set();
+                    }
+                }
+            }
         }
 
         private void Execute(

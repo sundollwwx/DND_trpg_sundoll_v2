@@ -134,7 +134,10 @@ namespace Sundoll.Presentation
         // dependency or bypassing the normal command bus.
         internal M1CommandBus CommandBusForDiagnostics => commandBus;
         internal M4PieceLibraryFacade PieceLibraryForDiagnostics => pieceLibrary;
+        internal M4PieceAssetCatalog PieceAssetCatalogForDiagnostics => pieceAssetCatalog;
+        internal M3WorkbenchMapProjection MapProjectionForDiagnostics => projection;
         internal M4WorkbenchPieceProjection PieceProjectionForDiagnostics => pieceProjection;
+        internal M5WorkbenchConsoleProjection ConsoleProjectionForDiagnostics => consoleProjection;
         internal Camera WorkbenchCameraForDiagnostics => GetComponentInChildren<Camera>();
 
         private void Awake()
@@ -192,6 +195,12 @@ namespace Sundoll.Presentation
                 var performanceCapture = gameObject.AddComponent<M7DesktopPerformanceCapture>();
                 performanceCapture.Begin(this);
             }
+
+            if (M7DesktopSoakCapture.IsRequested())
+            {
+                var soakCapture = gameObject.AddComponent<M7DesktopSoakCapture>();
+                soakCapture.Begin(this);
+            }
         }
 
         private void Update()
@@ -236,7 +245,9 @@ namespace Sundoll.Presentation
         private void InitializeDomain()
         {
             var productRoot = Path.Combine(UnityEngine.Application.persistentDataPath, "SundollWorld");
-            if (UnityEngine.Application.isBatchMode || M7DesktopPerformanceCapture.IsRequested())
+            if (UnityEngine.Application.isBatchMode ||
+                M7DesktopPerformanceCapture.IsRequested() ||
+                M7DesktopSoakCapture.IsRequested())
             {
                 // Automated scene runs and opt-in desktop performance captures
                 // must never open or mutate a person's desktop projects. Each
@@ -266,6 +277,25 @@ namespace Sundoll.Presentation
                     saveSession = performanceSession,
                     created = true,
                     diagnostic = "M7 desktop performance isolated project"
+                }, false);
+                return;
+            }
+
+            if (M7DesktopSoakCapture.IsRequested())
+            {
+                var soakProjectRoot = Path.Combine(
+                    productRoot,
+                    "Projects",
+                    "M7DesktopSoak");
+                var soakSession = M2SaveSession.Open(
+                    soakProjectRoot,
+                    M1VerticalSlice.CreateDemoBus().State);
+                AdoptSession(new ProjectWorkspaceOpenResult
+                {
+                    projectRoot = soakProjectRoot,
+                    saveSession = soakSession,
+                    created = true,
+                    diagnostic = "M7 desktop soak isolated project"
                 }, false);
                 return;
             }

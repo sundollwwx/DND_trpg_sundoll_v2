@@ -44,6 +44,31 @@ namespace Sundoll.Tests.EditMode
         }
 
         [Test]
+        public void CanonicalHashTreatsJsonMaterializedEmptyPublishedMapAsAbsent()
+        {
+            var state = M1VerticalSlice.CreateDemoBus().State;
+            var console = M5ConsoleQueries.Ensure(state);
+            console.maps.Add(new M5MapSlot
+            {
+                id = "map-without-published-content",
+                displayName = "Map without published content",
+                map = new M1MapDocument
+                {
+                    id = "map-without-published-content",
+                    width = 32,
+                    height = 32
+                },
+                publishedMap = null
+            });
+
+            var roundTrip = JsonUtility.FromJson<M1WorldState>(JsonUtility.ToJson(state, false));
+
+            Assert.That(
+                M2CanonicalStateHasher.Compute(roundTrip),
+                Is.EqualTo(M2CanonicalStateHasher.Compute(state)));
+        }
+
+        [Test]
         public void VersionedCommandEnvelopeRoundTripsM3CommandAndPayload()
         {
             var bus = M1VerticalSlice.CreateDemoBus();

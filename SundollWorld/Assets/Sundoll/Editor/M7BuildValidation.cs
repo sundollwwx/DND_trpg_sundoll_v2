@@ -12,6 +12,7 @@ namespace Sundoll.EditorTools
     public static class M7BuildValidation
     {
         public const string OutputPath = "../Builds/SundollWorld-v03-M7-macOS-universal.app";
+        public const string WindowsOutputPath = "../Builds/SundollWorld-v03-M7-Windows-x64/SundollWorld.exe";
         public const string EditModeResultPath = "TestResults_EditMode_20260825_m5_hierarchy_context.xml";
         public const string PlayModeResultPath = "TestResults_PlayMode_20260825_m5_hierarchy_context.xml";
 
@@ -56,6 +57,52 @@ namespace Sundoll.EditorTools
             if (report.summary.result != BuildResult.Succeeded)
             {
                 throw new InvalidOperationException("M7 macOS universal build failed: " + report.summary.result);
+            }
+        }
+
+        [MenuItem("Sundoll/M7/Build Windows x64 IL2CPP")]
+        public static void BuildWindows64Il2Cpp()
+        {
+            var scenes = GetEnabledScenes();
+            if (scenes.Length == 0)
+            {
+                throw new InvalidOperationException("No enabled build scenes are configured.");
+            }
+
+            EditorUserBuildSettings.SwitchActiveBuildTarget(
+                BuildTargetGroup.Standalone,
+                BuildTarget.StandaloneWindows64);
+            var standaloneTarget = NamedBuildTarget.FromBuildTargetGroup(BuildTargetGroup.Standalone);
+            PlayerSettings.SetScriptingBackend(standaloneTarget, ScriptingImplementation.IL2CPP);
+            var scriptingBackend = PlayerSettings.GetScriptingBackend(standaloneTarget);
+            if (scriptingBackend != ScriptingImplementation.IL2CPP)
+            {
+                throw new InvalidOperationException(
+                    "M7 Windows x64 build requires IL2CPP, but the active backend is " + scriptingBackend + ".");
+            }
+
+            EditorUserBuildSettings.SetPlatformSettings(
+                BuildPipeline.GetBuildTargetName(BuildTarget.StandaloneWindows64),
+                "Architecture",
+                "x86_64");
+            var absoluteOutput = Path.GetFullPath(Path.Combine(Application.dataPath, WindowsOutputPath));
+            var report = BuildPipeline.BuildPlayer(new BuildPlayerOptions
+            {
+                scenes = scenes,
+                locationPathName = absoluteOutput,
+                target = BuildTarget.StandaloneWindows64,
+                options = BuildOptions.None
+            });
+
+            Debug.Log("M7 Windows x64 IL2CPP build result: " + report.summary.result +
+                      "; output=" + absoluteOutput +
+                      "; backend=" + scriptingBackend +
+                      "; size=" + report.summary.totalSize +
+                      "; errors=" + report.summary.totalErrors +
+                      "; warnings=" + report.summary.totalWarnings);
+            if (report.summary.result != BuildResult.Succeeded)
+            {
+                throw new InvalidOperationException("M7 Windows x64 IL2CPP build failed: " + report.summary.result);
             }
         }
 

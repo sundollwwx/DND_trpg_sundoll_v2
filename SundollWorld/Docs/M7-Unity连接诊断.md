@@ -32,7 +32,7 @@
 - 处理：结束孤立的通用 Licensing Client，并将遗留空锁移动到 `/private/tmp/SundollWorld_UnityLockfile_license_recovery_20260828.stale`；没有删除许可证、缓存、项目或存档。
 - 持久化修复：所有正式测试、许可证自检、macOS 构建和交互式打开入口都传入 `-licensingIpc LicenseClient-sundoll-6000.3.22`。脚本还会在没有活动 Editor 时识别并停止孤立的通用客户端。
 - 独立探针：`scripts/unity-license-check.sh` 于 2026-08-28 02:00 通过，日志为 `SundollWorld/Logs/LicenseCheck_20260828_020052.log`；握手成功，Unity 初始化许可证成功，本地 entitlement 可用，无需重新登录。
-- 回归证据：最新完整 XML 为 EditMode `85/85`、PlayMode `13/13`，日志中均确认 `LicenseClient-sundoll-6000.3.22`，未出现协议不匹配、60 秒超时、`ObjectDisposedException` 或失败重连。
+- 回归证据：最新完整 XML 为 EditMode `87/87`、PlayMode `13/13`，日志中均确认 `LicenseClient-sundoll-6000.3.22`，未出现协议不匹配、60 秒超时、`ObjectDisposedException` 或失败重连。
 
 这里的“以后不会再出现”边界是：通过本项目提供的入口不会再主动走旧通道。Hub 自己的通用客户端仍可能为 Hub 其他项目保留；打开本项目请使用 `Open-SundollWorld.command`，不要从 Hub 的项目行直接启动。
 

@@ -64,6 +64,8 @@ sundoll_prepare_project_lock() {
 sundoll_stop_orphaned_licensing_clients() {
   local client_pid=""
   local client_ppid=""
+  local client_command=""
+  local client_stat=""
   local client_pids=""
   local socket_path=""
   local client_sockets=""
@@ -86,6 +88,12 @@ sundoll_stop_orphaned_licensing_clients() {
       continue
     fi
 
+    client_command="$(ps -p "${client_pid}" -o command= 2>/dev/null || true)"
+    if [[ "${client_command}" != *"--namedPipe ${SUNDOLL_UNITY_LICENSE_PIPE}"* ]]; then
+      # Keep the Unity Hub client and other editor-version channels intact.
+      continue
+    fi
+
     client_sockets="$(lsof -a -p "${client_pid}" -U -Fn 2>/dev/null | sed -n 's/^n//p')"
     socket_path=""
     for expected_socket in "${expected_sockets[@]}"; do
@@ -95,17 +103,25 @@ sundoll_stop_orphaned_licensing_clients() {
       fi
     done
     if [ -z "${socket_path}" ]; then
-      continue
+      # A crashed client can keep the version-scoped global mutex while its
+      # socket has already disappeared. The exact command-line channel and
+      # orphaned parent are sufficient to identify it safely.
+      socket_path="version-scoped Unity Licensing Client"
     fi
 
     printf 'Stopping orphaned Unity Licensing Client process %s on %s before launch.\n' "${client_pid}" "${socket_path}" >&2
     kill -TERM "${client_pid}" 2>/dev/null || true
     local attempt=0
-    while kill -0 "${client_pid}" 2>/dev/null && [ "${attempt}" -lt 20 ]; do
+    while kill -0 "${client_pid}" 2>/dev/null && [ "${attempt}" -lt 100 ]; do
+      client_stat="$(ps -p "${client_pid}" -o stat= 2>/dev/null | tr -d '[:space:]')"
+      if [ -z "${client_stat}" ] || [[ "${client_stat}" == Z* ]]; then
+        break
+      fi
       sleep 0.1
       attempt=$((attempt + 1))
     done
-    if kill -0 "${client_pid}" 2>/dev/null; then
+    client_stat="$(ps -p "${client_pid}" -o stat= 2>/dev/null | tr -d '[:space:]')"
+    if [ -n "${client_stat}" ] && [[ "${client_stat}" != Z* ]]; then
       printf 'Orphaned Unity Licensing Client process %s did not exit; stop it before retrying.\n' "${client_pid}" >&2
       return 126
     fi

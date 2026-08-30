@@ -60,5 +60,7 @@ SundollWorld/TestResults_*.xml
 !SundollWorld/TestResults_PlayMode_20260827_214602.xml
 !SundollWorld/TestResults_EditMode_20260828_015216.xml
 !SundollWorld/TestResults_PlayMode_20260828_015216.xml
+!SundollWorld/TestResults_EditMode_20260830_133200.xml
+!SundollWorld/TestResults_PlayMode_20260830_133200.xml
 *.tmp
 *.bak

@@ -221,7 +221,6 @@ namespace Sundoll.Presentation
                     var layerObject = new GameObject(layerId);
                     layerObject.transform.SetParent(transform, false);
                     layerObject.AddComponent<TilemapRenderer>();
-                    layerObject.AddComponent<Tilemap>();
                     child = layerObject.transform;
                 }
 

@@ -12,6 +12,16 @@ namespace Sundoll.Infrastructure
             return ComputeInternal(state, true);
         }
 
+        /// <summary>
+        /// Returns the deterministic canonical input used by Compute. This is
+        /// intentionally exposed for release diagnostics and evidence capture;
+        /// callers should persist Compute(state), not this verbose payload.
+        /// </summary>
+        public static string GetCanonicalPayload(M1WorldState state)
+        {
+            return BuildCanonicalPayload(state, true);
+        }
+
         public static bool MatchesStoredHash(M1WorldState state, string expectedHash)
         {
             if (state == null || string.IsNullOrWhiteSpace(expectedHash))
@@ -38,6 +48,11 @@ namespace Sundoll.Infrastructure
 
         private static string ComputeInternal(M1WorldState state, bool includeMapObjects)
         {
+            return M2FileIO.Sha256Utf8(BuildCanonicalPayload(state, includeMapObjects));
+        }
+
+        private static string BuildCanonicalPayload(M1WorldState state, bool includeMapObjects)
+        {
             if (state == null)
             {
                 throw new ArgumentNullException(nameof(state));
@@ -62,7 +77,7 @@ namespace Sundoll.Infrastructure
             {
                 AppendM5Console(builder, state.m5Console, layerAware, includeMapObjects);
             }
-            return M2FileIO.Sha256Utf8(builder.ToString());
+            return builder.ToString();
         }
 
         private static void AppendProject(StringBuilder builder, M1ProjectDocument project)
@@ -86,14 +101,29 @@ namespace Sundoll.Infrastructure
 
         private static void AppendPublishedMap(StringBuilder builder, M1MapContentVersion map, bool layerAware, bool includeMapObjects)
         {
-            AppendString(builder, map == null ? null : map.id);
-            AppendString(builder, map == null ? null : map.sourceMapId);
-            AppendInt(builder, map == null ? 0 : map.contentRevision);
-            AppendCells(builder, map == null ? null : map.cells, layerAware);
+            // Unity JsonUtility materializes a null inline class as an empty
+            // object during a JSON round trip. Treat that representation as
+            // the same absent published version so canonical hashes survive
+            // persistence without rewriting the original save.
+            var absent = IsAbsentPublishedMap(map);
+            AppendString(builder, absent ? null : map.id);
+            AppendString(builder, absent ? null : map.sourceMapId);
+            AppendInt(builder, absent ? 0 : map.contentRevision);
+            AppendCells(builder, absent ? null : map.cells, layerAware);
             if (includeMapObjects)
             {
-                AppendObjects(builder, map == null ? null : map.objects);
+                AppendObjects(builder, absent ? null : map.objects);
             }
+        }
+
+        private static bool IsAbsentPublishedMap(M1MapContentVersion map)
+        {
+            return map == null ||
+                   string.IsNullOrEmpty(map.id) &&
+                   string.IsNullOrEmpty(map.sourceMapId) &&
+                   map.contentRevision == 0 &&
+                   (map.cells == null || map.cells.Count == 0) &&
+                   (map.objects == null || map.objects.Count == 0);
         }
 
         private static void AppendScenario(StringBuilder builder, M1ScenarioDocument scenario)

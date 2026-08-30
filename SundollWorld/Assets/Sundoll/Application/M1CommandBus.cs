@@ -87,14 +87,14 @@ namespace Sundoll.Application
             {
                 receipt.conflict = true;
                 receipt.message = $"Revision 冲突：命令基于 {command.BaseRevision}，当前为 {state.revision}";
-                receipts[command.CommandId] = receipt;
+                receipts[command.CommandId] = ToIdempotencyRecord(receipt);
                 return receipt;
             }
 
             if (!rulePolicy.Allow(state, command, out var reason))
             {
                 receipt.message = reason;
-                receipts[command.CommandId] = receipt;
+                receipts[command.CommandId] = ToIdempotencyRecord(receipt);
                 return receipt;
             }
 
@@ -102,13 +102,29 @@ namespace Sundoll.Application
             state.revision++;
             receipt.accepted = true;
             receipt.revisionAfter = state.revision;
-            receipts[command.CommandId] = receipt;
+            receipts[command.CommandId] = ToIdempotencyRecord(receipt);
             return receipt;
+        }
+
+        private static M1CommandReceipt ToIdempotencyRecord(M1CommandReceipt receipt)
+        {
+            return new M1CommandReceipt
+            {
+                commandId = receipt.commandId,
+                accepted = receipt.accepted,
+                duplicate = false,
+                conflict = receipt.conflict,
+                revisionBefore = receipt.revisionBefore,
+                revisionAfter = receipt.revisionAfter,
+                message = receipt.message
+            };
         }
     }
 
     public sealed class M1CommandBus
     {
+        public const int DefaultMaxHistoryEntries = 128;
+
         private sealed class HistoryEntry
         {
             public M1WorldState before;
@@ -119,16 +135,27 @@ namespace Sundoll.Application
 
         private readonly M1WorldState state;
         private readonly M1LocalAuthority authority;
+        private readonly int maxHistoryEntries;
         private readonly List<HistoryEntry> undoHistory = new List<HistoryEntry>();
         private readonly List<HistoryEntry> redoHistory = new List<HistoryEntry>();
 
-        public M1CommandBus(M1WorldState state, M1LocalAuthority authority)
+        public M1CommandBus(
+            M1WorldState state,
+            M1LocalAuthority authority,
+            int maxHistoryEntries = DefaultMaxHistoryEntries)
         {
             this.state = state ?? throw new ArgumentNullException(nameof(state));
             this.authority = authority ?? throw new ArgumentNullException(nameof(authority));
+            if (maxHistoryEntries < 1)
+            {
+                throw new ArgumentOutOfRangeException(nameof(maxHistoryEntries));
+            }
+
+            this.maxHistoryEntries = maxHistoryEntries;
         }
 
         public M1WorldState State => state;
+        public int MaxHistoryEntries => maxHistoryEntries;
         public string LastAction { get; private set; } = "尚未执行操作";
         public WorldChangeSet LastChangeSet { get; private set; }
 
@@ -154,6 +181,13 @@ namespace Sundoll.Application
                     changeSet = changeSet,
                     description = command.Description
                 });
+                while (undoHistory.Count > maxHistoryEntries)
+                {
+                    // History is an interaction aid, not a second persistence
+                    // store. Drop the oldest snapshot to keep long-running
+                    // editor sessions bounded in memory.
+                    undoHistory.RemoveAt(0);
+                }
                 redoHistory.Clear();
                 LastChangeSet = changeSet;
                 LastAction = command.Description;

@@ -69,5 +69,41 @@ namespace Sundoll.Tests.EditMode
             Assert.That(loaded, Is.Not.SameAs(bus.State));
             Assert.That(loaded.pieceInstance, Is.Not.SameAs(bus.State.pieceInstance));
         }
+
+        [Test]
+        public void CommandBusBoundsUndoSnapshotRetention()
+        {
+            var bus = new M1CommandBus(
+                M1WorldState.CreateEmpty(),
+                new M1LocalAuthority(new AllowAllRulePolicy()),
+                2);
+
+            var first = bus.Execute(new M1CreateProjectCommand(
+                "history-project",
+                0,
+                "history-project",
+                "History",
+                "history-map"));
+            Assert.That(first.accepted, Is.True);
+            var second = bus.Execute(new M1PaintCellCommand(
+                "history-paint-1",
+                bus.State.revision,
+                1,
+                1,
+                "terrain-ground"));
+            Assert.That(second.accepted, Is.True);
+            var third = bus.Execute(new M1PaintCellCommand(
+                "history-paint-2",
+                bus.State.revision,
+                2,
+                2,
+                "terrain-ground"));
+            Assert.That(third.accepted, Is.True);
+
+            Assert.That(bus.MaxHistoryEntries, Is.EqualTo(2));
+            Assert.That(bus.Undo(), Is.True);
+            Assert.That(bus.Undo(), Is.True);
+            Assert.That(bus.Undo(), Is.False);
+        }
     }
 }

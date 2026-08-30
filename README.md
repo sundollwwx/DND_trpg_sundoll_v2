@@ -1,7 +1,7 @@
 # 桑哆尔的世界 · Unity
 
-> 状态：**M7 macOS 真实窗口渲染承载和分配门槛已通过；生产帧 pacing、长时运行及跨平台发布门槛仍未关闭**
-> 更新日期：2026-08-28
+> 状态：**M7 macOS Universal IL2CPP、自动化测试和 10 分钟操作 Soak 已通过；Windows/跨平台发布矩阵仍未关闭**
+> 更新日期：2026-08-30
 
 这是“桑哆尔的世界”Unity 原生桌面产品的规划容器。目前包含方案文档、一次性 M0 Spike，以及正在推进的正式 Unity 工程 `SundollWorld`。
 
@@ -19,6 +19,7 @@
 - [M6 结果报告](./SundollWorld/Docs/M6-结果报告.md)
 - [M7 结果报告](./SundollWorld/Docs/M7-结果报告.md)
 - [M7 Unity 连接诊断](./SundollWorld/Docs/M7-Unity连接诊断.md)
+- [M7 Windows 验证交接](./SundollWorld/Docs/M7-Windows验证交接.md)
 - [v0.3 实施状态](./SundollWorld/Docs/v0.3-实施状态.md)
 
 ## 产品目标
@@ -44,6 +45,6 @@
 - M2/M3/M4/M5 存档仍为 pre-v1；M7 已提供 save v1/schema 2 冻结、Schema 1→2 迁移注册表、Golden Save 校验、可复用 View Pool 和引用计数纹理缓存。M4 当前通过路径导入和 macOS 原生文件选择器完成图片选择/取消接缝，最新 Player 已实际走通选择与 Escape 取消；正式图片视觉、2560×1440 帧率/分配、Windows 与跨平台互开仍未验证。
 - 未复制任何旧项目素材。
 
-M0 已正式接受并保留 Windows/Finder 限制；Unity `6000.3.22f1` 最新已存证 EditMode 85/85、PlayMode 13/13，macOS universal IL2CPP Player 成功启动。未使用的 Visual Scripting 包已移除；干净临时构建中 TypeDB 重复类型诊断为 0，剩余 1 条 warning 是 Unity Cloud 符号上传 token 为空，不是脚本编译错误。最新测试证据见 [EditMode XML](./SundollWorld/TestResults_EditMode_20260828_015216.xml)、[PlayMode XML](./SundollWorld/TestResults_PlayMode_20260828_015216.xml) 和 [M7 结果报告](./SundollWorld/Docs/M7-结果报告.md)。M7 已有 macOS 批量编辑、Snapshot、Revision 保存、10,000 Journal 恢复、64 棋子纹理共享、1000 棋子投影和稳态分配、棋子库缩略图 LRU 基线；1000 棋子 headless 投影刷新 p95 为 12.494 ms、稳态托管分配 p95 为 0 B。新增真实 2560×1440 Player 窗口证据在解除采样限速后显示渲染承载 p95 为 4.5495 ms、托管分配 p95 为 0 B，门槛通过；生产 60 FPS 帧 pacing、长时间运行以及 Windows/跨平台/强退矩阵仍未关闭。M4 使用新的 `SundollWorld_M4` 本地开发存档根目录，旧 M1/M2/M3 样本原地保留。
+M0 已正式接受并保留 Windows/Finder 限制；Unity `6000.3.22f1` 最新已存证 EditMode 87/87、PlayMode 13/13，macOS universal IL2CPP Player 成功启动。未使用的 Visual Scripting 包已移除；干净临时构建中 TypeDB 重复类型诊断为 0，当前本地旧 Library/Bee 构建仍会报告历史 TypeDB 诊断，另有 1 条 Unity Cloud 符号上传 token warning，不是 C# 编译错误。最新测试证据见 [EditMode XML](./SundollWorld/TestResults_EditMode_20260830_133200.xml)、[PlayMode XML](./SundollWorld/TestResults_PlayMode_20260830_133200.xml) 和 [M7 结果报告](./SundollWorld/Docs/M7-结果报告.md)。M7 已有 macOS 批量编辑、Snapshot、Revision 保存、10,000 Journal 恢复、64 棋子纹理共享、1000 棋子投影和稳态分配、棋子库缩略图 LRU 基线；1000 棋子 headless 投影刷新 p95 为 12.494 ms、稳态托管分配 p95 为 0 B。真实 2560×1440 Player 窗口解除采样限速后的渲染承载 p95 为 4.5495 ms、托管分配 p95 为 0 B；最新构建已再次通过 Universal IL2CPP 校验。10 分钟操作 Soak 通过，60 分钟操作 Soak 本轮运行约 50 分钟后未生成结果文件，按未验证处理；生产 60 FPS pacing、Windows/跨平台/强退矩阵仍未关闭。M4 使用新的 `SundollWorld_M4` 本地开发存档根目录，旧 M1/M2/M3 样本原地保留。
 
 Unity 连接和许可证链路排查入口见 [M7 Unity 连接诊断](./SundollWorld/Docs/M7-Unity连接诊断.md)。日常验证优先使用 `scripts/unity-doctor.sh`、`scripts/unity-license-check.sh` 和 `scripts/unity-run-tests.sh`；正式工程交互打开使用 [Open-SundollWorld.command](./Open-SundollWorld.command)，所有入口固定走 Unity `6000.3.22f1` 版本专用通道，避免 Hub/许可证客户端状态漂移影响判断。
