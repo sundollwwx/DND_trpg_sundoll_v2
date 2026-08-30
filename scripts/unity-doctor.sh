@@ -121,5 +121,5 @@ if [ ! -d "${USER_DIR}/.unity/relay" ] && [ -z "${MCP_HITS}" ]; then
   printf '%s\n' "Use repository tools and Unity batchmode scripts unless one Unity MCP provider is deliberately installed."
 fi
 printf '%s\n' "For validation, prefer scripts/unity-run-tests.sh so the exact Unity 6000.3.22f1 binary is used."
-printf '%s\n' "For interactive work, use Open-SundollWorld.command; for a quick license probe, use scripts/unity-license-check.sh."
+printf '%s\n' "For interactive work, use 02-在Unity中编辑SundollWorld.command; for a quick license probe, use scripts/unity-license-check.sh."
 printf '%s\n' "An 'Access token is unavailable' refresh line is non-blocking when the same run resolves local entitlements and initializes licensing."

@@ -13,10 +13,11 @@ UNITY_LICENSE_STALL_SECONDS="${UNITY_LICENSE_STALL_SECONDS:-180}"
 run_mode() {
   local mode_name="$1"
   local platform_name="$2"
-  local result_path="${SUNDOLL_PROJECT_ROOT}/TestResults_${platform_name}_${STAMP}.xml"
+  local result_directory="${SUNDOLL_PROJECT_ROOT}/TestResults/Local"
+  local result_path="${result_directory}/TestResults_${platform_name}_${STAMP}.xml"
   local log_path="${SUNDOLL_PROJECT_ROOT}/Logs/Test_${platform_name}_${STAMP}.log"
 
-  mkdir -p "${SUNDOLL_PROJECT_ROOT}/Logs"
+  mkdir -p "${SUNDOLL_PROJECT_ROOT}/Logs" "${result_directory}"
   printf 'Running %s tests with Unity %s\n' "${platform_name}" "${SUNDOLL_EXPECTED_UNITY_VERSION}"
   printf 'Result: %s\n' "${result_path}"
   printf 'Log:    %s\n' "${log_path}"

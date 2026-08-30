@@ -14,7 +14,7 @@
 | M3 | 正式 Workbench、UI Toolkit 固定布局、Tilemap 五层投影、Input System 绘制/视口、选择/复制/剪切/粘贴/旋转、五层 Workspace State 2、门箱对象、Schema 2；57/57 EditMode、1/1 PlayMode、macOS universal IL2CPP 构建与 Smoke | 性能 p95、真实鼠标视觉复验 | Windows 性能与构建、跨平台互开矩阵 |
 | M4 | Asset/Definition/Instance 纯数据模型、内容寻址去重、四种位置、堆叠/收纳/附着/解除、旋转/翻面/显隐、关系循环校验、Command/Journal 接入、Workbench 棋子库搜索/实例列表/基础操作 UI、占位投影、运行时图片/缩略图导入边界、分类/标签编辑；EditMode 66/66、PlayMode 3/3 | 桌面文件选择器、正式图片条目管理 UI、堆叠/收纳/附着完整操作 UI、纹理性能基准 | Windows/跨平台矩阵与后续发布门槛 |
 
-详细执行证据与限制见 [v0.3 实施状态](./SundollWorld/Docs/v0.3-实施状态.md)。状态为 Partial 或 Blocked 的项目不得被解释为对应里程碑已经完整关闭。
+详细执行证据与限制见 [v0.3 实施状态](../../SundollWorld/Docs/Planning/v0.3-实施状态.md)。状态为 Partial 或 Blocked 的项目不得被解释为对应里程碑已经完整关闭。
 
 ## 0. 结论先行
 
@@ -839,7 +839,7 @@ Loopback 通过后再专项比较 Unity Multiplayer/Transport、Mirror、FishNet
 
 ### M2：新格式存档与内容基础（3 周）
 
-当前进度：M2 的新格式存档、Journal、自动保存、内容 blob、`.sundollpkg`、后台保存队列、OS 文件写锁与故障注入最小切片已实现并通过 Unity Editor、EditMode、Play Mode 与 macOS universal build 验证。由于 Windows、跨平台互开和两平台强制退出矩阵尚未执行，M2 退出条件仍未完全关闭；详见 [M2 结果报告](./SundollWorld/Docs/M2-结果报告.md)。
+当前进度：M2 的新格式存档、Journal、自动保存、内容 blob、`.sundollpkg`、后台保存队列、OS 文件写锁与故障注入最小切片已实现并通过 Unity Editor、EditMode、Play Mode 与 macOS universal build 验证。由于 Windows、跨平台互开和两平台强制退出矩阵尚未执行，M2 退出条件仍未完全关闭；详见 [M2 结果报告](../../SundollWorld/Docs/Reports/M2-结果报告.md)。
 
 工作：
 
@@ -854,7 +854,7 @@ Loopback 通过后再专项比较 Unity Multiplayer/Transport、Mirror、FishNet
 
 ### M3：地图制作器 MVP（3–4 周）
 
-当前进度：M3 功能范围已实现：正式 Workbench Scene、UI Toolkit 固定布局、正交 Camera、五个 Tilemap 内容层、Input System 画笔/橡皮擦/直线/矩形/填充、光标中心缩放、中键平移、Esc 与 Cmd/Ctrl 快捷键、拾取/框选/多选剪贴板、复制/剪切/粘贴/旋转、五层显隐/锁定/排序 Workspace State 2、稳定 ID 门箱对象、Schema 2 读取默认值与不可变发布；最新 Unity EditMode 为 57/57，PlayMode 为 1/1，macOS universal IL2CPP 构建与 Smoke 已通过。p95 性能/60 FPS 实测、真实鼠标视觉复验和 Windows/跨平台矩阵仍未关闭，详见 [M3 结果报告](./SundollWorld/Docs/M3-结果报告.md)。
+当前进度：M3 功能范围已实现：正式 Workbench Scene、UI Toolkit 固定布局、正交 Camera、五个 Tilemap 内容层、Input System 画笔/橡皮擦/直线/矩形/填充、光标中心缩放、中键平移、Esc 与 Cmd/Ctrl 快捷键、拾取/框选/多选剪贴板、复制/剪切/粘贴/旋转、五层显隐/锁定/排序 Workspace State 2、稳定 ID 门箱对象、Schema 2 读取默认值与不可变发布；最新 Unity EditMode 为 57/57，PlayMode 为 1/1，macOS universal IL2CPP 构建与 Smoke 已通过。p95 性能/60 FPS 实测、真实鼠标视觉复验和 Windows/跨平台矩阵仍未关闭，详见 [M3 结果报告](../../SundollWorld/Docs/Reports/M3-结果报告.md)。
 
 工作：
 
@@ -869,7 +869,7 @@ Loopback 通过后再专项比较 Unity Multiplayer/Transport、Mirror、FishNet
 
 ### M4：项目棋子库与空间交互（3 周）
 
-当前进度：M4 第一批已实现：Asset/Definition/Instance 纯数据模型、内容寻址资产去重、四种互斥位置、堆叠/收纳/附着/解除、旋转/翻面/显隐、关系循环校验、版本化 Command/Journal 接入，以及 Workbench 的棋子库搜索/实例列表/基础操作 UI、占位棋子投影、运行时图片/缩略图导入边界和分类/标签编辑；EditMode 66/66、PlayMode 3/3。桌面文件选择器、正式图片条目管理、复杂关系操作 UI、纹理性能预算仍在进行，详见 [M4 结果报告](./SundollWorld/Docs/M4-结果报告.md)。
+当前进度：M4 第一批已实现：Asset/Definition/Instance 纯数据模型、内容寻址资产去重、四种互斥位置、堆叠/收纳/附着/解除、旋转/翻面/显隐、关系循环校验、版本化 Command/Journal 接入，以及 Workbench 的棋子库搜索/实例列表/基础操作 UI、占位棋子投影、运行时图片/缩略图导入边界和分类/标签编辑；EditMode 66/66、PlayMode 3/3。桌面文件选择器、正式图片条目管理、复杂关系操作 UI、纹理性能预算仍在进行，详见 [M4 结果报告](../../SundollWorld/Docs/Reports/M4-结果报告.md)。
 
 工作：
 

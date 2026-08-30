@@ -6,7 +6,7 @@
 
 - Unity：`6000.3.22f1`
 - 测试：`M7PieceProjectionMeasures1000VisiblePiecesAndSteadyStateAllocations`
-- XML：`../TestResults_PlayMode_20260825_m5_hierarchy_context.xml`（最新交互式 Editor 刷新结果）
+- XML：`TestResults/TestResults_PlayMode_20260825_m5_hierarchy_context.xml`（最新交互式 Editor 刷新结果）
 - 运行入口：`scripts/unity-run-tests.sh all`
 - 目标视口：`2560×1440`
 - 目标帧率：`60 FPS`

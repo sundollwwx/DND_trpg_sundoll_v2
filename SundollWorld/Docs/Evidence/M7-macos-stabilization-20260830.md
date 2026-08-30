@@ -27,4 +27,4 @@ Unity：`6000.3.22f1`
 
 ## 当前交接点
 
-macOS 侧可交付为 Release Candidate（严格生产 60 FPS pacing 仍未通过）；下一项发布阻塞工作是 Windows x64 IL2CPP 构建、Windows 写盘故障注入、macOS↔Windows 包互开和双平台强制退出恢复。执行方法见 `Docs/M7-Windows验证交接.md`。
+macOS 侧可交付为 Release Candidate（严格生产 60 FPS pacing 仍未通过）；下一项发布阻塞工作是 Windows x64 IL2CPP 构建、Windows 写盘故障注入、macOS↔Windows 包互开和双平台强制退出恢复。执行方法见 `Docs/Guides/M7-Windows验证交接.md`。

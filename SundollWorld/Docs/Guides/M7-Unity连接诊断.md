@@ -21,7 +21,7 @@
 - `scripts/unity-license-check.sh`：无界面快速验证本机许可证握手和本地 entitlement，不修改许可证文件。
 - `scripts/unity-build-macos.sh`：复用相同通道完成 macOS Universal IL2CPP 构建，并检查双架构、IL2CPP metadata 和 Mono 残留。
 - `scripts/macos-player-smoke.sh`：构建后运行 macOS Player 45 秒，检查播放器运行态和常见运行时异常。
-- `scripts/unity-open.sh` / `Open-SundollWorld.command`：交互式打开正式工程时也强制传入版本专用通道，避免从 Hub 项目行启动造成通道漂移。
+- `scripts/unity-open.sh` / `02-在Unity中编辑SundollWorld.command`：交互式打开正式工程时也强制传入版本专用通道，避免从 Hub 项目行启动造成通道漂移。
 - `scripts/unity-run-tests.sh` 在 Unity 未产出 XML 时会自动打印最近 License/UPM/IPC 线索并调用 Doctor，避免“只知道失败、不知道卡在哪里”。
 - `scripts/unity-run-tests.sh` 增加 watchdog：默认 900 秒整体超时，180 秒 License 崩溃/重连循环保护；触发时停止本次 batchmode 子进程并保留日志。退出码 `124` 表示整体超时，`125` 表示 License 重连循环。
 - `scripts/unity-run-tests.sh` 在发现 `UnityLockfile` 时先检查精确的 Unity Editor 进程：确认没有 Editor 才把明确的临时锁移动到 `/private/tmp/SundollWorld_UnityLockfile_<时间>.stale` 备份；若 Editor 正在运行，仍然停止并要求先关闭。
@@ -34,7 +34,7 @@
 - 独立探针：`scripts/unity-license-check.sh` 于 2026-08-28 02:00 通过，日志为 `SundollWorld/Logs/LicenseCheck_20260828_020052.log`；握手成功，Unity 初始化许可证成功，本地 entitlement 可用，无需重新登录。
 - 回归证据：最新完整 XML 为 EditMode `87/87`、PlayMode `13/13`，日志中均确认 `LicenseClient-sundoll-6000.3.22`，未出现协议不匹配、60 秒超时、`ObjectDisposedException` 或失败重连。
 
-这里的“以后不会再出现”边界是：通过本项目提供的入口不会再主动走旧通道。Hub 自己的通用客户端仍可能为 Hub 其他项目保留；打开本项目请使用 `Open-SundollWorld.command`，不要从 Hub 的项目行直接启动。
+这里的“以后不会再出现”边界是：通过本项目提供的入口不会再主动走旧通道。Hub 自己的通用客户端仍可能为 Hub 其他项目保留；打开本项目请使用 `02-在Unity中编辑SundollWorld.command`，不要从 Hub 的项目行直接启动。
 
 ## 2026-08-27 15:33 复查
 

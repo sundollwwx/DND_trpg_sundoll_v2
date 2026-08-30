@@ -67,13 +67,13 @@
 - Namespace style: `Sundoll.*` namespaces.
 - Runtime domain and persistence DTOs remain free of Scene/GameObject references; Unity APIs are limited to the bootstrap/presentation boundary and JSON serialization integration.
 - M2 Revision writes use `M2SaveQueue`: the main thread captures an immutable DTO snapshot and a single background chain performs serialization, atomic write and flush. `M2ProjectStore.Save()` also holds the project-root `.save.lock` with `FileShare.None`, rechecks expected generation under that lock, and times out explicitly. The synchronous `Save()` API remains for compatibility and initialization.
-- Persistence invariants and recovery limitations are documented in `Docs/M2-结果报告.md`.
+- Persistence invariants and recovery limitations are documented in `Docs/Reports/M2-结果报告.md`.
 
 ## Testing And Validation
 
 - EditMode tests: 87 first-party tests; 87 passed, 0 failed, 0 ignored in the latest completed Unity Editor run. The suite contains M1-M4 coverage plus M5 multi-map/console tests, M6A/M6B rule and Loopback tests, M7 migration/frozen-save/pool tests, project workspace tests and starter-content tests.
 - PlayMode validation: 13/13 passed in `M3Workbench.unity`/isolated projection setup, covering startup, five Tilemap projections, edit and dirty-region refresh, hidden/locked layer behavior, M4 placeholder piece projection, M4 64-piece texture sharing baseline, M5 fog/annotation projection, Workbench UI controls, runtime image import/thumbnail generation, M7 texture cache lifecycle, View destruction cleanup, virtualized piece-library grid filtering, bounded thumbnail LRU behavior, and a 1000-piece projection/allocation baseline. A real macOS Player window capture at 2560×1440 measured 1000 visible pieces, uncapped render-capacity p95 `4.5495 ms`, and managed allocation p95 `0 B`; the render-capacity gate passed, while long-run production 60 FPS pacing remains to be verified.
-- CI/build validation: no CI configuration detected. M7 macOS universal IL2CPP build result is Success and the M5 projection-inclusive Player Smoke passed. After removing unused Visual Scripting, a clean temporary build reports `errors=0`, `warnings=1`, `TypeDB: Class` count 0 and no `visualscripting` residue; the remaining warning is Unity Cloud native symbols upload token absence, not script compilation. The current local Library/Bee build still emits legacy TypeDB diagnostics, so release evidence continues to prefer clean imports. Details are in `Docs/M7-结果报告.md` and `Docs/Evidence/M7-clean-build-no-visualscripting-20260827.md`. Latest batch validation evidence is `SundollWorld/TestResults_EditMode_20260830_133200.xml` (87/87) and `SundollWorld/TestResults_PlayMode_20260830_133200.xml` (13/13); both use the version-pinned license channel through `scripts/unity-common.sh`. macOS baselines cover batch edit, Snapshot, Revision save, 10,000 Journal recovery, 64-piece texture sharing, 1000-piece projection/allocation, piece-thumbnail LRU behavior, real-window render capacity and production pacing capture, while the 60-minute operation soak remains unverified, Windows build, independent-process forced-exit recovery and cross-platform save exchange remain unverified.
+- CI/build validation: no CI configuration detected. M7 macOS universal IL2CPP build result is Success and the M5 projection-inclusive Player Smoke passed. After removing unused Visual Scripting, a clean temporary build reports `errors=0`, `warnings=1`, `TypeDB: Class` count 0 and no `visualscripting` residue; the remaining warning is Unity Cloud native symbols upload token absence, not script compilation. The current local Library/Bee build still emits legacy TypeDB diagnostics, so release evidence continues to prefer clean imports. Details are in `Docs/Reports/M7-结果报告.md` and `Docs/Evidence/M7-clean-build-no-visualscripting-20260827.md`. Latest batch validation evidence is `Docs/Evidence/TestResults/TestResults_EditMode_20260830_133200.xml` (87/87) and `Docs/Evidence/TestResults/TestResults_PlayMode_20260830_133200.xml` (13/13); both use the version-pinned license channel through `scripts/unity-common.sh`. macOS baselines cover batch edit, Snapshot, Revision save, 10,000 Journal recovery, 64-piece texture sharing, 1000-piece projection/allocation, piece-thumbnail LRU behavior, real-window render capacity and production pacing capture, while the 60-minute operation soak remains unverified, Windows build, independent-process forced-exit recovery and cross-platform save exchange remain unverified.
 
 ## Available Unity Tooling
 
@@ -136,8 +136,8 @@
 - `Assets/Sundoll/Core/M3MapObjectCommands.cs`
 - `Assets/Sundoll/Application/M3MapClipboard.cs`
 - `Assets/Sundoll/Tests/EditMode/M3MapEditorTests.cs`
-- `Docs/M2-结果报告.md`
-- `Docs/M3-结果报告.md`
+- `Docs/Reports/M2-结果报告.md`
+- `Docs/Reports/M3-结果报告.md`
 - root `Unity从零开发工作计划.md`
 - root `README.md`
 - `M0-Spike/README.md`

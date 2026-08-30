@@ -14,7 +14,7 @@
 - EditMode：84/84 通过。
 - PlayMode：12/12 通过。
 - 新增覆盖：`FogBrushRoundTripsAsOneVersionedCommand`、`PlayerPreviewUsesAudienceProjectionAndIsReadOnly`。
-- XML：`../TestResults_EditMode_20260827_214602.xml`、`../TestResults_PlayMode_20260827_214602.xml`。
+- XML：`TestResults/TestResults_EditMode_20260827_214602.xml`、`TestResults/TestResults_PlayMode_20260827_214602.xml`。
 - Unity：`6000.3.22f1` batchmode；未发现 C# 编译错误、空引用或缺失引用。
 
 测试日志仍会记录 Unity Licensing Module 的 `Access token is unavailable` 通信提示，但本轮测试完整结束且没有测试失败；该提示属于许可证/云诊断通道，和项目代码编译结果分开记录。

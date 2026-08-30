@@ -27,42 +27,10 @@
 sysinfo.txt
 *.pidb.meta
 
-# Local test/build output
+# Local test/build output. Curated, versioned XML evidence lives in
+# SundollWorld/Docs/Evidence/TestResults instead of the Unity project root.
 TestResults/
+SundollWorld/TestResults/
 SundollWorld/TestResults_*.xml
-!SundollWorld/TestResults_EditMode_20260825_m3_final2.xml
-!SundollWorld/TestResults_PlayMode_20260825_m3_final4.xml
-!SundollWorld/TestResults_EditMode_20260825_m4_full2.xml
-!SundollWorld/TestResults_PlayMode_20260825_m4_full2.xml
-!SundollWorld/TestResults_EditMode_20260825_m4_ui.xml
-!SundollWorld/TestResults_PlayMode_20260825_m4_ui2.xml
-!SundollWorld/TestResults_PlayMode_20260825_m4_import3.xml
-!SundollWorld/TestResults_EditMode_20260825_m4_import_final.xml
-!SundollWorld/TestResults_EditMode_20260825_m4_definition.xml
-!SundollWorld/TestResults_PlayMode_20260825_m4_definition.xml
-!SundollWorld/TestResults_EditMode_20260825_m5m6m7.xml
-!SundollWorld/TestResults_PlayMode_20260825_m5m6m7.xml
-!SundollWorld/TestResults_EditMode_20260825_m5m6m7_ui.xml
-!SundollWorld/TestResults_PlayMode_20260825_m5m6m7_ui.xml
-!SundollWorld/TestResults_EditMode_20260825_m5m6m7_projection.xml
-!SundollWorld/TestResults_PlayMode_20260825_m5m6m7_projection.xml
-!SundollWorld/TestResults_EditMode_20260825_m5_hierarchy_context.xml
-!SundollWorld/TestResults_PlayMode_20260825_m5_hierarchy_context.xml
-!SundollWorld/TestResults_EditMode_20260826_workspace3_full.xml
-!SundollWorld/TestResults_PlayMode_20260826_workspace3_full.xml
-!SundollWorld/TestResults_EditMode_20260826_starter_full.xml
-!SundollWorld/TestResults_PlayMode_20260826_starter_full.xml
-!SundollWorld/TestResults_EditMode_20260827_150046.xml
-!SundollWorld/TestResults_PlayMode_20260827_150000.xml
-!SundollWorld/TestResults_EditMode_20260827_155030.xml
-!SundollWorld/TestResults_PlayMode_20260827_155030.xml
-!SundollWorld/TestResults_EditMode_20260827_214602.xml
-!SundollWorld/TestResults_PlayMode_20260827_214602.xml
-!SundollWorld/TestResults_EditMode_20260828_015216.xml
-!SundollWorld/TestResults_PlayMode_20260828_015216.xml
-!SundollWorld/TestResults_EditMode_20260830_133200.xml
-!SundollWorld/TestResults_PlayMode_20260830_133200.xml
-!SundollWorld/TestResults_EditMode_20260830_214327.xml
-!SundollWorld/TestResults_PlayMode_20260830_214327.xml
 *.tmp
 *.bak
