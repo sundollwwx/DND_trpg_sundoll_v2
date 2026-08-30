@@ -251,6 +251,12 @@ namespace Sundoll.Tests.PlayMode
             Assert.That(document.rootVisualElement.Q<Button>("PrimaryWorkspace_map"), Is.Not.Null);
             Assert.That(document.rootVisualElement.Q<Button>("PrimaryWorkspace_pieces"), Is.Not.Null);
             Assert.That(document.rootVisualElement.Q<Button>("PrimaryWorkspace_host"), Is.Not.Null);
+            Assert.That(document.rootVisualElement.Q<VisualElement>("MapEditorToolbar"), Is.Not.Null);
+            Assert.That(document.rootVisualElement.Q<Button>("MapTool_画笔"), Is.Not.Null);
+            Assert.That(document.rootVisualElement.Q<Button>("FitMapButton"), Is.Not.Null);
+            Assert.That(document.rootVisualElement.Q<Label>("MapBoundaryFeedback"), Is.Not.Null);
+            Assert.That(document.rootVisualElement.Q<Label>("MapBoundaryFeedback").text, Does.Contain("地图有效区"));
+            Assert.That(document.rootVisualElement.Q<Button>("MapTool_画笔").ClassListContains("sw-map-tool-selected"), Is.True);
 
             var mapWorkspace = document.rootVisualElement.Q<VisualElement>("MapEditorWorkspace");
             var pieceWorkspace = document.rootVisualElement.Q<VisualElement>("PieceLibraryWorkspace");
@@ -269,6 +275,16 @@ namespace Sundoll.Tests.PlayMode
             Assert.That(boundary, Is.Not.Null);
             Assert.That(boundary.positionCount, Is.EqualTo(5));
             Assert.That(boundary.enabled, Is.True);
+            var boundaryFill = root.transform.Find("MapBoundaryFill").GetComponent<SpriteRenderer>();
+            Assert.That(boundaryFill, Is.Not.Null);
+            Assert.That(boundaryFill.sprite, Is.Not.Null);
+            Assert.That(boundaryFill.enabled, Is.True);
+            var gridOverlay = root.transform.Find("WorkbenchGrid").Find("WorkbenchGridOverlay");
+            Assert.That(gridOverlay, Is.Not.Null);
+            Assert.That(gridOverlay.GetComponent<MeshFilter>().sharedMesh, Is.Not.Null);
+            Assert.That(gridOverlay.GetComponent<MeshRenderer>().enabled, Is.True);
+            var materialThumbnail = document.rootVisualElement.Q<VisualElement>("Thumbnail");
+            Assert.That(materialThumbnail, Is.Not.Null);
 
             Assert.That(root.SelectWorkspace("pieces"), Is.True);
             Assert.That(root.CurrentWorkspace, Is.EqualTo("pieces"));
@@ -276,6 +292,7 @@ namespace Sundoll.Tests.PlayMode
             Assert.That(pieceWorkspace.style.display.value, Is.EqualTo(DisplayStyle.Flex));
             Assert.That(hostWorkspace.style.display.value, Is.EqualTo(DisplayStyle.None));
             Assert.That(boundary.enabled, Is.False);
+            Assert.That(gridOverlay.GetComponent<MeshRenderer>().enabled, Is.False);
             Assert.That(root.IsPointerOverMap(new Vector2(100f, 100f)), Is.False);
 
             Assert.That(root.SelectWorkspace("host"), Is.True);

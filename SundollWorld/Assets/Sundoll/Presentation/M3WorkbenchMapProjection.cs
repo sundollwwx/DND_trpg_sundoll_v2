@@ -34,9 +34,17 @@ namespace Sundoll.Presentation
         private Tile mapObjectTile;
         private Texture2D tileTexture;
         private Sprite tileSprite;
+        private MeshFilter gridOverlayFilter;
+        private MeshRenderer gridOverlayRenderer;
+        private Mesh gridOverlayMesh;
+        private Material gridOverlayMaterial;
+        private int gridOverlayWidth = -1;
+        private int gridOverlayHeight = -1;
+        private bool gridOverlayVisible = true;
 
         public IReadOnlyDictionary<string, Tilemap> Tilemaps => tilemaps;
         public bool IsAudienceProjectionActive => audienceProjectionState != null;
+        public MeshRenderer GridOverlayRenderer => gridOverlayRenderer;
 
         public void Bind(
             M3MapEditorFacade nextEditor,
@@ -48,6 +56,7 @@ namespace Sundoll.Presentation
             visualCatalog = nextVisualCatalog ?? visualCatalog ?? new M7BuiltinMapVisualCatalog();
             DiscoverTilemaps();
             EnsureTileResources();
+            EnsureGridOverlay();
             RefreshAll();
         }
 
@@ -67,6 +76,8 @@ namespace Sundoll.Presentation
 
             DiscoverTilemaps();
             EnsureTileResources();
+            EnsureGridOverlay();
+            UpdateGridOverlay(state.map.width, state.map.height);
             foreach (var tilemap in tilemaps.Values)
             {
                 tilemap.ClearAllTiles();
@@ -122,6 +133,8 @@ namespace Sundoll.Presentation
 
             DiscoverTilemaps();
             EnsureTileResources();
+            EnsureGridOverlay();
+            UpdateGridOverlay(state.map.width, state.map.height);
             var bounds = new BoundsInt(
                 region.MinX,
                 region.MinY,
@@ -208,6 +221,113 @@ namespace Sundoll.Presentation
                 {
                     renderer.enabled = layerEditState.IsVisible(M3MapLayerIds.Object);
                 }
+            }
+
+            ApplyGridVisibility();
+        }
+
+        public void SetGridVisible(bool visible)
+        {
+            gridOverlayVisible = visible;
+            ApplyGridVisibility();
+        }
+
+        private void EnsureGridOverlay()
+        {
+            if (gridOverlayRenderer != null)
+            {
+                return;
+            }
+
+            var child = transform.Find("WorkbenchGridOverlay");
+            if (child == null)
+            {
+                var gridObject = new GameObject("WorkbenchGridOverlay");
+                gridObject.transform.SetParent(transform, false);
+                child = gridObject.transform;
+            }
+
+            gridOverlayFilter = child.GetComponent<MeshFilter>();
+            if (gridOverlayFilter == null)
+            {
+                gridOverlayFilter = child.gameObject.AddComponent<MeshFilter>();
+            }
+
+            gridOverlayRenderer = child.GetComponent<MeshRenderer>();
+            if (gridOverlayRenderer == null)
+            {
+                gridOverlayRenderer = child.gameObject.AddComponent<MeshRenderer>();
+            }
+
+            if (gridOverlayMesh == null)
+            {
+                gridOverlayMesh = new Mesh { name = "SundollWorld.WorkbenchGridMesh" };
+                gridOverlayMesh.MarkDynamic();
+                gridOverlayFilter.sharedMesh = gridOverlayMesh;
+            }
+
+            if (gridOverlayMaterial == null)
+            {
+                var shader = Shader.Find("Sprites/Default");
+                if (shader != null)
+                {
+                    gridOverlayMaterial = new Material(shader)
+                    {
+                        name = "SundollWorld.WorkbenchGridMaterial",
+                        color = new Color(0.15f, 0.12f, 0.09f, 0.34f)
+                    };
+                    gridOverlayRenderer.sharedMaterial = gridOverlayMaterial;
+                }
+            }
+
+            gridOverlayRenderer.sortingOrder = 70;
+            gridOverlayRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            gridOverlayRenderer.receiveShadows = false;
+        }
+
+        private void UpdateGridOverlay(int width, int height)
+        {
+            if (gridOverlayMesh == null || width <= 0 || height <= 0 ||
+                (gridOverlayWidth == width && gridOverlayHeight == height))
+            {
+                ApplyGridVisibility();
+                return;
+            }
+
+            var vertices = new List<Vector3>((width + height + 2) * 2);
+            var indices = new List<int>((width + height + 2) * 2);
+            for (var x = 0; x <= width; x++)
+            {
+                var index = vertices.Count;
+                vertices.Add(new Vector3(x - 0.5f, -0.5f, -0.08f));
+                vertices.Add(new Vector3(x - 0.5f, height - 0.5f, -0.08f));
+                indices.Add(index);
+                indices.Add(index + 1);
+            }
+
+            for (var y = 0; y <= height; y++)
+            {
+                var index = vertices.Count;
+                vertices.Add(new Vector3(-0.5f, y - 0.5f, -0.08f));
+                vertices.Add(new Vector3(width - 0.5f, y - 0.5f, -0.08f));
+                indices.Add(index);
+                indices.Add(index + 1);
+            }
+
+            gridOverlayMesh.Clear();
+            gridOverlayMesh.SetVertices(vertices);
+            gridOverlayMesh.SetIndices(indices, MeshTopology.Lines, 0, false);
+            gridOverlayMesh.RecalculateBounds();
+            gridOverlayWidth = width;
+            gridOverlayHeight = height;
+            ApplyGridVisibility();
+        }
+
+        private void ApplyGridVisibility()
+        {
+            if (gridOverlayRenderer != null)
+            {
+                gridOverlayRenderer.enabled = gridOverlayVisible && !IsAudienceProjectionActive;
             }
         }
 
@@ -405,6 +525,16 @@ namespace Sundoll.Presentation
             if (tileTexture != null)
             {
                 Destroy(tileTexture);
+            }
+
+            if (gridOverlayMesh != null)
+            {
+                Destroy(gridOverlayMesh);
+            }
+
+            if (gridOverlayMaterial != null)
+            {
+                Destroy(gridOverlayMaterial);
             }
         }
     }

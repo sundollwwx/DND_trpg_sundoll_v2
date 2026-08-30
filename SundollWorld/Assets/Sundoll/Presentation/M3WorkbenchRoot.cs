@@ -27,6 +27,7 @@ namespace Sundoll.Presentation
         private readonly Dictionary<string, Button> layerButtons = new Dictionary<string, Button>(StringComparer.Ordinal);
         private readonly Dictionary<string, Button> layerVisibilityButtons = new Dictionary<string, Button>(StringComparer.Ordinal);
         private readonly Dictionary<string, Button> layerLockButtons = new Dictionary<string, Button>(StringComparer.Ordinal);
+        private readonly Dictionary<string, Button> mapToolButtons = new Dictionary<string, Button>(StringComparer.Ordinal);
         private readonly Dictionary<string, string> selectedContentIds = new Dictionary<string, string>(StringComparer.Ordinal);
         private readonly List<M3CellMutation> pendingStroke = new List<M3CellMutation>();
         private readonly HashSet<M3MapCellKey> pendingStrokeKeys = new HashSet<M3MapCellKey>();
@@ -54,6 +55,7 @@ namespace Sundoll.Presentation
         private Label pieceInspectorLabel;
         private Label hostStatusBodyLabel;
         private Label historyLabel;
+        private Label mapBoundaryFeedbackLabel;
         private VisualElement mapViewport;
         private M3WorkbenchInput input;
         private M4WorkbenchPieceProjection pieceProjection;
@@ -112,6 +114,9 @@ namespace Sundoll.Presentation
         private VisualElement hostHierarchySection;
         private LineRenderer mapBoundaryRenderer;
         private Material mapBoundaryMaterial;
+        private SpriteRenderer mapBoundaryFillRenderer;
+        private Sprite mapBoundaryFillSprite;
+        private Texture2D mapBoundaryFillTexture;
         private string currentWorkspace = "map";
         private Vector2Int contextMenuCell;
         private string selectedMapObjectId;
@@ -266,6 +271,18 @@ namespace Sundoll.Presentation
             {
                 Destroy(mapBoundaryMaterial);
                 mapBoundaryMaterial = null;
+            }
+
+            if (mapBoundaryFillSprite != null)
+            {
+                Destroy(mapBoundaryFillSprite);
+                mapBoundaryFillSprite = null;
+            }
+
+            if (mapBoundaryFillTexture != null)
+            {
+                Destroy(mapBoundaryFillTexture);
+                mapBoundaryFillTexture = null;
             }
         }
 
@@ -468,6 +485,38 @@ namespace Sundoll.Presentation
                 boundaryObject = objectRoot.transform;
             }
 
+            var fillObject = transform.Find("MapBoundaryFill");
+            if (fillObject == null)
+            {
+                var objectRoot = new GameObject("MapBoundaryFill");
+                objectRoot.transform.SetParent(transform, false);
+                fillObject = objectRoot.transform;
+            }
+
+            mapBoundaryFillRenderer = fillObject.GetComponent<SpriteRenderer>();
+            if (mapBoundaryFillRenderer == null)
+            {
+                mapBoundaryFillRenderer = fillObject.gameObject.AddComponent<SpriteRenderer>();
+            }
+
+            if (mapBoundaryFillSprite == null)
+            {
+                mapBoundaryFillTexture = new Texture2D(1, 1, TextureFormat.RGBA32, false);
+                mapBoundaryFillTexture.name = "SundollWorld.MapBoundaryFillTexture";
+                mapBoundaryFillTexture.SetPixel(0, 0, new Color(0.25f, 0.21f, 0.16f, 1f));
+                mapBoundaryFillTexture.Apply(false, true);
+                mapBoundaryFillSprite = Sprite.Create(
+                    mapBoundaryFillTexture,
+                    new Rect(0f, 0f, 1f, 1f),
+                    new Vector2(0.5f, 0.5f),
+                    1f);
+                mapBoundaryFillSprite.name = "SundollWorld.MapBoundaryFillSprite";
+            }
+
+            mapBoundaryFillRenderer.sprite = mapBoundaryFillSprite;
+            mapBoundaryFillRenderer.sortingOrder = -100;
+            mapBoundaryFillRenderer.color = new Color(1f, 0.9f, 0.72f, 0.48f);
+
             mapBoundaryRenderer = boundaryObject.GetComponent<LineRenderer>();
             if (mapBoundaryRenderer == null)
             {
@@ -497,6 +546,7 @@ namespace Sundoll.Presentation
 
         private void UpdateMapBoundary()
         {
+            projection?.SetGridVisible(IsMapWorkspaceActive && !hostPreviewMode);
             if (mapBoundaryRenderer == null)
             {
                 return;
@@ -504,6 +554,11 @@ namespace Sundoll.Presentation
 
             mapBoundaryRenderer.enabled = IsMapWorkspaceActive && editor != null &&
                                            editor.State != null && editor.State.map != null;
+            if (mapBoundaryFillRenderer != null)
+            {
+                mapBoundaryFillRenderer.enabled = mapBoundaryRenderer.enabled;
+            }
+
             if (!mapBoundaryRenderer.enabled)
             {
                 return;
@@ -519,6 +574,11 @@ namespace Sundoll.Presentation
             mapBoundaryRenderer.SetPosition(2, new Vector3(maxX, maxY, -0.15f));
             mapBoundaryRenderer.SetPosition(3, new Vector3(minX, maxY, -0.15f));
             mapBoundaryRenderer.SetPosition(4, new Vector3(minX, minY, -0.15f));
+            if (mapBoundaryFillRenderer != null)
+            {
+                mapBoundaryFillRenderer.transform.position = new Vector3((map.width - 1) * 0.5f, (map.height - 1) * 0.5f, 0.2f);
+                mapBoundaryFillRenderer.transform.localScale = new Vector3(map.width, map.height, 1f);
+            }
         }
 
         private void BuildUi()
@@ -651,9 +711,16 @@ namespace Sundoll.Presentation
             var mapWorkspace = CreatePrimaryWorkspace("MapEditorWorkspace");
             var mapTools = CreateWorkspaceSidePanel("MapEditorTools", 260f);
             mapTools.Add(mapSection);
-            mapWorkspace.Add(mapTools);
-            mapWorkspace.Add(BuildMapPanel());
-            mapWorkspace.Add(BuildInspectorPanel());
+            mapWorkspace.style.flexDirection = FlexDirection.Column;
+            mapWorkspace.Add(BuildMapToolbar());
+            var mapWorkspaceBody = new VisualElement { name = "MapEditorWorkspaceBody" };
+            mapWorkspaceBody.style.flexGrow = 1f;
+            mapWorkspaceBody.style.minHeight = 0f;
+            mapWorkspaceBody.style.flexDirection = FlexDirection.Row;
+            mapWorkspaceBody.Add(mapTools);
+            mapWorkspaceBody.Add(BuildMapPanel());
+            mapWorkspaceBody.Add(BuildInspectorPanel());
+            mapWorkspace.Add(mapWorkspaceBody);
 
             var pieceWorkspace = CreatePrimaryWorkspace("PieceLibraryWorkspace");
             var pieceTools = CreateWorkspaceSidePanel("PieceLibraryTools", 470f);
@@ -678,6 +745,42 @@ namespace Sundoll.Presentation
             primaryWorkspaceController.Add("pieces", "棋子库", pieceWorkspace);
             primaryWorkspaceController.Add("host", "主控台", hostWorkspace);
             ApplyWorkspaceVisibility(currentWorkspace);
+        }
+
+        private VisualElement BuildMapToolbar()
+        {
+            var toolbar = new VisualElement { name = "MapEditorToolbar" };
+            toolbar.AddToClassList("sw-map-toolbar");
+            var title = new Label("地图制作");
+            title.AddToClassList("sw-map-toolbar-title");
+            toolbar.Add(title);
+
+            foreach (var tool in new[] { "选择", "画笔", "橡皮擦", "直线", "矩形", "填充" })
+            {
+                var toolButton = new Button(() => SelectTool(tool)) { text = tool };
+                toolButton.name = "MapTool_" + tool;
+                toolButton.tooltip = "当前工具：" + tool;
+                toolButton.AddToClassList("sw-map-tool-button");
+                mapToolButtons.Add(tool, toolButton);
+                toolbar.Add(toolButton);
+            }
+
+            var divider = new VisualElement { name = "MapToolbarDivider" };
+            divider.AddToClassList("sw-map-toolbar-divider");
+            toolbar.Add(divider);
+
+            var undoButton = new Button(Undo) { text = "撤销" };
+            undoButton.name = "MapUndo";
+            toolbar.Add(undoButton);
+            var redoButton = new Button(Redo) { text = "重做" };
+            redoButton.name = "MapRedo";
+            toolbar.Add(redoButton);
+            var fitButton = new Button(ResetView) { text = "适应地图" };
+            fitButton.name = "FitMapButton";
+            fitButton.tooltip = "将地图完整置于视口中";
+            fitButton.AddToClassList("sw-button-accent");
+            toolbar.Add(fitButton);
+            return toolbar;
         }
 
         private static VisualElement CreatePrimaryWorkspace(string name)
@@ -795,13 +898,7 @@ namespace Sundoll.Presentation
             panel.Add(sectionHost);
 
             var mapSection = CreateWorkspaceSection("ToolPanelScroll");
-            mapSection.Add(new Label("地图工具") { name = "ToolTitle" });
-            foreach (var tool in new[] { "选择", "画笔", "橡皮擦", "直线", "矩形", "填充" })
-            {
-                var toolButton = new Button(() => SelectTool(tool)) { text = tool };
-                toolButton.style.marginTop = 5f;
-                mapSection.Add(toolButton);
-            }
+            mapSection.Add(new Label("图层与素材") { name = "ToolTitle" });
 
             var layerTitle = new Label("内容层") { name = "LayerTitle" };
             layerTitle.style.marginTop = 18f;
@@ -834,7 +931,7 @@ namespace Sundoll.Presentation
             mapSection.Add(materialPaletteContainer);
             RefreshMaterialPalette();
 
-            var resetButton = new Button(ResetView) { text = "复位视口" };
+            var resetButton = new Button(ResetView) { name = "FitMapButtonLegacy", text = "适应地图" };
             resetButton.style.marginTop = 18f;
             mapSection.Add(resetButton);
 
@@ -1048,6 +1145,7 @@ namespace Sundoll.Presentation
         {
             var panel = CreatePanel(new Color(0f, 0f, 0f, 0.08f), 0f);
             panel.name = "MapViewport";
+            panel.AddToClassList("sw-map-viewport");
             mapViewport = panel;
             panel.style.flexGrow = 1f;
             panel.style.minWidth = 420f;
@@ -1057,6 +1155,13 @@ namespace Sundoll.Presentation
             hint.style.color = new Color(0.8f, 0.85f, 0.9f, 0.65f);
             hint.pickingMode = PickingMode.Ignore;
             panel.Add(hint);
+            mapBoundaryFeedbackLabel = new Label("地图有效区 · 仅可在框内编辑")
+            {
+                name = "MapBoundaryFeedback"
+            };
+            mapBoundaryFeedbackLabel.AddToClassList("sw-boundary-feedback");
+            mapBoundaryFeedbackLabel.pickingMode = PickingMode.Ignore;
+            panel.Add(mapBoundaryFeedbackLabel);
             return panel;
         }
 
@@ -1648,6 +1753,29 @@ namespace Sundoll.Presentation
             RefreshUiState();
         }
 
+        private void RefreshMapBoundaryFeedback()
+        {
+            if (mapBoundaryFeedbackLabel == null)
+            {
+                return;
+            }
+
+            var mapActive = IsMapWorkspaceActive && editor != null && editor.State != null &&
+                            editor.State.map != null;
+            mapBoundaryFeedbackLabel.style.display = mapActive ? DisplayStyle.Flex : DisplayStyle.None;
+            if (!mapActive)
+            {
+                return;
+            }
+
+            var dragOutOfBounds = pieceInteraction != null && pieceInteraction.IsDragPreviewOutOfBounds;
+            mapBoundaryFeedbackLabel.text = dragOutOfBounds
+                ? "⚠ 越界：释放将拒绝整批移动"
+                : "地图有效区 · 仅可在框内编辑";
+            mapBoundaryFeedbackLabel.EnableInClassList("sw-boundary-warning", dragOutOfBounds);
+            mapBoundaryFeedbackLabel.EnableInClassList("sw-boundary-ok", !dragOutOfBounds);
+        }
+
         private void SelectLayer(string layerId)
         {
             currentLayerId = layerId;
@@ -1684,14 +1812,11 @@ namespace Sundoll.Presentation
             foreach (var definition in mapVisualCatalog.GetForLayer(currentLayerId))
             {
                 var contentId = definition.contentId;
-                var button = new Button(() => SelectMapVisual(contentId))
-                {
-                    text = (string.Equals(currentContent, contentId, StringComparison.Ordinal) ? "◆ " : string.Empty) +
-                           definition.displayName,
-                    tooltip = contentId
-                };
+                var selected = string.Equals(currentContent, contentId, StringComparison.Ordinal);
+                var button = new Button(() => SelectMapVisual(contentId)) { tooltip = contentId };
                 button.name = "MapVisual_" + contentId;
                 button.AddToClassList("sw-material-button");
+                button.EnableInClassList("sw-material-selected", selected);
                 button.style.backgroundColor = definition.primaryColor;
                 var luminance = definition.primaryColor.r * 0.299f +
                                 definition.primaryColor.g * 0.587f +
@@ -1699,6 +1824,18 @@ namespace Sundoll.Presentation
                 button.style.color = luminance > 0.54f
                     ? new Color(0.08f, 0.09f, 0.1f, 1f)
                     : new Color(0.95f, 0.94f, 0.9f, 1f);
+                var thumbnail = new VisualElement { name = "Thumbnail" };
+                thumbnail.AddToClassList("sw-material-thumbnail");
+                thumbnail.style.backgroundColor = Color.Lerp(definition.primaryColor, Color.white, 0.18f);
+                thumbnail.pickingMode = PickingMode.Ignore;
+                button.Add(thumbnail);
+                var label = new Label((selected ? "◆ " : string.Empty) + definition.displayName)
+                {
+                    name = "Label"
+                };
+                label.AddToClassList("sw-material-label");
+                label.pickingMode = PickingMode.Ignore;
+                button.Add(label);
                 materialPaletteContainer.Add(button);
             }
         }
@@ -1737,7 +1874,7 @@ namespace Sundoll.Presentation
             camera.orthographicSize = Mathf.Max(5f, map.height * 0.5f + 1f);
             camera.transform.position = new Vector3((map.width - 1) * 0.5f, (map.height - 1) * 0.5f, -10f);
             PersistWorkspaceState();
-            status = "视口已复位";
+            status = "地图已适应视口";
             RefreshUiState();
         }
 
@@ -1757,10 +1894,17 @@ namespace Sundoll.Presentation
             return mapViewport.worldBound.Contains(panelPosition);
         }
 
+        public bool IsCellInsideMap(Vector2Int cell)
+        {
+            return editor != null && editor.State != null && editor.State.map != null &&
+                   cell.x >= 0 && cell.x < editor.State.map.width &&
+                   cell.y >= 0 && cell.y < editor.State.map.height;
+        }
+
         public bool TryScreenToCell(Vector2 screenPosition, out Vector2Int cell)
         {
             var camera = GetComponentInChildren<Camera>();
-            if (camera == null || editor == null || editor.State.map == null)
+            if (camera == null || editor == null || editor.State.map == null || !IsMapWorkspaceActive)
             {
                 cell = default(Vector2Int);
                 return false;
@@ -1768,11 +1912,16 @@ namespace Sundoll.Presentation
 
             var world = camera.ScreenToWorldPoint(new Vector3(screenPosition.x, screenPosition.y, -camera.transform.position.z));
             cell = new Vector2Int(Mathf.FloorToInt(world.x + 0.5f), Mathf.FloorToInt(world.y + 0.5f));
-            return cell.x >= 0 && cell.x < editor.State.map.width && cell.y >= 0 && cell.y < editor.State.map.height;
+            return IsCellInsideMap(cell);
         }
 
         public void ZoomAt(Vector2 screenPosition, float wheelDelta)
         {
+            if (!IsMapWorkspaceActive)
+            {
+                return;
+            }
+
             if (Mathf.Abs(wheelDelta) < 0.01f)
             {
                 return;
@@ -1795,6 +1944,11 @@ namespace Sundoll.Presentation
 
         public void PanByScreen(Vector2 screenDelta)
         {
+            if (!IsMapWorkspaceActive)
+            {
+                return;
+            }
+
             var camera = GetComponentInChildren<Camera>();
             if (camera == null || Screen.height <= 0)
             {
@@ -1807,6 +1961,13 @@ namespace Sundoll.Presentation
 
         public void BeginPointerAction(Vector2Int cell)
         {
+            if (!IsMapWorkspaceActive || !IsCellInsideMap(cell))
+            {
+                status = "地图外不可编辑";
+                RefreshUiState();
+                return;
+            }
+
             if (hostPreviewMode)
             {
                 status = "玩家预览为只读";
@@ -1856,6 +2017,11 @@ namespace Sundoll.Presentation
 
         public void ContinuePointerAction(Vector2Int cell)
         {
+            if (!IsMapWorkspaceActive || !IsCellInsideMap(cell))
+            {
+                return;
+            }
+
             if (fogStrokeActive)
             {
                 foreach (var point in M3GridStrokeRasterizer.Rasterize(lastStrokeCell.x, lastStrokeCell.y, cell.x, cell.y))
@@ -1898,6 +2064,17 @@ namespace Sundoll.Presentation
 
         public void EndPointerAction(Vector2Int cell)
         {
+            if (!IsMapWorkspaceActive)
+            {
+                CancelPointerAction();
+                return;
+            }
+
+            if (!IsCellInsideMap(cell))
+            {
+                cell = lastStrokeCell;
+            }
+
             if (fogStrokeActive)
             {
                 foreach (var point in M3GridStrokeRasterizer.Rasterize(lastStrokeCell.x, lastStrokeCell.y, cell.x, cell.y))
@@ -3209,6 +3386,11 @@ namespace Sundoll.Presentation
             RefreshUiState();
         }
 
+        internal void RefreshPieceDragPreviewFeedback()
+        {
+            RefreshMapBoundaryFeedback();
+        }
+
         private M3MapObject FindObjectAt(Vector2Int cell)
         {
             if (editor.State.map == null || editor.State.map.objects == null)
@@ -3414,6 +3596,7 @@ namespace Sundoll.Presentation
 
             var map = editor.State.map;
             UpdateMapBoundary();
+            RefreshMapBoundaryFeedback();
             RefreshWorkspaceDetailPanels();
             if (saveStatusLabel != null)
             {
@@ -3436,17 +3619,31 @@ namespace Sundoll.Presentation
                 if (layerButtons.TryGetValue(layerId, out var button))
                 {
                     button.text = (currentLayerId == layerId ? "▶ " : "") + LayerLabel(layerId);
+                    button.EnableInClassList("sw-layer-selected", currentLayerId == layerId);
                 }
 
                 if (layerVisibilityButtons.TryGetValue(layerId, out var visibilityButton))
                 {
-                    visibilityButton.text = layerEditState.IsVisible(layerId) ? "显" : "隐";
+                    var visible = layerEditState.IsVisible(layerId);
+                    visibilityButton.text = visible ? "◉" : "○";
+                    visibilityButton.tooltip = visible ? "隐藏此图层" : "显示此图层";
+                    visibilityButton.EnableInClassList("sw-layer-state-active", visible);
                 }
 
                 if (layerLockButtons.TryGetValue(layerId, out var lockButton))
                 {
-                    lockButton.text = layerEditState.IsLocked(layerId) ? "锁" : "开";
+                    var locked = layerEditState.IsLocked(layerId);
+                    lockButton.text = locked ? "▣" : "□";
+                    lockButton.tooltip = locked ? "解锁此图层" : "锁定此图层";
+                    lockButton.EnableInClassList("sw-layer-state-active", locked);
                 }
+            }
+
+            foreach (var pair in mapToolButtons)
+            {
+                pair.Value.EnableInClassList(
+                    "sw-map-tool-selected",
+                    string.Equals(pair.Key, currentTool, StringComparison.Ordinal));
             }
 
             if (inspectorLabel != null)

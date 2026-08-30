@@ -26,6 +26,7 @@ namespace Sundoll.Presentation
         private bool additiveSelection;
         private bool dragCandidate;
         private bool dragging;
+        private bool dragPreviewOutOfBounds;
         private bool marqueeActive;
         private GameObject marqueePreview;
         private Sprite previewSprite;
@@ -35,6 +36,7 @@ namespace Sundoll.Presentation
         public int DragGhostCount => dragGhosts.Count;
         public bool HasSelection => selectedPieceIds.Count > 0;
         public string PrimaryPieceId => primaryPieceId;
+        public bool IsDragPreviewOutOfBounds => dragPreviewOutOfBounds;
 
         public void Bind(
             M3WorkbenchRoot nextRoot,
@@ -375,17 +377,45 @@ namespace Sundoll.Presentation
         {
             var deltaX = destinationAnchor.x - pointerAnchorCell.x;
             var deltaY = destinationAnchor.y - pointerAnchorCell.y;
+            var outOfBounds = false;
             foreach (var pair in dragGhosts)
             {
                 var instance = M4PieceQueries.FindInstance(pieceLibrary.State, pair.Key);
                 if (pair.Value != null && instance != null && instance.location != null)
                 {
+                    if (instance.location.kind == M1PieceLocationKind.OnBoard &&
+                        !root.IsCellInsideMap(new Vector2Int(
+                            instance.location.x + deltaX,
+                            instance.location.y + deltaY)))
+                    {
+                        outOfBounds = true;
+                    }
+
                     pair.Value.transform.position = new Vector3(
                         instance.location.x + deltaX,
                         instance.location.y + deltaY,
                         -1.5f);
                 }
             }
+
+            dragPreviewOutOfBounds = outOfBounds;
+            foreach (var ghost in dragGhosts.Values)
+            {
+                if (ghost == null)
+                {
+                    continue;
+                }
+
+                var renderer = ghost.GetComponent<SpriteRenderer>();
+                if (renderer != null)
+                {
+                    renderer.color = dragPreviewOutOfBounds
+                        ? new Color(1f, 0.25f, 0.2f, 0.58f)
+                        : new Color(1f, 1f, 1f, 0.5f);
+                }
+            }
+
+            root.RefreshPieceDragPreviewFeedback();
         }
 
         private void UpdateMarqueePreview(Vector2Int endCell)
@@ -438,6 +468,7 @@ namespace Sundoll.Presentation
         {
             dragCandidate = false;
             dragging = false;
+            dragPreviewOutOfBounds = false;
             marqueeActive = false;
             ClearDragGhosts();
             if (marqueePreview != null)
@@ -445,6 +476,8 @@ namespace Sundoll.Presentation
                 Destroy(marqueePreview);
                 marqueePreview = null;
             }
+
+            root?.RefreshPieceDragPreviewFeedback();
         }
 
         private void ClearDragGhosts()
