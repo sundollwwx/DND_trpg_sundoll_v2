@@ -51,6 +51,8 @@ namespace Sundoll.Presentation
         private Label projectTitleLabel;
         private Label mapStatusLabel;
         private Label inspectorLabel;
+        private Label pieceInspectorLabel;
+        private Label hostStatusBodyLabel;
         private Label historyLabel;
         private VisualElement mapViewport;
         private M3WorkbenchInput input;
@@ -98,6 +100,7 @@ namespace Sundoll.Presentation
         private VisualElement hierarchyContainer;
         private VisualElement contextMenuContainer;
         private Label hostModeLabel;
+        private VisualElement hostTopBarActions;
         private bool hostPreviewMode;
         private bool fogStrokeActive;
         private bool annotationDragActive;
@@ -105,6 +108,10 @@ namespace Sundoll.Presentation
         private Vector2Int lastAnnotationDragCell;
         private M7ProjectCenterPanel projectCenterPanel;
         private M7WorkbenchTabController leftTabController;
+        private M7PrimaryWorkspaceController primaryWorkspaceController;
+        private VisualElement hostHierarchySection;
+        private LineRenderer mapBoundaryRenderer;
+        private Material mapBoundaryMaterial;
         private string currentWorkspace = "map";
         private Vector2Int contextMenuCell;
         private string selectedMapObjectId;
@@ -131,6 +138,13 @@ namespace Sundoll.Presentation
         public M3GridBounds Selection => selection;
         public M3MapClipboard Clipboard => clipboard;
         public int SelectedPieceCount => pieceInteraction == null ? 0 : pieceInteraction.SelectedCount;
+        public string CurrentWorkspace => currentWorkspace;
+        public bool IsMapWorkspaceActive => string.Equals(currentWorkspace, "map", StringComparison.Ordinal);
+
+        public bool SelectWorkspace(string workspaceId)
+        {
+            return primaryWorkspaceController != null && primaryWorkspaceController.Select(workspaceId);
+        }
 
         // The desktop performance harness is an opt-in diagnostic surface. It
         // reads the already-composed session without becoming a production UI
@@ -192,6 +206,7 @@ namespace Sundoll.Presentation
 
             consoleProjection.Bind(commandBus);
             BuildUi();
+            EnsureMapBoundary();
             input = GetComponent<M3WorkbenchInput>();
             if (input == null)
             {
@@ -245,6 +260,12 @@ namespace Sundoll.Presentation
             {
                 Destroy(panelSettings);
                 panelSettings = null;
+            }
+
+            if (mapBoundaryMaterial != null)
+            {
+                Destroy(mapBoundaryMaterial);
+                mapBoundaryMaterial = null;
             }
         }
 
@@ -404,7 +425,7 @@ namespace Sundoll.Presentation
                 RefreshAudienceProjection();
                 pieceLibraryGrid?.Bind(nextSession);
                 projectTitleLabel.text = nextSession.ProjectDisplayName;
-                leftTabController?.Select(currentWorkspace, false);
+                ApplyWorkspaceVisibility(currentWorkspace);
                 RefreshUiState();
             }
 
@@ -435,6 +456,69 @@ namespace Sundoll.Presentation
                 camera.orthographicSize = Mathf.Clamp(loadedWorkspaceZoom, 2f, 100f);
                 camera.transform.position = new Vector3(loadedWorkspacePan.x, loadedWorkspacePan.y, -10f);
             }
+        }
+
+        private void EnsureMapBoundary()
+        {
+            var boundaryObject = transform.Find("MapBoundary");
+            if (boundaryObject == null)
+            {
+                var objectRoot = new GameObject("MapBoundary");
+                objectRoot.transform.SetParent(transform, false);
+                boundaryObject = objectRoot.transform;
+            }
+
+            mapBoundaryRenderer = boundaryObject.GetComponent<LineRenderer>();
+            if (mapBoundaryRenderer == null)
+            {
+                mapBoundaryRenderer = boundaryObject.gameObject.AddComponent<LineRenderer>();
+            }
+
+            mapBoundaryRenderer.useWorldSpace = true;
+            mapBoundaryRenderer.loop = false;
+            mapBoundaryRenderer.positionCount = 5;
+            mapBoundaryRenderer.widthMultiplier = 0.08f;
+            mapBoundaryRenderer.startColor = new Color(0.86f, 0.66f, 0.28f, 1f);
+            mapBoundaryRenderer.endColor = new Color(0.86f, 0.66f, 0.28f, 1f);
+            mapBoundaryRenderer.sortingOrder = 1000;
+            if (mapBoundaryMaterial == null)
+            {
+                var shader = Shader.Find("Sprites/Default");
+                if (shader != null)
+                {
+                    mapBoundaryMaterial = new Material(shader);
+                    mapBoundaryMaterial.name = "SundollWorld.MapBoundaryMaterial";
+                    mapBoundaryRenderer.sharedMaterial = mapBoundaryMaterial;
+                }
+            }
+
+            UpdateMapBoundary();
+        }
+
+        private void UpdateMapBoundary()
+        {
+            if (mapBoundaryRenderer == null)
+            {
+                return;
+            }
+
+            mapBoundaryRenderer.enabled = IsMapWorkspaceActive && editor != null &&
+                                           editor.State != null && editor.State.map != null;
+            if (!mapBoundaryRenderer.enabled)
+            {
+                return;
+            }
+
+            var map = editor.State.map;
+            var minX = -0.5f;
+            var minY = -0.5f;
+            var maxX = map.width - 0.5f;
+            var maxY = map.height - 0.5f;
+            mapBoundaryRenderer.SetPosition(0, new Vector3(minX, minY, -0.15f));
+            mapBoundaryRenderer.SetPosition(1, new Vector3(maxX, minY, -0.15f));
+            mapBoundaryRenderer.SetPosition(2, new Vector3(maxX, maxY, -0.15f));
+            mapBoundaryRenderer.SetPosition(3, new Vector3(minX, maxY, -0.15f));
+            mapBoundaryRenderer.SetPosition(4, new Vector3(minX, minY, -0.15f));
         }
 
         private void BuildUi()
@@ -476,6 +560,9 @@ namespace Sundoll.Presentation
             projectCenterButton.name = "ProjectCenterButton";
             projectCenterButton.AddToClassList("sw-button-quiet");
             topBar.Add(projectCenterButton);
+            primaryWorkspaceController = new M7PrimaryWorkspaceController();
+            primaryWorkspaceController.WorkspaceChanged += SelectPrimaryWorkspace;
+            topBar.Add(primaryWorkspaceController.Navigation);
             mapStatusLabel = new Label { name = "MapStatus" };
             mapStatusLabel.style.marginLeft = 28f;
             topBar.Add(mapStatusLabel);
@@ -486,22 +573,26 @@ namespace Sundoll.Presentation
             saveStatusLabel.style.marginLeft = 14f;
             saveStatusLabel.style.marginRight = 18f;
             topBar.Add(saveStatusLabel);
+            hostTopBarActions = new VisualElement { name = "HostTopBarActions" };
+            hostTopBarActions.style.flexDirection = FlexDirection.Row;
+            hostTopBarActions.style.alignItems = Align.Center;
             var consoleButton = new Button(CreateHostMapFromUi) { text = "新建主持地图" };
             consoleButton.name = "CreateHostMap";
             consoleButton.style.marginLeft = 10f;
-            topBar.Add(consoleButton);
+            hostTopBarActions.Add(consoleButton);
             var createBoardButton = new Button(() => EnsureCurrentMapHostBoard()) { text = "发布并创建棋盘" };
             createBoardButton.name = "CreateHostBoard";
             createBoardButton.style.marginLeft = 8f;
-            topBar.Add(createBoardButton);
+            hostTopBarActions.Add(createBoardButton);
             hostModeLabel = new Label { name = "HostMode" };
             hostModeLabel.style.marginLeft = 14f;
-            topBar.Add(hostModeLabel);
+            hostTopBarActions.Add(hostModeLabel);
             var hostModeButton = new Button(ToggleHostPreviewMode) { text = "切换主持预览" };
             hostModeButton.name = "ToggleHostMode";
             hostModeButton.style.marginLeft = 8f;
             hostModeButton.style.marginRight = 12f;
-            topBar.Add(hostModeButton);
+            hostTopBarActions.Add(hostModeButton);
+            topBar.Add(hostTopBarActions);
             root.Add(topBar);
 
             var body = new VisualElement { name = "WorkbenchBody" };
@@ -509,9 +600,11 @@ namespace Sundoll.Presentation
             body.style.flexDirection = FlexDirection.Row;
             root.Add(body);
 
-            body.Add(BuildToolPanel());
-            body.Add(BuildMapPanel());
-            body.Add(BuildInspectorPanel());
+            var workspaceHost = new VisualElement { name = "PrimaryWorkspaceHost" };
+            workspaceHost.style.flexGrow = 1f;
+            workspaceHost.style.minHeight = 0f;
+            BuildWorkspacePanels(workspaceHost, root);
+            body.Add(workspaceHost);
 
             var bottomBar = CreatePanel(new Color(0.055f, 0.07f, 0.095f, 0.96f), 82f);
             bottomBar.style.width = Length.Percent(100f);
@@ -529,6 +622,160 @@ namespace Sundoll.Presentation
                 () => saveSession);
             root.Add(projectCenterPanel.Element);
             RefreshUiState();
+        }
+
+        private void BuildWorkspacePanels(VisualElement workspaceHost, VisualElement root)
+        {
+            var legacyToolPanel = BuildToolPanel();
+            var mapSection = legacyToolPanel.Q<ScrollView>("ToolPanelScroll");
+            var pieceSection = legacyToolPanel.Q<ScrollView>("PieceLibraryScroll");
+            var hostSection = legacyToolPanel.Q<ScrollView>("HostToolsScroll");
+            hostHierarchySection = legacyToolPanel.Q<ScrollView>("HierarchyScroll");
+            var legacyTabBar = legacyToolPanel.Q<VisualElement>("WorkbenchTabBar");
+
+            mapSection?.RemoveFromHierarchy();
+            pieceSection?.RemoveFromHierarchy();
+            hostSection?.RemoveFromHierarchy();
+            hostHierarchySection?.RemoveFromHierarchy();
+            legacyTabBar?.RemoveFromHierarchy();
+
+            var legacyTabs = new VisualElement { name = "LegacyWorkbenchTabs" };
+            legacyTabs.style.display = DisplayStyle.None;
+            if (legacyTabBar != null)
+            {
+                legacyTabs.Add(legacyTabBar);
+            }
+
+            root.Add(legacyTabs);
+
+            var mapWorkspace = CreatePrimaryWorkspace("MapEditorWorkspace");
+            var mapTools = CreateWorkspaceSidePanel("MapEditorTools", 260f);
+            mapTools.Add(mapSection);
+            mapWorkspace.Add(mapTools);
+            mapWorkspace.Add(BuildMapPanel());
+            mapWorkspace.Add(BuildInspectorPanel());
+
+            var pieceWorkspace = CreatePrimaryWorkspace("PieceLibraryWorkspace");
+            var pieceTools = CreateWorkspaceSidePanel("PieceLibraryTools", 470f);
+            pieceTools.Add(pieceSection);
+            pieceWorkspace.Add(pieceTools);
+            pieceWorkspace.Add(BuildPieceDetailsPanel());
+
+            var hostWorkspace = CreatePrimaryWorkspace("HostConsoleWorkspace");
+            var hostTools = CreateWorkspaceSidePanel("HostConsoleTools", 420f);
+            hostTools.Add(hostSection);
+            var hierarchyPanel = CreateWorkspaceSidePanel("HostHierarchyPanel", 340f);
+            hierarchyPanel.Add(hostHierarchySection);
+            hostWorkspace.Add(hostTools);
+            hostWorkspace.Add(hierarchyPanel);
+            hostWorkspace.Add(BuildHostStatusPanel());
+
+            workspaceHost.Add(mapWorkspace);
+            workspaceHost.Add(pieceWorkspace);
+            workspaceHost.Add(hostWorkspace);
+
+            primaryWorkspaceController.Add("map", "地图制作", mapWorkspace);
+            primaryWorkspaceController.Add("pieces", "棋子库", pieceWorkspace);
+            primaryWorkspaceController.Add("host", "主控台", hostWorkspace);
+            ApplyWorkspaceVisibility(currentWorkspace);
+        }
+
+        private static VisualElement CreatePrimaryWorkspace(string name)
+        {
+            var workspace = new VisualElement { name = name };
+            workspace.AddToClassList("sw-primary-workspace");
+            workspace.style.flexGrow = 1f;
+            workspace.style.minHeight = 0f;
+            workspace.style.flexDirection = FlexDirection.Row;
+            return workspace;
+        }
+
+        private static VisualElement CreateWorkspaceSidePanel(string name, float width)
+        {
+            var panel = CreatePanel(new Color(0.08f, 0.095f, 0.125f, 0.98f), width);
+            panel.name = name;
+            panel.AddToClassList("sw-side-panel");
+            panel.style.paddingLeft = 12f;
+            panel.style.paddingRight = 12f;
+            return panel;
+        }
+
+        private void SelectPrimaryWorkspace(string workspaceId)
+        {
+            currentWorkspace = NormalizeWorkspaceId(workspaceId);
+            ApplyWorkspaceVisibility(currentWorkspace);
+            PersistWorkspaceState();
+            status = "工作区：" + WorkspaceLabel(currentWorkspace);
+            RefreshUiState();
+        }
+
+        private void ApplyWorkspaceVisibility(string workspaceId)
+        {
+            currentWorkspace = NormalizeWorkspaceId(workspaceId);
+            if (hostTopBarActions != null)
+            {
+                hostTopBarActions.style.display = string.Equals(currentWorkspace, "host", StringComparison.Ordinal)
+                    ? DisplayStyle.Flex
+                    : DisplayStyle.None;
+            }
+
+            primaryWorkspaceController?.Select(currentWorkspace, false);
+
+            if (leftTabController == null)
+            {
+                return;
+            }
+
+            if (string.Equals(currentWorkspace, "host", StringComparison.Ordinal))
+            {
+                leftTabController.Select("host", false);
+                if (hostHierarchySection != null)
+                {
+                    hostHierarchySection.style.display = DisplayStyle.Flex;
+                }
+            }
+            else
+            {
+                leftTabController.Select(currentWorkspace, false);
+            }
+
+            UpdateMapBoundary();
+        }
+
+        private VisualElement BuildPieceDetailsPanel()
+        {
+            var panel = CreateWorkspaceSidePanel("PieceLibraryInspector", 330f);
+            panel.Add(new Label("棋子状态") { name = "PieceInspectorTitle" });
+            pieceInspectorLabel = new Label { name = "PieceInspectorBody" };
+            pieceInspectorLabel.AddToClassList("sw-inspector-body");
+            pieceInspectorLabel.style.whiteSpace = WhiteSpace.Normal;
+            pieceInspectorLabel.style.marginTop = 12f;
+            panel.Add(pieceInspectorLabel);
+
+            var placeButton = new Button(PlaceSelectedPiece) { text = "放到当前选区" };
+            placeButton.AddToClassList("sw-button-accent");
+            panel.Add(placeButton);
+            panel.Add(new Button(RotateSelectedPiece) { text = "顺时针旋转 90°" });
+            panel.Add(new Button(FlipSelectedPiece) { text = "翻面" });
+            panel.Add(new Button(ToggleSelectedPieceVisibility) { text = "切换显隐" });
+            panel.Add(new Button(() => DeleteSelectedPieces()) { text = "删除选中棋子" });
+            return panel;
+        }
+
+        private VisualElement BuildHostStatusPanel()
+        {
+            var panel = CreateWorkspaceSidePanel("HostConsoleStatus", 280f);
+            panel.Add(new Label("主持状态") { name = "HostStatusTitle" });
+            hostStatusBodyLabel = new Label { name = "HostStatusBody" };
+            hostStatusBodyLabel.AddToClassList("sw-inspector-body");
+            hostStatusBodyLabel.style.whiteSpace = WhiteSpace.Normal;
+            hostStatusBodyLabel.style.marginTop = 12f;
+            panel.Add(hostStatusBodyLabel);
+            panel.Add(new Label("地图编辑与玩家预览使用同一份权威数据；预览模式不会暴露隐藏内容。")
+            {
+                name = "HostStatusHint"
+            });
+            return panel;
         }
 
         private VisualElement BuildToolPanel()
@@ -769,10 +1016,7 @@ namespace Sundoll.Presentation
 
         private void SelectWorkspaceTab(string tabId)
         {
-            currentWorkspace = NormalizeWorkspaceId(tabId);
-            PersistWorkspaceState();
-            status = "工作区：" + WorkspaceLabel(currentWorkspace);
-            RefreshUiState();
+            SelectPrimaryWorkspace(tabId);
         }
 
         private static string NormalizeWorkspaceId(string tabId)
@@ -780,9 +1024,10 @@ namespace Sundoll.Presentation
             switch (tabId)
             {
                 case "pieces":
+                    return "pieces";
                 case "hierarchy":
                 case "host":
-                    return tabId;
+                    return "host";
                 default:
                     return "map";
             }
@@ -1498,6 +1743,11 @@ namespace Sundoll.Presentation
 
         public bool IsPointerOverMap(Vector2 screenPosition)
         {
+            if (!IsMapWorkspaceActive)
+            {
+                return false;
+            }
+
             if (mapViewport == null)
             {
                 return true;
@@ -3066,7 +3316,7 @@ namespace Sundoll.Presentation
             pieceInteraction?.Bind(this, pieceLibrary, pieceProjection);
             consoleProjection.Bind(commandBus);
             RefreshAudienceProjection();
-            leftTabController?.Select(currentWorkspace, false);
+            ApplyWorkspaceVisibility(currentWorkspace);
 
             if (mapIdField != null)
             {
@@ -3101,6 +3351,60 @@ namespace Sundoll.Presentation
                 selectedContentIds);
         }
 
+        private void RefreshWorkspaceDetailPanels()
+        {
+            if (pieceInspectorLabel != null)
+            {
+                var instance = M4PieceQueries.FindInstance(
+                    pieceLibrary == null ? null : pieceLibrary.State,
+                    selectedPieceInstanceId);
+                var definition = instance == null
+                    ? M4PieceQueries.FindDefinition(
+                        pieceLibrary == null ? null : pieceLibrary.State,
+                        selectedPieceDefinitionId)
+                    : M4PieceQueries.FindDefinition(
+                        pieceLibrary == null ? null : pieceLibrary.State,
+                        instance.definitionId);
+
+                if (instance == null)
+                {
+                    pieceInspectorLabel.text = definition == null
+                        ? "未选择棋子\n请在左侧棋子库选择定义或在地图上拾取实例。"
+                        : "定义：" + (definition.displayName ?? definition.id) + "\n" +
+                          "定义 ID：" + definition.id + "\n" +
+                          "状态：尚未选择实例";
+                }
+                else
+                {
+                    var location = instance.location;
+                    var locationText = location == null
+                        ? "未知"
+                        : location.kind + (location.kind == M1PieceLocationKind.OnBoard
+                            ? " · (" + location.x + ", " + location.y + ")"
+                            : string.Empty);
+                    pieceInspectorLabel.text = "名称：" + (definition == null ? instance.definitionId : definition.displayName) + "\n" +
+                                              "实例 ID：" + instance.id + "\n" +
+                                              "位置：" + locationText + "\n" +
+                                              "旋转：" + instance.rotation + "°\n" +
+                                              "翻面：" + (instance.flipped ? "是" : "否") + "\n" +
+                                              "可见：" + (instance.visible ? "是" : "否") + "\n" +
+                                              "堆叠：" + (location == null ? "-" : location.stackOrder) + "\n" +
+                                              "容器：" + (location == null ? "-" : (location.containerPieceId ?? "-")) + "\n" +
+                                              "附着：" + (location == null ? "-" : (location.attachedToPieceId ?? "-"));
+                }
+            }
+
+            if (hostStatusBodyLabel != null)
+            {
+                var console = commandBus == null ? null : commandBus.State.m5Console;
+                hostStatusBodyLabel.text = "主持地图：" + (console == null ? 0 : console.maps.Count) + "\n" +
+                                            "当前地图：" + (console == null ? "无" : console.activeMapId) + "\n" +
+                                            "迷雾格：" + (console == null ? 0 : console.fogCells.Count) + "\n" +
+                                            "动态标注：" + (console == null ? 0 : console.annotations.Count) + "\n" +
+                                            "模式：" + (hostPreviewMode ? "玩家预览" : "主持编辑");
+            }
+        }
+
         private void RefreshUiState()
         {
             if (saveSession == null || editor == null || editor.State == null || editor.State.map == null)
@@ -3109,6 +3413,8 @@ namespace Sundoll.Presentation
             }
 
             var map = editor.State.map;
+            UpdateMapBoundary();
+            RefreshWorkspaceDetailPanels();
             if (saveStatusLabel != null)
             {
                 saveStatusLabel.text = "保存：" + SaveStatusLabel(saveSession.SaveStatus) +

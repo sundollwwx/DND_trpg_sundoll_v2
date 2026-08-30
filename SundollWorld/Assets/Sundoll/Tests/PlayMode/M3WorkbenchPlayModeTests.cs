@@ -240,6 +240,60 @@ namespace Sundoll.Tests.PlayMode
         }
 
         [UnityTest]
+        public IEnumerator WorkbenchPrimaryWorkspacesAreMutuallyExclusiveAndMapBoundaryIsExplicit()
+        {
+            yield return SceneManager.LoadSceneAsync("M3Workbench", LoadSceneMode.Single);
+            yield return null;
+
+            var root = Object.FindFirstObjectByType<M3WorkbenchRoot>();
+            var document = root.GetComponent<UIDocument>();
+            Assert.That(root, Is.Not.Null);
+            Assert.That(document.rootVisualElement.Q<Button>("PrimaryWorkspace_map"), Is.Not.Null);
+            Assert.That(document.rootVisualElement.Q<Button>("PrimaryWorkspace_pieces"), Is.Not.Null);
+            Assert.That(document.rootVisualElement.Q<Button>("PrimaryWorkspace_host"), Is.Not.Null);
+
+            var mapWorkspace = document.rootVisualElement.Q<VisualElement>("MapEditorWorkspace");
+            var pieceWorkspace = document.rootVisualElement.Q<VisualElement>("PieceLibraryWorkspace");
+            var hostWorkspace = document.rootVisualElement.Q<VisualElement>("HostConsoleWorkspace");
+            Assert.That(mapWorkspace, Is.Not.Null);
+            Assert.That(pieceWorkspace, Is.Not.Null);
+            Assert.That(hostWorkspace, Is.Not.Null);
+            var hostTopBar = document.rootVisualElement.Q<VisualElement>("HostTopBarActions");
+            Assert.That(hostTopBar, Is.Not.Null);
+            Assert.That(hostTopBar.style.display.value, Is.EqualTo(DisplayStyle.None));
+            Assert.That(mapWorkspace.style.display.value, Is.EqualTo(DisplayStyle.Flex));
+            Assert.That(pieceWorkspace.style.display.value, Is.EqualTo(DisplayStyle.None));
+            Assert.That(hostWorkspace.style.display.value, Is.EqualTo(DisplayStyle.None));
+
+            var boundary = root.transform.Find("MapBoundary").GetComponent<LineRenderer>();
+            Assert.That(boundary, Is.Not.Null);
+            Assert.That(boundary.positionCount, Is.EqualTo(5));
+            Assert.That(boundary.enabled, Is.True);
+
+            Assert.That(root.SelectWorkspace("pieces"), Is.True);
+            Assert.That(root.CurrentWorkspace, Is.EqualTo("pieces"));
+            Assert.That(mapWorkspace.style.display.value, Is.EqualTo(DisplayStyle.None));
+            Assert.That(pieceWorkspace.style.display.value, Is.EqualTo(DisplayStyle.Flex));
+            Assert.That(hostWorkspace.style.display.value, Is.EqualTo(DisplayStyle.None));
+            Assert.That(boundary.enabled, Is.False);
+            Assert.That(root.IsPointerOverMap(new Vector2(100f, 100f)), Is.False);
+
+            Assert.That(root.SelectWorkspace("host"), Is.True);
+            Assert.That(root.CurrentWorkspace, Is.EqualTo("host"));
+            Assert.That(mapWorkspace.style.display.value, Is.EqualTo(DisplayStyle.None));
+            Assert.That(pieceWorkspace.style.display.value, Is.EqualTo(DisplayStyle.None));
+            Assert.That(hostWorkspace.style.display.value, Is.EqualTo(DisplayStyle.Flex));
+            Assert.That(hostTopBar.style.display.value, Is.EqualTo(DisplayStyle.Flex));
+
+            Assert.That(root.SelectWorkspace("map"), Is.True);
+            Assert.That(boundary.enabled, Is.True);
+            Assert.That(root.TryScreenToCell(new Vector2(-100f, -100f), out _), Is.False);
+
+            Object.Destroy(root.gameObject);
+            yield return null;
+        }
+
+        [UnityTest]
         public IEnumerator WorkbenchBootsProjectsLayersAndCanRebuildView()
         {
             yield return SceneManager.LoadSceneAsync("M3Workbench", LoadSceneMode.Single);
