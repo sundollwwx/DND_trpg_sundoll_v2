@@ -52,6 +52,8 @@ namespace Sundoll.Presentation
         private Label projectTitleLabel;
         private Label mapStatusLabel;
         private Label inspectorLabel;
+        private Label inspectorContextTitleLabel;
+        private Label inspectorDiagnosticsLabel;
         private Label pieceInspectorLabel;
         private Label hostStatusBodyLabel;
         private Label historyLabel;
@@ -1170,12 +1172,30 @@ namespace Sundoll.Presentation
             var panel = CreatePanel(new Color(0.08f, 0.095f, 0.125f, 0.98f), 280f);
             panel.style.paddingLeft = 14f;
             panel.style.paddingRight = 14f;
-            panel.Add(new Label("Inspector") { name = "InspectorTitle" });
+            inspectorContextTitleLabel = new Label("地图摘要") { name = "InspectorTitle" };
+            inspectorContextTitleLabel.AddToClassList("sw-inspector-title");
+            panel.Add(inspectorContextTitleLabel);
             inspectorLabel = new Label { name = "InspectorBody" };
             inspectorLabel.style.whiteSpace = WhiteSpace.Normal;
             inspectorLabel.style.marginTop = 12f;
             panel.Add(inspectorLabel);
-            panel.Add(new Label("棋子视图使用可替换的占位色块；图片缺失不会删除实体。"));
+            var diagnostics = new Foldout
+            {
+                name = "InspectorDiagnostics",
+                text = "诊断信息",
+                value = false
+            };
+            diagnostics.style.marginTop = 12f;
+            inspectorDiagnosticsLabel = new Label { name = "InspectorDiagnosticsBody" };
+            inspectorDiagnosticsLabel.style.whiteSpace = WhiteSpace.Normal;
+            diagnostics.Add(inspectorDiagnosticsLabel);
+            panel.Add(diagnostics);
+            var visualHint = new Label("棋子图片缺失时保留数据，并使用占位色块显示。")
+            {
+                name = "InspectorVisualHint"
+            };
+            visualHint.AddToClassList("sw-muted");
+            panel.Add(visualHint);
             var placeSelectedButton = new Button(PlaceSelectedPiece) { text = "选中棋子放到选区" };
             placeSelectedButton.style.marginTop = 10f;
             panel.Add(placeSelectedButton);
@@ -3293,6 +3313,7 @@ namespace Sundoll.Presentation
                 return;
             }
 
+            pieceInteraction?.ClearSelection();
             selectedMapObjectId = objectId;
             selection = new M3GridBounds(mapObject.x, mapObject.y, mapObject.x, mapObject.y);
             if (interactionObjectField != null)
@@ -3315,6 +3336,8 @@ namespace Sundoll.Presentation
                 return;
             }
 
+            pieceInteraction?.ClearSelection();
+            selectedMapObjectId = null;
             selection = new M3GridBounds(annotation.x, annotation.y, annotation.x, annotation.y);
             if (annotationIdField != null)
             {
@@ -3370,6 +3393,10 @@ namespace Sundoll.Presentation
         internal void ApplyPieceInteractionSelection(ICollection<string> selectedIds, string primaryId)
         {
             selectedPieceInstanceId = primaryId;
+            if (selectedIds != null && selectedIds.Count > 0)
+            {
+                selectedMapObjectId = null;
+            }
             var instance = M4PieceQueries.FindInstance(pieceLibrary == null ? null : pieceLibrary.State, primaryId);
             if (instance != null)
             {
@@ -3587,6 +3614,84 @@ namespace Sundoll.Presentation
             }
         }
 
+        private string BuildInspectorContext(M1MapDocument map, out string contextTitle)
+        {
+            var selectedCount = SelectedPieceCount;
+            if (selectedCount > 1)
+            {
+                contextTitle = "棋子多选";
+                return "已选择 " + selectedCount + " 个棋子\n" +
+                       "可用操作：移动、旋转、翻面、显隐和删除。\n" +
+                       "关系字段只在单选时显示。";
+            }
+
+            if (selectedCount == 1)
+            {
+                var instance = M4PieceQueries.FindInstance(
+                    pieceLibrary == null ? null : pieceLibrary.State,
+                    selectedPieceInstanceId);
+                if (instance != null)
+                {
+                    var definition = M4PieceQueries.FindDefinition(
+                        pieceLibrary == null ? null : pieceLibrary.State,
+                        instance.definitionId);
+                    var location = instance.location;
+                    var locationText = location == null
+                        ? "未知"
+                        : location.kind == M1PieceLocationKind.OnBoard
+                            ? "棋盘中 · (" + location.x + ", " + location.y + ")"
+                            : location.kind.ToString();
+                    contextTitle = "棋子状态";
+                    return "名称：" + (definition == null ? instance.definitionId : definition.displayName) + "\n" +
+                           "定义：" + (definition == null ? instance.definitionId : definition.category) + "\n" +
+                           "位置：" + locationText + "\n" +
+                           "旋转：" + instance.rotation + "°\n" +
+                           "翻面：" + (instance.flipped ? "是" : "否") + "\n" +
+                           "主持可见：" + (instance.visible ? "是" : "否") + "\n" +
+                           "堆叠：" + (location == null ? "-" : location.stackOrder) + "\n" +
+                           "容器：" + (location == null ? "-" : (location.containerPieceId ?? "-")) + "\n" +
+                           "附着：" + (location == null ? "-" : (location.attachedToPieceId ?? "-"));
+                }
+            }
+
+            if (!string.IsNullOrWhiteSpace(selectedMapObjectId))
+            {
+                var mapObject = editor.FindMapObject(selectedMapObjectId);
+                if (mapObject != null)
+                {
+                    contextTitle = mapObject.kind == M3MapObjectKind.Door ? "门对象" : "箱子对象";
+                    return "类型：" + (mapObject.kind == M3MapObjectKind.Door ? "门" : "箱子") + "\n" +
+                           "位置：(" + mapObject.x + ", " + mapObject.y + ")\n" +
+                           "旋转：" + mapObject.rotation + "°\n" +
+                           "状态：" + (mapObject.state == M3MapObjectOpenState.Open ? "打开" : "关闭") + "\n" +
+                           "可用操作：打开、关闭、切换、旋转和删除。";
+                }
+            }
+
+            if (!selection.IsEmpty)
+            {
+                contextTitle = "格子选区";
+                return "范围：" + selection + "\n" +
+                       "尺寸：" + selection.Width + " × " + selection.Height + "\n" +
+                       "当前图层：" + LayerLabel(currentLayerId) + "\n" +
+                       "可用操作：复制、剪切、粘贴或将棋子放入选区。";
+            }
+
+            contextTitle = "地图摘要";
+            var selectedMaterial = ContentForLayer(currentLayerId);
+            if (mapVisualCatalog != null && mapVisualCatalog.TryGet(selectedMaterial, out var material))
+            {
+                selectedMaterial = material.displayName;
+            }
+
+            return "尺寸：" + map.width + " × " + map.height + "\n" +
+                   "当前图层：" + LayerLabel(currentLayerId) + "\n" +
+                   "当前素材：" + selectedMaterial + "\n" +
+                   "地图对象：" + (map.objects == null ? 0 : map.objects.Count) + "\n" +
+                   "棋子实例：" + (editor.State.pieceInstances == null ? 0 : editor.State.pieceInstances.Count) + "\n" +
+                   "地图外区域不可编辑；使用“适应地图”可快速找回画布。";
+        }
+
         private void RefreshUiState()
         {
             if (saveSession == null || editor == null || editor.State == null || editor.State.map == null)
@@ -3648,18 +3753,22 @@ namespace Sundoll.Presentation
 
             if (inspectorLabel != null)
             {
-                inspectorLabel.text = "工具：" + currentTool + "\n" +
-                                      "图层：" + LayerLabel(currentLayerId) + "\n" +
-                                      "World Revision：" + editor.State.revision + "\n" +
-                                      "Map Cells：" + map.cells.Count + "\n" +
-                                      "Map Objects：" + (map.objects == null ? 0 : map.objects.Count) + "\n" +
-                                      "棋子定义：" + (editor.State.pieceDefinitions == null ? 0 : editor.State.pieceDefinitions.Count) + "\n" +
-                                      "棋子实例：" + (editor.State.pieceInstances == null ? 0 : editor.State.pieceInstances.Count) + "\n" +
-                                      "当前定义：" + (selectedPieceDefinitionId ?? "无") + "\n" +
-                                      "当前实例：" + (selectedPieceInstanceId ?? "无") + "\n" +
-                                      "选择：" + (selection.IsEmpty ? "无" : selection.ToString()) + "\n" +
-                                      "Published：" + (editor.State.publishedMap == null ? "否" : "是") + "\n" +
-                                      "拾取可选择最上方可见层；锁定层可拾取但不可修改。";
+                inspectorLabel.text = BuildInspectorContext(map, out var contextTitle);
+                if (inspectorContextTitleLabel != null)
+                {
+                    inspectorContextTitleLabel.text = contextTitle;
+                }
+            }
+
+            if (inspectorDiagnosticsLabel != null)
+            {
+                inspectorDiagnosticsLabel.text = "World Revision：" + editor.State.revision + "\n" +
+                                                 "Map Cells：" + (map.cells == null ? 0 : map.cells.Count) + "\n" +
+                                                 "Map Objects：" + (map.objects == null ? 0 : map.objects.Count) + "\n" +
+                                                 "棋子定义：" + (editor.State.pieceDefinitions == null ? 0 : editor.State.pieceDefinitions.Count) + "\n" +
+                                                 "当前定义 ID：" + (selectedPieceDefinitionId ?? "无") + "\n" +
+                                                 "当前实例 ID：" + (selectedPieceInstanceId ?? "无") + "\n" +
+                                                 "Published：" + (editor.State.publishedMap == null ? "否" : "是");
             }
 
             if (pieceLibraryLabel != null)

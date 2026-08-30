@@ -338,6 +338,8 @@ namespace Sundoll.Tests.PlayMode
             Assert.That(document.rootVisualElement.Q<Button>("MapVisual_terrain-ground"), Is.Not.Null);
             Assert.That(document.rootVisualElement.Q<Button>("MapVisual_terrain-water"), Is.Not.Null);
             Assert.That(document.rootVisualElement.Q<ScrollView>("InspectorScroll"), Is.Not.Null);
+            Assert.That(document.rootVisualElement.Q<Label>("InspectorTitle").text, Is.EqualTo("地图摘要"));
+            Assert.That(document.rootVisualElement.Q<Label>("InspectorDiagnosticsBody"), Is.Not.Null);
             Assert.That(document.rootVisualElement.Q<DropdownField>("PieceRelationTarget"), Is.Not.Null);
             Assert.That(document.rootVisualElement.Q<Button>("DeleteSelectedPieces"), Is.Not.Null);
             Assert.That(document.rootVisualElement.Q<VisualElement>("HostMapList"), Is.Not.Null);
@@ -417,6 +419,8 @@ namespace Sundoll.Tests.PlayMode
             Assert.That(root.LayerEditState.CanEdit("wall"), Is.False);
 
             root.AddMapObjectAt(new Vector2Int(4, 4), M3MapObjectKind.Door);
+            Assert.That(document.rootVisualElement.Q<Label>("InspectorTitle").text, Is.EqualTo("门对象"));
+            Assert.That(document.rootVisualElement.Q<Label>("InspectorBody").text, Does.Contain("状态：关闭"));
             root.ShowMapContextMenu(new Vector2Int(4, 4), new Vector2(200f, 200f));
             Assert.That(root.IsContextMenuVisible, Is.True);
             Assert.That(document.rootVisualElement.Q<Button>("ContextToggle"), Is.Not.Null);
@@ -466,9 +470,11 @@ namespace Sundoll.Tests.PlayMode
             var destination = camera.WorldToScreenPoint(new Vector3(3f, 2f, 0f));
             Assert.That(root.BeginPiecePointerAction(first, false), Is.True);
             root.EndPiecePointerAction(first);
+            Assert.That(root.GetComponent<UIDocument>().rootVisualElement.Q<Label>("InspectorTitle").text, Is.EqualTo("棋子状态"));
             Assert.That(root.BeginPiecePointerAction(second, true), Is.True);
             root.EndPiecePointerAction(second);
             Assert.That(root.SelectedPieceCount, Is.EqualTo(2));
+            Assert.That(root.GetComponent<UIDocument>().rootVisualElement.Q<Label>("InspectorTitle").text, Is.EqualTo("棋子多选"));
 
             Assert.That(root.BeginPiecePointerAction(first, false), Is.True);
             root.ContinuePiecePointerAction(destination);
