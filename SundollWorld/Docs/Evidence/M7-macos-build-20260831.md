@@ -28,4 +28,14 @@
 
 本机构建缓存仍记录 `34819` 条 TypeDB 重复登记诊断，其中 `34789` 条为 NUnit `Class`、`30` 条为 NUnit `Assembly`，均指向 `Packages/com.unity.ext.nunit/net40/unity-custom/nunit.framework.dll` 的同一登记来源。它们令 Unity 的 BuildReport `totalErrors` 计数失真，但没有 C# 编译错误、没有 Build Failure，且 Player 成功生成和启动。
 
-这与先前的干净临时导入证据一致：问题属于当前本机旧 `Library/Bee` 缓存，尚未在不清理用户约 11 GB 缓存的前提下从本机构建日志消除。发布结论仍保留为 macOS **Ready with limitations**，不能将该本机日志描述为“无未解释 TypeDB 诊断”。
+## 隔离干净构建
+
+提交 `c68f516` 新增 `scripts/unity-build-macos-clean.sh`，它从当前提交创建 `/private/tmp` 下的一次性 Git 工作树，构建后仅复制日志回原工程并删除该临时工作树。2026-08-31 的实际执行结果：
+
+- 保留日志：`Logs/Build_macOS_clean_20260831_011017.log`
+- Unity 结果：`Build Finished, Result: Success`，BuildReport `errors=0`、`warnings=1`。
+- TypeDB 重复登记：`0`
+- C# 编译错误：`0`
+- 临时工作树：构建后已删除；主工程原有 `Library/`、`Builds/` 与运行时存档均未清理或改写。
+
+因此，TypeDB 问题已被定位并被可重复的干净构建路径规避：它属于当前主工程旧 `Library/Bee` 缓存，而非源码或包清单的产品构建回归。发布结论仍为 macOS **Ready with limitations**，原因是严格 60 FPS pacing、长期 Soak、Windows 与跨平台矩阵尚未关闭，而不是 TypeDB。
