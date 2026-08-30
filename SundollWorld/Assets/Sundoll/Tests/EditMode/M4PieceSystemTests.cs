@@ -173,6 +173,129 @@ namespace Sundoll.Tests.EditMode
         }
 
         [Test]
+        public void MultiPieceMoveIsOneAtomicUndoableJournalOperation()
+        {
+            var bus = CreateBusWithDefinition();
+            Execute(bus, new M4CreatePieceInstanceCommand("m4-batch-a", bus.State.revision, "definition-token", "batch-a"));
+            Execute(bus, new M4CreatePieceInstanceCommand("m4-batch-b", bus.State.revision, "definition-token", "batch-b"));
+            Execute(bus, new M4CreatePieceInstanceCommand("m4-batch-existing", bus.State.revision, "definition-token", "batch-existing"));
+            Execute(bus, new M4PlacePieceCommand("m4-batch-place-a", bus.State.revision, "batch-a", 1, 1));
+            Execute(bus, new M4PlacePieceCommand("m4-batch-place-b", bus.State.revision, "batch-b", 2, 1));
+            Execute(bus, new M4PlacePieceCommand("m4-batch-place-existing", bus.State.revision, "batch-existing", 4, 3));
+            var snapshot = bus.State.DeepClone();
+            var revisionBefore = bus.State.revision;
+            var command = new M4MovePiecesCommand(
+                "m4-batch-move",
+                revisionBefore,
+                new[]
+                {
+                    new M4PieceMoveMutation("batch-a", 4, 3),
+                    new M4PieceMoveMutation("batch-b", 4, 3)
+                });
+
+            var receipt = bus.Execute(command);
+            Assert.That(receipt.accepted, Is.True, receipt.message);
+            Assert.That(bus.State.revision, Is.EqualTo(revisionBefore + 1));
+            Assert.That(M4PieceQueries.FindInstance(bus.State, "batch-a").location.stackOrder, Is.EqualTo(1));
+            Assert.That(M4PieceQueries.FindInstance(bus.State, "batch-b").location.stackOrder, Is.EqualTo(2));
+            Assert.That(M4PieceStateValidator.TryValidate(bus.State, out var diagnostic), Is.True, diagnostic);
+            var acceptedState = bus.State.DeepClone();
+
+            Assert.That(bus.Undo(), Is.True);
+            Assert.That(M4PieceQueries.FindInstance(bus.State, "batch-a").location.x, Is.EqualTo(1));
+            Assert.That(bus.Redo(), Is.True);
+            Assert.That(M4PieceQueries.FindInstance(bus.State, "batch-b").location.x, Is.EqualTo(4));
+
+            var envelope = M2CommandEnvelopeCodec.Encode(command);
+            var decoded = M2CommandEnvelopeCodec.Decode(
+                JsonUtility.FromJson<M1CommandEnvelope>(JsonUtility.ToJson(envelope, false)));
+            Assert.That(decoded, Is.TypeOf<M4MovePiecesCommand>());
+            var journal = new M2JournalStore(root, "m4-batch-stream");
+            journal.Append(M2CommandEnvelopeCodec.CreateAcceptedBatch(receipt), receipt.message, acceptedState);
+            Assert.That(journal.TryReplay(snapshot, 0, out var replay), Is.True);
+            Assert.That(replay.complete, Is.True, replay.diagnostic);
+            Assert.That(M2CanonicalStateHasher.Compute(replay.state), Is.EqualTo(M2CanonicalStateHasher.Compute(acceptedState)));
+        }
+
+        [Test]
+        public void MultiPieceMoveRejectsAnInvalidDestinationWithoutPartialMutation()
+        {
+            var bus = CreateBusWithDefinition();
+            Execute(bus, new M4CreatePieceInstanceCommand("m4-invalid-a", bus.State.revision, "definition-token", "invalid-a"));
+            Execute(bus, new M4CreatePieceInstanceCommand("m4-invalid-b", bus.State.revision, "definition-token", "invalid-b"));
+            Execute(bus, new M4PlacePieceCommand("m4-invalid-place-a", bus.State.revision, "invalid-a", 1, 1));
+            Execute(bus, new M4PlacePieceCommand("m4-invalid-place-b", bus.State.revision, "invalid-b", 2, 1));
+            var hashBefore = M2CanonicalStateHasher.Compute(bus.State);
+            var revisionBefore = bus.State.revision;
+
+            Assert.Throws<InvalidOperationException>(() => bus.Execute(new M4MovePiecesCommand(
+                "m4-invalid-move",
+                bus.State.revision,
+                new[]
+                {
+                    new M4PieceMoveMutation("invalid-a", 4, 3),
+                    new M4PieceMoveMutation("invalid-b", -1, 3)
+                })));
+
+            Assert.That(bus.State.revision, Is.EqualTo(revisionBefore));
+            Assert.That(M4PieceQueries.FindInstance(bus.State, "invalid-a").location.x, Is.EqualTo(1));
+            Assert.That(M2CanonicalStateHasher.Compute(bus.State), Is.EqualTo(hashBefore));
+        }
+
+        [Test]
+        public void MultiPiecePresentationAndDeletionAreAtomicAndUndoable()
+        {
+            var bus = CreateBusWithDefinition();
+            Execute(bus, new M4CreatePieceInstanceCommand("m4-present-a", bus.State.revision, "definition-token", "present-a"));
+            Execute(bus, new M4CreatePieceInstanceCommand("m4-present-b", bus.State.revision, "definition-token", "present-b"));
+            Execute(bus, new M4SetPiecePresentationsCommand(
+                "m4-present-batch",
+                bus.State.revision,
+                new[]
+                {
+                    new M4PiecePresentationMutation("present-a", 90, true, false),
+                    new M4PiecePresentationMutation("present-b", 180, false, false)
+                }));
+
+            Assert.That(M4PieceQueries.FindInstance(bus.State, "present-a").rotation, Is.EqualTo(90));
+            Assert.That(M4PieceQueries.FindInstance(bus.State, "present-b").visible, Is.False);
+            Assert.That(bus.Undo(), Is.True);
+            Assert.That(M4PieceQueries.FindInstance(bus.State, "present-a").visible, Is.True);
+            Assert.That(bus.Redo(), Is.True);
+
+            var delete = new M4DeletePiecesCommand(
+                "m4-delete-batch",
+                bus.State.revision,
+                new[] { "present-a", "present-b" });
+            var envelope = M2CommandEnvelopeCodec.Encode(delete);
+            Assert.That(M2CommandEnvelopeCodec.Decode(envelope), Is.TypeOf<M4DeletePiecesCommand>());
+            Execute(bus, delete);
+            Assert.That(M4PieceQueries.FindInstance(bus.State, "present-a"), Is.Null);
+            Assert.That(bus.Undo(), Is.True);
+            Assert.That(M4PieceQueries.FindInstance(bus.State, "present-b"), Is.Not.Null);
+        }
+
+        [Test]
+        public void DeletingRelationshipTargetRequiresSelectingDependentsToo()
+        {
+            var bus = CreateBusWithDefinition();
+            Execute(bus, new M4CreatePieceInstanceCommand("m4-delete-host", bus.State.revision, "definition-token", "host"));
+            Execute(bus, new M4CreatePieceInstanceCommand("m4-delete-child", bus.State.revision, "definition-token", "child"));
+            Execute(bus, new M4MovePieceToContainerCommand("m4-delete-container", bus.State.revision, "child", "host"));
+            var revisionBefore = bus.State.revision;
+
+            Assert.Throws<InvalidOperationException>(() => bus.Execute(new M4DeletePiecesCommand(
+                "m4-delete-host-only", bus.State.revision, new[] { "host" })));
+            Assert.That(bus.State.revision, Is.EqualTo(revisionBefore));
+            Assert.That(M4PieceQueries.FindInstance(bus.State, "host"), Is.Not.Null);
+            Assert.That(M4PieceQueries.FindInstance(bus.State, "child").location.kind, Is.EqualTo(M1PieceLocationKind.InContainer));
+
+            Execute(bus, new M4DeletePiecesCommand(
+                "m4-delete-together", bus.State.revision, new[] { "host", "child" }));
+            Assert.That(bus.State.pieceInstances, Is.Empty);
+        }
+
+        [Test]
         public void M4CommandEnvelopeRoundTrips()
         {
             var bus = CreateBusWithDefinition();

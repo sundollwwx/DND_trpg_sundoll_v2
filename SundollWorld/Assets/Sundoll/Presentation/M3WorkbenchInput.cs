@@ -15,6 +15,7 @@ namespace Sundoll.Presentation
         private M3WorkbenchMapProjection projection;
         private bool panning;
         private bool pointerAction;
+        private bool piecePointerAction;
         private Vector2 lastMousePosition;
         private Vector2Int pointerCell;
 
@@ -42,6 +43,8 @@ namespace Sundoll.Presentation
             {
                 root.ShowMapContextMenu(contextCell, position);
                 pointerAction = false;
+                piecePointerAction = false;
+                root.CancelPiecePointerAction();
             }
 
             var scroll = mouse.scroll.ReadValue();
@@ -72,9 +75,14 @@ namespace Sundoll.Presentation
                 root.DismissContextMenu();
                 var altPick = keyboard != null &&
                               (keyboard.leftAltKey.isPressed || keyboard.rightAltKey.isPressed);
-                if (!altPick && root.TrySelectPieceAtScreen(position))
+                var additiveSelection = keyboard != null &&
+                                        (keyboard.leftShiftKey.isPressed || keyboard.rightShiftKey.isPressed ||
+                                         keyboard.leftCtrlKey.isPressed || keyboard.rightCtrlKey.isPressed ||
+                                         keyboard.leftCommandKey.isPressed || keyboard.rightCommandKey.isPressed);
+                if (!altPick && root.BeginPiecePointerAction(position, additiveSelection))
                 {
                     pointerAction = false;
+                    piecePointerAction = true;
                     return;
                 }
 
@@ -88,6 +96,17 @@ namespace Sundoll.Presentation
                     pointerAction = true;
                     root.BeginPointerAction(pointerCell);
                 }
+            }
+
+            if (piecePointerAction && mouse.leftButton.isPressed)
+            {
+                root.ContinuePiecePointerAction(position);
+            }
+
+            if (piecePointerAction && mouse.leftButton.wasReleasedThisFrame)
+            {
+                root.EndPiecePointerAction(position);
+                piecePointerAction = false;
             }
 
             if (pointerAction && mouse.leftButton.isPressed && root.TryScreenToCell(position, out var draggedCell))
@@ -145,13 +164,33 @@ namespace Sundoll.Presentation
             if (keyboard.escapeKey.wasPressedThisFrame)
             {
                 pointerAction = false;
+                piecePointerAction = false;
                 root.CancelPointerAction();
+                root.CancelPiecePointerAction();
                 root.DismissContextMenu();
             }
 
             if (keyboard.rKey.wasPressedThisFrame && !command)
             {
-                root.RotateObjectAt(pointerCell);
+                if (!root.RotateSelectedPieces())
+                {
+                    root.RotateObjectAt(pointerCell);
+                }
+            }
+
+            if (keyboard.fKey.wasPressedThisFrame && !command)
+            {
+                root.FlipSelectedPieces();
+            }
+
+            if (keyboard.hKey.wasPressedThisFrame && !command)
+            {
+                root.ToggleSelectedPiecesVisibility();
+            }
+
+            if ((keyboard.deleteKey.wasPressedThisFrame || keyboard.backspaceKey.wasPressedThisFrame) && !command)
+            {
+                root.DeleteSelectedPieces();
             }
 
             if (keyboard.tKey.wasPressedThisFrame && !command)

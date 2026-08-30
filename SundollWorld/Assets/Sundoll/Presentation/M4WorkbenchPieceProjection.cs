@@ -18,6 +18,7 @@ namespace Sundoll.Presentation
         private readonly Dictionary<string, Sprite> viewSprites = new Dictionary<string, Sprite>(StringComparer.Ordinal);
         private readonly Dictionary<string, string> viewAssetIds = new Dictionary<string, string>(StringComparer.Ordinal);
         private readonly HashSet<string> activeIds = new HashSet<string>(StringComparer.Ordinal);
+        private readonly HashSet<string> selectedIds = new HashSet<string>(StringComparer.Ordinal);
         private readonly List<string> staleIds = new List<string>();
         private readonly HashSet<string> positionVisited = new HashSet<string>(StringComparer.Ordinal);
         private M1CommandBus commandBus;
@@ -55,6 +56,56 @@ namespace Sundoll.Presentation
             RefreshAll();
         }
 
+        /// <summary>
+        /// Selection is transient presentation state. It never changes the
+        /// world model, but keeps a rebuilt projection visually in sync with
+        /// the Workbench selection controller.
+        /// </summary>
+        public void SetSelectedPieceIds(IEnumerable<string> nextSelectedIds)
+        {
+            var changed = false;
+            var next = new HashSet<string>(StringComparer.Ordinal);
+            if (nextSelectedIds != null)
+            {
+                foreach (var instanceId in nextSelectedIds)
+                {
+                    if (!string.IsNullOrWhiteSpace(instanceId))
+                    {
+                        next.Add(instanceId);
+                    }
+                }
+            }
+
+            if (next.Count != selectedIds.Count)
+            {
+                changed = true;
+            }
+            else
+            {
+                foreach (var instanceId in next)
+                {
+                    if (!selectedIds.Contains(instanceId))
+                    {
+                        changed = true;
+                        break;
+                    }
+                }
+            }
+
+            if (!changed)
+            {
+                return;
+            }
+
+            selectedIds.Clear();
+            foreach (var instanceId in next)
+            {
+                selectedIds.Add(instanceId);
+            }
+
+            RefreshAll();
+        }
+
         public void RefreshAll()
         {
             if (commandBus == null || commandBus.State == null)
@@ -89,7 +140,10 @@ namespace Sundoll.Presentation
                     view.transform.position = position;
                     var renderer = view.GetComponent<SpriteRenderer>();
                     ApplySprite(state, instance, renderer);
-                    renderer.color = ColorForInstance(state, instance);
+                    var color = ColorForInstance(state, instance);
+                    renderer.color = selectedIds.Contains(instance.id)
+                        ? Color.Lerp(color, new Color(1f, 0.78f, 0.28f, 1f), 0.48f)
+                        : color;
                     renderer.sortingOrder = 100 + Math.Max(0, instance.location == null ? 0 : instance.location.stackOrder);
                     view.transform.rotation = Quaternion.Euler(0f, 0f, instance.rotation);
                     view.transform.localScale = instance.flipped ? new Vector3(-1f, 1f, 1f) : Vector3.one;

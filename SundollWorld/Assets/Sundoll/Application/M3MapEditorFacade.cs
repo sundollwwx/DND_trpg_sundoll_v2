@@ -87,6 +87,15 @@ namespace Sundoll.Application
                 "map-content-m3-" + Guid.NewGuid().ToString("N")));
         }
 
+        public M1CommandReceipt CreateScenarioBoard(string scenarioId, string boardId)
+        {
+            return commandBus.Execute(new M1CreateScenarioCommand(
+                "m3-create-scenario-" + Guid.NewGuid().ToString("N"),
+                commandBus.State.revision,
+                scenarioId,
+                boardId));
+        }
+
         public bool TryPickTopmost(int x, int y, M3LayerEditState layerState, out M1MapCell pickedCell)
         {
             if (layerState == null)

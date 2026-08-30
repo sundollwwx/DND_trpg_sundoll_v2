@@ -262,10 +262,13 @@ namespace Sundoll.Tests.PlayMode
             Assert.That(document.rootVisualElement.Q<Button>("WorkbenchTab_pieces"), Is.Not.Null);
             Assert.That(document.rootVisualElement.Q<Button>("WorkbenchTab_hierarchy"), Is.Not.Null);
             Assert.That(document.rootVisualElement.Q<Button>("WorkbenchTab_host"), Is.Not.Null);
+            Assert.That(document.rootVisualElement.Q<Button>("CreateHostBoard"), Is.Not.Null);
             Assert.That(document.rootVisualElement.Q<VisualElement>("MapVisualPalette"), Is.Not.Null);
             Assert.That(document.rootVisualElement.Q<Button>("MapVisual_terrain-ground"), Is.Not.Null);
             Assert.That(document.rootVisualElement.Q<Button>("MapVisual_terrain-water"), Is.Not.Null);
             Assert.That(document.rootVisualElement.Q<ScrollView>("InspectorScroll"), Is.Not.Null);
+            Assert.That(document.rootVisualElement.Q<DropdownField>("PieceRelationTarget"), Is.Not.Null);
+            Assert.That(document.rootVisualElement.Q<Button>("DeleteSelectedPieces"), Is.Not.Null);
             Assert.That(document.rootVisualElement.Q<VisualElement>("HostMapList"), Is.Not.Null);
             Assert.That(document.rootVisualElement.Q<VisualElement>("HostHierarchy"), Is.Not.Null);
             Assert.That(document.rootVisualElement.Q<VisualElement>("HostContextMenu"), Is.Not.Null);
@@ -352,6 +355,66 @@ namespace Sundoll.Tests.PlayMode
             Object.Destroy(root.gameObject);
             yield return null;
             Assert.That(root == null, Is.True);
+        }
+
+        [UnityTest]
+        public IEnumerator WorkbenchPieceSelectionDragAndBatchShortcutsUseOneProjectionFlow()
+        {
+            yield return SceneManager.LoadSceneAsync("M3Workbench", LoadSceneMode.Single);
+            yield return null;
+
+            var root = Object.FindFirstObjectByType<M3WorkbenchRoot>();
+            var projection = Object.FindFirstObjectByType<M4WorkbenchPieceProjection>();
+            var interaction = Object.FindFirstObjectByType<M4WorkbenchPieceInteractionController>();
+            Assert.That(root, Is.Not.Null);
+            Assert.That(root.PieceLibrary, Is.Not.Null);
+            Assert.That(projection, Is.Not.Null);
+            Assert.That(interaction, Is.Not.Null);
+            Assert.That(root.EnsureCurrentMapHostBoard(), Is.True);
+            Assert.That(root.Editor.State.board, Is.Not.Null);
+            Assert.That(root.Editor.State.board.id, Is.Not.Empty);
+            Assert.That(root.PieceLibrary.State, Is.SameAs(root.Editor.State));
+
+            var definitionId = "play-interaction-definition";
+            Assert.That(root.PieceLibrary.CreateDefinition(
+                definitionId,
+                "交互测试棋子",
+                "Test",
+                new[] { "playmode" }).accepted, Is.True);
+            Assert.That(root.PieceLibrary.CreateInstance(definitionId, "play-interaction-a").accepted, Is.True);
+            Assert.That(root.PieceLibrary.CreateInstance(definitionId, "play-interaction-b").accepted, Is.True);
+            Assert.That(root.PieceLibrary.Place("play-interaction-a", 1, 1).accepted, Is.True);
+            Assert.That(root.PieceLibrary.Place("play-interaction-b", 2, 1).accepted, Is.True);
+            projection.RefreshAll();
+            yield return null;
+
+            var camera = Camera.main;
+            Assert.That(camera, Is.Not.Null);
+            var first = camera.WorldToScreenPoint(new Vector3(1f, 1f, 0f));
+            var second = camera.WorldToScreenPoint(new Vector3(2f, 1f, 0f));
+            var destination = camera.WorldToScreenPoint(new Vector3(3f, 2f, 0f));
+            Assert.That(root.BeginPiecePointerAction(first, false), Is.True);
+            root.EndPiecePointerAction(first);
+            Assert.That(root.BeginPiecePointerAction(second, true), Is.True);
+            root.EndPiecePointerAction(second);
+            Assert.That(root.SelectedPieceCount, Is.EqualTo(2));
+
+            Assert.That(root.BeginPiecePointerAction(first, false), Is.True);
+            root.ContinuePiecePointerAction(destination);
+            Assert.That(interaction.DragGhostCount, Is.EqualTo(2));
+            root.EndPiecePointerAction(destination);
+            yield return null;
+
+            Assert.That(M4PieceQueries.FindInstance(root.PieceLibrary.State, "play-interaction-a").location.x, Is.EqualTo(3));
+            Assert.That(M4PieceQueries.FindInstance(root.PieceLibrary.State, "play-interaction-b").location.x, Is.EqualTo(4));
+            Assert.That(root.RotateSelectedPieces(), Is.True);
+            Assert.That(M4PieceQueries.FindInstance(root.PieceLibrary.State, "play-interaction-a").rotation, Is.EqualTo(90));
+            Assert.That(root.DeleteSelectedPieces(), Is.True);
+            Assert.That(M4PieceQueries.FindInstance(root.PieceLibrary.State, "play-interaction-a"), Is.Null);
+            Assert.That(root.SelectedPieceCount, Is.EqualTo(0));
+
+            Object.Destroy(root.gameObject);
+            yield return null;
         }
 
         [UnityTest]

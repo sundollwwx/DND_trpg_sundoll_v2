@@ -55,6 +55,7 @@ namespace Sundoll.Presentation
         private VisualElement mapViewport;
         private M3WorkbenchInput input;
         private M4WorkbenchPieceProjection pieceProjection;
+        private M4WorkbenchPieceInteractionController pieceInteraction;
         private M5WorkbenchConsoleProjection consoleProjection;
         private M1WorldState audienceProjectionState;
         private M7PieceLibraryGridController pieceLibraryGrid;
@@ -64,7 +65,7 @@ namespace Sundoll.Presentation
         private TextField pieceCategoryField;
         private TextField pieceTagsField;
         private TextField pieceImagePathField;
-        private TextField pieceRelationTargetField;
+        private DropdownField pieceRelationTargetField;
         private TextField pieceAttachmentSlotField;
         private VisualElement pieceListContainer;
         private VisualElement pieceInstanceListContainer;
@@ -122,12 +123,14 @@ namespace Sundoll.Presentation
         private string lastPieceListInstanceId;
 
         public M3MapEditorFacade Editor => editor;
+        public M4PieceLibraryFacade PieceLibrary => pieceLibrary;
         public M2SaveSession SaveSession => saveSession;
         public M3LayerEditState LayerEditState => layerEditState;
         public string CurrentTool => currentTool;
         public string CurrentLayerId => currentLayerId;
         public M3GridBounds Selection => selection;
         public M3MapClipboard Clipboard => clipboard;
+        public int SelectedPieceCount => pieceInteraction == null ? 0 : pieceInteraction.SelectedCount;
 
         // The desktop performance harness is an opt-in diagnostic surface. It
         // reads the already-composed session without becoming a production UI
@@ -139,6 +142,7 @@ namespace Sundoll.Presentation
         internal M4WorkbenchPieceProjection PieceProjectionForDiagnostics => pieceProjection;
         internal M5WorkbenchConsoleProjection ConsoleProjectionForDiagnostics => consoleProjection;
         internal Camera WorkbenchCameraForDiagnostics => GetComponentInChildren<Camera>();
+        internal bool IsPieceInteractionReadOnly => hostPreviewMode;
 
         private void Awake()
         {
@@ -171,6 +175,13 @@ namespace Sundoll.Presentation
             }
 
             pieceProjection.Bind(commandBus, pieceAssetCatalog);
+            pieceInteraction = GetComponent<M4WorkbenchPieceInteractionController>();
+            if (pieceInteraction == null)
+            {
+                pieceInteraction = gameObject.AddComponent<M4WorkbenchPieceInteractionController>();
+            }
+
+            pieceInteraction.Bind(this, pieceLibrary, pieceProjection);
             consoleProjection = GetComponentInChildren<M5WorkbenchConsoleProjection>();
             if (consoleProjection == null)
             {
@@ -388,6 +399,7 @@ namespace Sundoll.Presentation
                 EnsureSelectedContentDefaults();
                 projection.Bind(editor, layerEditState, mapVisualCatalog);
                 pieceProjection.Bind(commandBus, pieceAssetCatalog);
+                pieceInteraction?.Bind(this, pieceLibrary, pieceProjection);
                 consoleProjection.Bind(commandBus);
                 RefreshAudienceProjection();
                 pieceLibraryGrid?.Bind(nextSession);
@@ -477,6 +489,10 @@ namespace Sundoll.Presentation
             var consoleButton = new Button(CreateHostMap) { text = "新建主持地图" };
             consoleButton.style.marginLeft = 10f;
             topBar.Add(consoleButton);
+            var createBoardButton = new Button(() => EnsureCurrentMapHostBoard()) { text = "发布并创建棋盘" };
+            createBoardButton.name = "CreateHostBoard";
+            createBoardButton.style.marginLeft = 8f;
+            topBar.Add(createBoardButton);
             hostModeLabel = new Label { name = "HostMode" };
             hostModeLabel.style.marginLeft = 14f;
             topBar.Add(hostModeLabel);
@@ -820,6 +836,10 @@ namespace Sundoll.Presentation
             var visibilityButton = new Button(ToggleSelectedPieceVisibility) { text = "切换选中棋子显隐" };
             visibilityButton.style.marginTop = 5f;
             panel.Add(visibilityButton);
+            var deletePieceButton = new Button(() => DeleteSelectedPieces()) { text = "删除选中棋子" };
+            deletePieceButton.name = "DeleteSelectedPieces";
+            deletePieceButton.style.marginTop = 5f;
+            panel.Add(deletePieceButton);
             var detachButton = new Button(DetachSelectedPiece) { text = "解除选中棋子关系" };
             detachButton.style.marginTop = 5f;
             panel.Add(detachButton);
@@ -829,7 +849,10 @@ namespace Sundoll.Presentation
             var raiseStackButton = new Button(() => MoveSelectedPieceStack(1)) { text = "堆叠下移" };
             raiseStackButton.style.marginTop = 5f;
             panel.Add(raiseStackButton);
-            pieceRelationTargetField = new TextField("关系目标实例") { name = "PieceRelationTarget" };
+            pieceRelationTargetField = new DropdownField("关系目标实例", new List<string> { string.Empty }, 0)
+            {
+                name = "PieceRelationTarget"
+            };
             pieceRelationTargetField.style.marginTop = 10f;
             panel.Add(pieceRelationTargetField);
             pieceAttachmentSlotField = new TextField("附着槽") { name = "PieceAttachmentSlot" };
@@ -908,6 +931,67 @@ namespace Sundoll.Presentation
             CommitConsoleReceipt(receipt);
             status = receipt.accepted ? "已创建主持地图：" + id : receipt.message;
             RefreshUiState();
+        }
+
+        /// <summary>
+        /// A new project deliberately starts with an editable draft, not an
+        /// implicit board. This explicit UI action publishes its current map
+        /// and then creates the first scenario/board that M4 pieces require.
+        /// Each accepted command is persisted through the normal save queue.
+        /// </summary>
+        public bool EnsureCurrentMapHostBoard()
+        {
+            if (hostPreviewMode)
+            {
+                status = "玩家预览为只读";
+                RefreshUiState();
+                return false;
+            }
+
+            if (editor == null || editor.State == null || editor.State.map == null)
+            {
+                status = "当前没有可发布的地图";
+                RefreshUiState();
+                return false;
+            }
+
+            if (editor.State.board != null && !string.IsNullOrWhiteSpace(editor.State.board.id))
+            {
+                status = "当前地图已有主持棋盘";
+                RefreshUiState();
+                return true;
+            }
+
+            // A board without a stable ID cannot be referenced by M4 piece
+            // locations, therefore it is not a usable host board. Recreate
+            // the scenario/board pair through the normal command path instead
+            // of letting later placement fail with an opaque location error.
+            var isRepairingIncompleteBoard = editor.State.board != null;
+
+            if (editor.State.publishedMap == null)
+            {
+                var publishReceipt = editor.PublishMapContent();
+                CommitReceipt(publishReceipt);
+                if (!publishReceipt.accepted)
+                {
+                    status = publishReceipt.message;
+                    RefreshUiState();
+                    return false;
+                }
+            }
+
+            var suffix = Guid.NewGuid().ToString("N");
+            var scenarioReceipt = editor.CreateScenarioBoard(
+                "scenario-host-" + suffix,
+                "board-host-" + suffix);
+            CommitReceipt(scenarioReceipt);
+            status = scenarioReceipt.accepted
+                ? isRepairingIncompleteBoard
+                    ? "已修复不完整的主持棋盘"
+                    : "当前地图已发布并创建主持棋盘"
+                : scenarioReceipt.message;
+            RefreshUiState();
+            return scenarioReceipt.accepted;
         }
 
         private void SwitchHostMap()
@@ -1795,6 +1879,46 @@ namespace Sundoll.Presentation
             return true;
         }
 
+        public bool BeginPiecePointerAction(Vector2 screenPosition, bool additiveSelection)
+        {
+            return pieceInteraction != null && pieceInteraction.BeginPointerAction(screenPosition, additiveSelection);
+        }
+
+        public void ContinuePiecePointerAction(Vector2 screenPosition)
+        {
+            pieceInteraction?.ContinuePointerAction(screenPosition);
+        }
+
+        public void EndPiecePointerAction(Vector2 screenPosition)
+        {
+            pieceInteraction?.EndPointerAction(screenPosition);
+        }
+
+        public void CancelPiecePointerAction()
+        {
+            pieceInteraction?.CancelPointerAction();
+        }
+
+        public bool RotateSelectedPieces()
+        {
+            return pieceInteraction != null && pieceInteraction.RotateSelectionClockwise();
+        }
+
+        public bool FlipSelectedPieces()
+        {
+            return pieceInteraction != null && pieceInteraction.FlipSelection();
+        }
+
+        public bool ToggleSelectedPiecesVisibility()
+        {
+            return pieceInteraction != null && pieceInteraction.ToggleSelectionVisibility();
+        }
+
+        public bool DeleteSelectedPieces()
+        {
+            return pieceInteraction != null && pieceInteraction.DeleteSelection();
+        }
+
         public void CopySelection()
         {
             clipboard = editor.CopySelection(selection, layerEditState);
@@ -2320,6 +2444,12 @@ namespace Sundoll.Presentation
 
         private void SelectPieceInstance(string instanceId)
         {
+            if (pieceInteraction != null)
+            {
+                pieceInteraction.SelectOnly(instanceId);
+                return;
+            }
+
             selectedPieceInstanceId = instanceId;
             var instance = M4PieceQueries.FindInstance(pieceLibrary == null ? null : pieceLibrary.State, instanceId);
             if (instance != null)
@@ -2337,6 +2467,13 @@ namespace Sundoll.Presentation
             if (pieceLibrary == null || string.IsNullOrWhiteSpace(selectedPieceInstanceId))
             {
                 status = "请先从棋子库选择一个实例";
+                RefreshUiState();
+                return;
+            }
+
+            if (pieceLibrary.State.board == null)
+            {
+                status = "请先点击顶部“发布并创建棋盘”，再放置棋子";
                 RefreshUiState();
                 return;
             }
@@ -2362,6 +2499,11 @@ namespace Sundoll.Presentation
 
         private void RotateSelectedPiece()
         {
+            if (RotateSelectedPieces())
+            {
+                return;
+            }
+
             var instance = M4PieceQueries.FindInstance(pieceLibrary == null ? null : pieceLibrary.State, selectedPieceInstanceId);
             if (instance == null)
             {
@@ -2382,6 +2524,11 @@ namespace Sundoll.Presentation
 
         private void FlipSelectedPiece()
         {
+            if (FlipSelectedPieces())
+            {
+                return;
+            }
+
             var instance = M4PieceQueries.FindInstance(pieceLibrary == null ? null : pieceLibrary.State, selectedPieceInstanceId);
             if (instance == null)
             {
@@ -2398,6 +2545,11 @@ namespace Sundoll.Presentation
 
         private void ToggleSelectedPieceVisibility()
         {
+            if (ToggleSelectedPiecesVisibility())
+            {
+                return;
+            }
+
             var instance = M4PieceQueries.FindInstance(pieceLibrary == null ? null : pieceLibrary.State, selectedPieceInstanceId);
             if (instance == null)
             {
@@ -2449,7 +2601,7 @@ namespace Sundoll.Presentation
             var targetId = pieceRelationTargetField == null ? string.Empty : pieceRelationTargetField.value;
             if (string.IsNullOrWhiteSpace(selectedPieceInstanceId) || string.IsNullOrWhiteSpace(targetId))
             {
-                status = "请选择棋子并填写容器实例 ID";
+                status = "请先选择棋子和关系目标";
                 RefreshUiState();
                 return;
             }
@@ -2466,7 +2618,7 @@ namespace Sundoll.Presentation
             var slot = pieceAttachmentSlotField == null ? string.Empty : pieceAttachmentSlotField.value;
             if (string.IsNullOrWhiteSpace(selectedPieceInstanceId) || string.IsNullOrWhiteSpace(targetId))
             {
-                status = "请选择棋子并填写附着目标实例 ID";
+                status = "请先选择棋子和附着目标";
                 RefreshUiState();
                 return;
             }
@@ -2513,6 +2665,35 @@ namespace Sundoll.Presentation
                     instanceButton.style.marginTop = 3f;
                     pieceInstanceListContainer.Add(instanceButton);
                 }
+            }
+        }
+
+        private void RefreshPieceRelationTargets()
+        {
+            if (pieceRelationTargetField == null || pieceLibrary == null)
+            {
+                return;
+            }
+
+            var currentTargetId = pieceRelationTargetField.value;
+            var choices = new List<string> { string.Empty };
+            var instances = pieceLibrary.State.pieceInstances;
+            if (!string.IsNullOrWhiteSpace(selectedPieceInstanceId) && instances != null)
+            {
+                foreach (var instance in instances)
+                {
+                    if (instance != null && !string.IsNullOrWhiteSpace(instance.id) &&
+                        !string.Equals(instance.id, selectedPieceInstanceId, StringComparison.Ordinal))
+                    {
+                        choices.Add(instance.id);
+                    }
+                }
+            }
+
+            pieceRelationTargetField.choices = choices;
+            if (!choices.Contains(currentTargetId))
+            {
+                pieceRelationTargetField.SetValueWithoutNotify(string.Empty);
             }
         }
 
@@ -2693,6 +2874,36 @@ namespace Sundoll.Presentation
             }
         }
 
+        internal void CommitPieceInteractionReceipt(M1CommandReceipt receipt, string acceptedStatus)
+        {
+            CommitPieceReceipt(receipt);
+            if (receipt != null && receipt.accepted && !string.IsNullOrWhiteSpace(acceptedStatus))
+            {
+                status = acceptedStatus;
+            }
+
+            RefreshUiState();
+        }
+
+        internal void ApplyPieceInteractionSelection(ICollection<string> selectedIds, string primaryId)
+        {
+            selectedPieceInstanceId = primaryId;
+            var instance = M4PieceQueries.FindInstance(pieceLibrary == null ? null : pieceLibrary.State, primaryId);
+            if (instance != null)
+            {
+                selectedPieceDefinitionId = instance.definitionId;
+                SyncSelectedPieceDefinitionFields();
+            }
+
+            var count = selectedIds == null ? 0 : selectedIds.Count;
+            status = count == 0
+                ? "未选择棋子"
+                : count == 1
+                    ? "已选择棋子实例：" + (primaryId ?? "无")
+                    : "已选择棋子（" + count + "个）";
+            RefreshUiState();
+        }
+
         private M3MapObject FindObjectAt(Vector2Int cell)
         {
             if (editor.State.map == null || editor.State.map.objects == null)
@@ -2843,6 +3054,8 @@ namespace Sundoll.Presentation
                                          "内置内容 " + (starterContentManifest == null ? 0 : starterContentManifest.Records.Count) +
                                          " 项 · 缺少图片时保留数据并显示占位色块。";
             }
+
+            RefreshPieceRelationTargets();
 
             var worldRevision = editor.State.revision;
             if (lastHierarchyRevision != worldRevision ||

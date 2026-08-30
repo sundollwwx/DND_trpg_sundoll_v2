@@ -20,6 +20,32 @@ namespace Sundoll.Tests.EditMode
         }
 
         [Test]
+        public void CreateScenarioRejectsBlankStableIds()
+        {
+            var bus = new M1CommandBus(
+                M1WorldState.CreateEmpty(),
+                new M1LocalAuthority(new AllowAllRulePolicy()));
+            Assert.That(bus.Execute(new M1CreateProjectCommand(
+                "scenario-id-project",
+                bus.State.revision,
+                "project-scenario-id",
+                "Scenario IDs",
+                "map-scenario-id")).accepted, Is.True);
+            Assert.That(bus.Execute(new M1PublishMapContentCommand(
+                "scenario-id-publish",
+                bus.State.revision,
+                "content-scenario-id")).accepted, Is.True);
+
+            Assert.Throws<System.InvalidOperationException>(() => bus.Execute(new M1CreateScenarioCommand(
+                "scenario-id-invalid",
+                bus.State.revision,
+                "scenario-valid",
+                string.Empty)));
+            Assert.That(bus.State.board, Is.Null);
+            Assert.That(bus.State.scenario, Is.Null);
+        }
+
+        [Test]
         public void UndoAndRedoRestorePiecePosition()
         {
             var bus = M1VerticalSlice.CreateDemoBus();

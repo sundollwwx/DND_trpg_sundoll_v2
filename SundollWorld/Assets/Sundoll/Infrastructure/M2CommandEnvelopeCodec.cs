@@ -204,6 +204,14 @@ namespace Sundoll.Infrastructure
                         payload.x,
                         payload.y);
                 }
+                case "M4.MovePieces":
+                {
+                    var payload = ReadPayload<M4MovePiecesCommandPayload>(envelope);
+                    return new M4MovePiecesCommand(
+                        envelope.commandId,
+                        envelope.baseRevision,
+                        payload.mutations);
+                }
                 case "M4.MovePieceToContainer":
                 {
                     var payload = ReadPayload<M4MovePieceToContainerCommandPayload>(envelope);
@@ -242,6 +250,14 @@ namespace Sundoll.Infrastructure
                         payload.flipped,
                         payload.visible);
                 }
+                case "M4.SetPiecePresentations":
+                {
+                    var payload = ReadPayload<M4SetPiecePresentationsCommandPayload>(envelope);
+                    return new M4SetPiecePresentationsCommand(
+                        envelope.commandId,
+                        envelope.baseRevision,
+                        payload.mutations);
+                }
                 case "M4.SetPieceStackOrder":
                 {
                     var payload = ReadPayload<M4SetPieceStackOrderCommandPayload>(envelope);
@@ -250,6 +266,14 @@ namespace Sundoll.Infrastructure
                         envelope.baseRevision,
                         payload.instanceId,
                         payload.stackOrder);
+                }
+                case "M4.DeletePieces":
+                {
+                    var payload = ReadPayload<M4DeletePiecesCommandPayload>(envelope);
+                    return new M4DeletePiecesCommand(
+                        envelope.commandId,
+                        envelope.baseRevision,
+                        payload.instanceIds);
                 }
                 case "M5.CreateMapSlot":
                 {

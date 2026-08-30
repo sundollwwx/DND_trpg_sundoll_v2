@@ -214,6 +214,11 @@ namespace Sundoll.Core
                 throw new InvalidOperationException("A published map is required.");
             }
 
+            if (string.IsNullOrWhiteSpace(scenarioId) || string.IsNullOrWhiteSpace(boardId))
+            {
+                throw new InvalidOperationException("Scenario and board IDs are required.");
+            }
+
             state.scenario = new M1ScenarioDocument
             {
                 id = scenarioId,

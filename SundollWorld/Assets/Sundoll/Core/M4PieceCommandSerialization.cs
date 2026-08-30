@@ -63,6 +63,41 @@ namespace Sundoll.Core
         public int y;
     }
 
+    /// <summary>
+    /// One destination in an atomic multi-piece move. Keeping this payload as
+    /// data (rather than a screen-space drag gesture) makes it safe to replay
+    /// from the Journal on another machine.
+    /// </summary>
+    [Serializable]
+    public sealed class M4PieceMoveMutation
+    {
+        public string instanceId;
+        public int x;
+        public int y;
+
+        public M4PieceMoveMutation()
+        {
+        }
+
+        public M4PieceMoveMutation(string instanceId, int x, int y)
+        {
+            this.instanceId = instanceId;
+            this.x = x;
+            this.y = y;
+        }
+
+        public M4PieceMoveMutation DeepClone()
+        {
+            return new M4PieceMoveMutation(instanceId, x, y);
+        }
+    }
+
+    [Serializable]
+    public sealed class M4MovePiecesCommandPayload
+    {
+        public List<M4PieceMoveMutation> mutations = new List<M4PieceMoveMutation>();
+    }
+
     [Serializable]
     public sealed class M4MovePieceToContainerCommandPayload
     {
@@ -94,9 +129,47 @@ namespace Sundoll.Core
     }
 
     [Serializable]
+    public sealed class M4PiecePresentationMutation
+    {
+        public string instanceId;
+        public int rotation;
+        public bool flipped;
+        public bool visible;
+
+        public M4PiecePresentationMutation()
+        {
+        }
+
+        public M4PiecePresentationMutation(string instanceId, int rotation, bool flipped, bool visible)
+        {
+            this.instanceId = instanceId;
+            this.rotation = rotation;
+            this.flipped = flipped;
+            this.visible = visible;
+        }
+
+        public M4PiecePresentationMutation DeepClone()
+        {
+            return new M4PiecePresentationMutation(instanceId, rotation, flipped, visible);
+        }
+    }
+
+    [Serializable]
+    public sealed class M4SetPiecePresentationsCommandPayload
+    {
+        public List<M4PiecePresentationMutation> mutations = new List<M4PiecePresentationMutation>();
+    }
+
+    [Serializable]
     public sealed class M4SetPieceStackOrderCommandPayload
     {
         public string instanceId;
         public int stackOrder;
+    }
+
+    [Serializable]
+    public sealed class M4DeletePiecesCommandPayload
+    {
+        public List<string> instanceIds = new List<string>();
     }
 }

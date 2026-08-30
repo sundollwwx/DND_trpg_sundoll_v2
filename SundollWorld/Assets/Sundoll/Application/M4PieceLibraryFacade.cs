@@ -98,6 +98,14 @@ namespace Sundoll.Application
                 y));
         }
 
+        public M1CommandReceipt MoveBatch(IEnumerable<M4PieceMoveMutation> mutations)
+        {
+            return commandBus.Execute(new M4MovePiecesCommand(
+                "m4-move-batch-" + Guid.NewGuid().ToString("N"),
+                State.revision,
+                mutations));
+        }
+
         public M1CommandReceipt MoveToContainer(string instanceId, string containerPieceId)
         {
             return commandBus.Execute(new M4MovePieceToContainerCommand(
@@ -136,6 +144,14 @@ namespace Sundoll.Application
                 visible));
         }
 
+        public M1CommandReceipt SetPresentationBatch(IEnumerable<M4PiecePresentationMutation> mutations)
+        {
+            return commandBus.Execute(new M4SetPiecePresentationsCommand(
+                "m4-presentation-batch-" + Guid.NewGuid().ToString("N"),
+                State.revision,
+                mutations));
+        }
+
         public M1CommandReceipt SetStackOrder(string instanceId, int stackOrder)
         {
             return commandBus.Execute(new M4SetPieceStackOrderCommand(
@@ -143,6 +159,14 @@ namespace Sundoll.Application
                 State.revision,
                 instanceId,
                 stackOrder));
+        }
+
+        public M1CommandReceipt DeleteInstances(IEnumerable<string> instanceIds)
+        {
+            return commandBus.Execute(new M4DeletePiecesCommand(
+                "m4-delete-" + Guid.NewGuid().ToString("N"),
+                State.revision,
+                instanceIds));
         }
     }
 }
