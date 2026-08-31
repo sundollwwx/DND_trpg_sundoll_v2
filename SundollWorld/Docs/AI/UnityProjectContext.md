@@ -4,10 +4,10 @@
 
 ## Project Summary
 
-- Project root: `/Users/sundoll/Desktop/SundollUnity/SundollWorld`
-- Last analyzed: 2026-08-28
-- Git root: `/Users/sundoll/Desktop/SundollUnity`; latest audit covers the formal M4-M7 implementation slices and M3 Workbench integration
-- This is the formal M7 Unity project. `M0-Spike` remains disposable validation material; M1/M2 core, the M3 Workbench, M4 piece library, M5 console slice, M6A/M6B proofs and the first M7 hardening slice are implemented with cross-platform validation pending.
+- Project root: `/Users/sundoll/Library/Mobile Documents/com~apple~CloudDocs/Desktop/SundollUnity/SundollWorld`
+- Last analyzed: 2026-08-31
+- Git root: `/Users/sundoll/Library/Mobile Documents/com~apple~CloudDocs/Desktop/SundollUnity`; latest audit covers the formal M4-M7 implementation slices, M3 Workbench integration and UX1-UX7 current-device closure
+- This is the formal M7 Unity project. `M0-Spike` remains disposable validation material; M1/M2 core, the M3 Workbench, M4 piece library, M5 console slice, M6A/M6B proofs and M7 macOS hardening are implemented with high-resolution, Windows and cross-platform release validation pending.
 
 ## Confirmed Environment
 
@@ -71,9 +71,9 @@
 
 ## Testing And Validation
 
-- EditMode tests: 87 first-party tests; 87 passed, 0 failed, 0 ignored in the latest completed Unity Editor run. The suite contains M1-M4 coverage plus M5 multi-map/console tests, M6A/M6B rule and Loopback tests, M7 migration/frozen-save/pool tests, project workspace tests and starter-content tests.
-- PlayMode validation: 13/13 passed in `M3Workbench.unity`/isolated projection setup, covering startup, five Tilemap projections, edit and dirty-region refresh, hidden/locked layer behavior, M4 placeholder piece projection, M4 64-piece texture sharing baseline, M5 fog/annotation projection, Workbench UI controls, runtime image import/thumbnail generation, M7 texture cache lifecycle, View destruction cleanup, virtualized piece-library grid filtering, bounded thumbnail LRU behavior, and a 1000-piece projection/allocation baseline. A real macOS Player window capture at 2560×1440 measured 1000 visible pieces, uncapped render-capacity p95 `4.5495 ms`, and managed allocation p95 `0 B`; the render-capacity gate passed, while long-run production 60 FPS pacing remains to be verified.
-- CI/build validation: no CI configuration detected. M7 macOS universal IL2CPP build result is Success and the M5 projection-inclusive Player Smoke passed. After removing unused Visual Scripting, a clean temporary build reports `errors=0`, `warnings=1`, `TypeDB: Class` count 0 and no `visualscripting` residue; the remaining warning is Unity Cloud native symbols upload token absence, not script compilation. The current local Library/Bee build still emits legacy TypeDB diagnostics, so release evidence continues to prefer clean imports. Details are in `Docs/Reports/M7-结果报告.md` and `Docs/Evidence/M7-clean-build-no-visualscripting-20260827.md`. Latest batch validation evidence is `Docs/Evidence/TestResults/TestResults_EditMode_20260830_133200.xml` (87/87) and `Docs/Evidence/TestResults/TestResults_PlayMode_20260830_133200.xml` (13/13); both use the version-pinned license channel through `scripts/unity-common.sh`. macOS baselines cover batch edit, Snapshot, Revision save, 10,000 Journal recovery, 64-piece texture sharing, 1000-piece projection/allocation, piece-thumbnail LRU behavior, real-window render capacity and production pacing capture, while the 60-minute operation soak remains unverified, Windows build, independent-process forced-exit recovery and cross-platform save exchange remain unverified.
+- EditMode tests: 97 first-party tests; 97 passed, 0 failed, 0 ignored in the latest completed Unity Editor run. The suite contains M1-M4 coverage plus M5 multi-map/console tests, M6A/M6B rule and Loopback tests, M7 migration/frozen-save/pool tests, project workspace tests, starter-content tests and UX6/UX7 state and focus coverage.
+- PlayMode validation: 16/16 passed in `M3Workbench.unity`/isolated projection setup, covering startup, five Tilemap projections, edit and dirty-region refresh, hidden/locked layer behavior, M4 placeholder piece projection, M4 64-piece texture sharing baseline, M5 fog/annotation projection, Workbench UI controls, runtime image import/thumbnail generation, M7 texture cache lifecycle, View destruction cleanup, virtualized piece-library grid filtering, bounded thumbnail LRU behavior, 1000-piece projection/allocation baseline, UX6 state presentation and UX7 workspace/focus behavior. A real macOS Player window capture at 2560×1440 measured 1000 visible pieces, uncapped render-capacity p95 `4.5495 ms`, and managed allocation p95 `0 B`; the render-capacity gate passed, while long-run production 60 FPS pacing remains to be verified.
+- CI/build validation: no CI configuration detected. M7 macOS universal IL2CPP build result is Success and the latest Player workspace visual check passed at the available 1280×720 desktop size. After removing unused Visual Scripting, a clean temporary build reports `errors=0`, `warnings=1`, `TypeDB: Class` count 0 and no `visualscripting` residue; the remaining warning is Unity Cloud native symbols upload token absence, not script compilation. The current local Library/Bee build still emits legacy TypeDB diagnostics, so release evidence continues to prefer clean imports. Details are in `Docs/Reports/M7-结果报告.md` and `Docs/Evidence/M7-clean-build-no-visualscripting-20260827.md`. Latest batch validation evidence is `Docs/Evidence/TestResults/TestResults_EditMode_20260831_125749.xml` (97/97) and `Docs/Evidence/TestResults/TestResults_PlayMode_20260831_125749.xml` (16/16); both use the version-pinned license channel through `scripts/unity-common.sh`. macOS baselines cover batch edit, Snapshot, Revision save, 10,000 Journal recovery, 64-piece texture sharing, 1000-piece projection/allocation, piece-thumbnail LRU behavior, real-window render capacity and production pacing capture, while the 60-minute operation soak remains unverified, strict production pacing remains over budget, Windows build, independent-process forced-exit recovery and cross-platform save exchange remain unverified.
 
 ## Available Unity Tooling
 
@@ -88,7 +88,7 @@
 | `unity.gameobject.inspect` | available | local Editor/serialized scene; no MCP bridge |
 | `unity.asset.search` | available | filesystem and Unity Project window |
 | `unity.package.read` | available | `Packages/manifest.json` and lock file |
-| `unity.tests.list` | available | Unity Test Framework installed; latest first-party run contains 85 EditMode and 13 PlayMode tests |
+| `unity.tests.list` | available | Unity Test Framework installed; latest first-party run contains 97 EditMode and 16 PlayMode tests |
 | `unity.tests.run` | available | via `scripts/unity-run-tests.sh`; no MCP bridge |
 | `unity.playmode.read` | available | local Editor; no MCP bridge |
 | `unity.profiler.read` | unverified | M2 performance budget and long-session profiling remain deferred |
@@ -105,7 +105,7 @@
 ## Unknowns And Confidence
 
 - M1 domain schema and exact command set: implementation decision, documented in code and tests.
-- Final boot scene composition and runtime UI layout: not established yet.
+- Final boot scene composition and runtime UI layout: established in `Assets/Sundoll/Scenes/M3Workbench.unity`; UX1-UX7 workspace, boundary, inspector, focus and current-device visual checks are documented, with high-resolution scaling still pending.
 - Windows Editor/module availability: not verified in the formal project.
 - Unity MCP bridge: not installed or configured; repository-only, fixed Unity batchmode scripts and local Computer Use workflows are available.
 
