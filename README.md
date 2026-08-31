@@ -1,11 +1,13 @@
 # 桑哆尔的世界 · Unity
 
-> 状态：**M7 macOS Universal IL2CPP、自动化测试和 10 分钟操作 Soak 已通过；Windows/跨平台发布矩阵仍未关闭**
+> 状态：**项目已于 2026-08-31 封存；macOS 验证证据保留，Windows/跨平台发布矩阵未完成。**
 > 更新日期：2026-08-31
 
-这是“桑哆尔的世界”Unity 原生桌面产品的规划容器。目前包含方案文档、一次性 M0 Spike，以及正在推进的正式 Unity 工程 `SundollWorld`。
+这是“桑哆尔的世界”Unity 原生桌面产品的封存仓库。它保留方案文档、一次性 M0 Spike，以及正式 Unity 工程 `SundollWorld`，但不再继续开发或作为 Beta 发布。
 
 ## 立即开始
+
+项目当前处于封存状态。需要恢复时，先阅读 [封存说明](./ARCHIVED.md) 与 [v0.3 实施状态](./SundollWorld/Docs/Planning/v0.3-实施状态.md)。
 
 - **日常使用成品：双击 [01-启动SundollWorld.command](./01-启动SundollWorld.command)。** 这是已经构建好的 macOS 应用，不需要打开 Unity。
 - **继续开发或查看工程：双击 [02-在Unity中编辑SundollWorld.command](./02-在Unity中编辑SundollWorld.command)。** 它会通过固定的 Unity `6000.3.22f1` 通道打开正式工程，避免 Hub 导致的许可证通道漂移。
