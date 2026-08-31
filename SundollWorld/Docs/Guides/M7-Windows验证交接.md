@@ -1,6 +1,6 @@
 # M7 Windows 验证交接
 
-当前 macOS 侧已完成 Unity `6000.3.22f1` 下的 EditMode `87/87`、PlayMode `13/13`、macOS Universal IL2CPP 构建和 10 分钟操作 Soak。Windows 仍是发布阻塞项；本文件用于拿到 Windows 10/11 x64 机器后直接执行。
+当前 macOS 侧已完成 Unity `6000.3.22f1` 下的 EditMode `97/97`、PlayMode `16/16`、macOS Universal IL2CPP 构建、Player 三工作区视觉检查和 10 分钟操作 Soak。Windows 仍是发布阻塞项；本文件用于拿到 Windows 10/11 x64 机器后直接执行。正式执行前先在 `v0.3-实施状态.md` 的 RC-0 中冻结 `origin/main` 提交，Windows 必须验证同一提交。
 
 ## 需要的环境
 
@@ -20,11 +20,12 @@ cd DND_trpg_sundoll_v2\SundollWorld
 
 ## 按顺序执行
 
-1. 在 Unity Test Runner 运行全部 EditMode 和 PlayMode 测试，保存 XML；目标分别为 `87/87` 和 `13/13`，失败数、忽略数都应为 0。
+1. 在 Unity Test Runner 运行全部 EditMode 和 PlayMode 测试，保存 XML；当前目标分别为 `97/97` 和 `16/16`，失败数、忽略数都应为 0。若冻结候选在 RC-0 后增加了测试，总数只能增加且必须全部通过。
 2. 菜单选择 `Sundoll > M7 > Build Windows x64 IL2CPP`，构建输出为 `Builds/SundollWorld-v03-M7-Windows-x64/SundollWorld.exe`。
 3. 启动 `SundollWorld.exe`，完成新建项目、画图、保存、关闭、重开、继续编辑；确认保存状态为安全，地图和棋子没有丢失。
 4. 在 Windows 上验证权限失败、磁盘不足、强制退出后的 HEAD/Revision 恢复；测试前复制一份测试项目，不要使用真实项目。
 5. 将一个 macOS 生成的 `.sundollpkg` 导入 Windows，再将 Windows 导出的包带回 macOS，比较 Canonical Hash 和地图/棋子内容。
+6. 在 `1440×900`、`2560×1440` 以及 Windows 100%/125%/150% 显示缩放下检查三个工作区、项目中心、地图边界、Inspector 和滚动区域，保存截图。
 
 ## 需要回传的证据
 
