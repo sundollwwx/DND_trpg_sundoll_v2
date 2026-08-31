@@ -1,6 +1,6 @@
 # SundollWorld Workbench UX 重构计划
 
-> 状态：UX1–UX6 已完成，UX7 待执行
+> 状态：UX1–UX6 已完成，UX7 进行中
 > 目标：将当前集中式功能原型重构为清晰、舒适、可长期扩展的地图制作、棋子库与主控台工作空间。
 
 ## 1. 当前问题
@@ -156,4 +156,6 @@
 - UX5 验证：EditMode 93/93、PlayMode 16/16；新增主控台分区节点、样式类和工作区隔离断言，许可证通道握手通过；未发现编译错误、USS 无效属性警告或测试失败。本轮不重复运行 60 分钟 Soak。证据见 `Docs/Evidence/M7-workbench-ux5-20260831.md`。
 - UX6 已完成：通过独立 Schema 评审，保持 World Schema 2 不升级；棋子实例新增向后兼容的规则无关状态，包含资源条、状态列表、自定义字段、主持备注和玩家可见性。新增状态命令、Facade、Envelope 编解码、Canonical Hash、老存档默认值和 Audience Projection 私有字段过滤；右侧 Inspector 增加可读的多行状态编辑区，玩家预览为只读。
 - UX6 验证：EditMode 97/97、PlayMode 16/16；新增状态保存/重载、Undo/Redo、Journal 连续重放、非法值原子拒绝、玩家投影过滤和 Inspector 控件断言，许可证通道握手通过。日志中的 `Access token is unavailable` 为可选远程刷新提示，不影响本次本地 entitlement 与许可证握手；本轮不重复运行 60 分钟 Soak。证据见 `Docs/Evidence/M7-workbench-ux6-20260831.md` 与最新 XML。
-- 下一批次：进入 UX7 视觉与性能收尾，重点处理键盘焦点、中文布局、窗口缩放、空闲分配、截图和 Player 验收。
+- UX7 第一批已完成：共享 USS 保留原 GUID，恢复项目中心、旧诊断 Tab、棋子库网格、地图工具栏、图层状态、地图边界反馈和 Inspector 所需选择器；统一深色外壳、暖色地图画布及按钮/素材/棋子卡片状态，不改变 World Schema 或保存链路。
+- UX7 第一批验证：EditMode 97/97、PlayMode 16/16；许可证通道握手通过；未发现编译错误、USS 无效属性或测试失败。证据见 `Docs/Evidence/M7-workbench-ux7-20260831.md`。本轮不重复运行 60 分钟 Soak。
+- 下一批次：继续 UX7 真实 Player 验收，重点处理键盘焦点、中文布局、窗口缩放、空闲分配和截图。

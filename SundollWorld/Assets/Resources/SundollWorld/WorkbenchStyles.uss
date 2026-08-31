@@ -1,24 +1,270 @@
 .sw-root {
-    color: #e8e2d8;
-    font-size: 13px;
+    color: rgb(232, 235, 240);
+    font-size: 14px;
 }
 
+.sw-topbar {
+    background-color: rgb(20, 29, 44);
+    border-bottom-width: 1px;
+    border-bottom-color: rgb(58, 72, 94);
+    padding-left: 14px;
+    padding-right: 10px;
+}
+
+.sw-brand {
+    color: rgb(246, 203, 116);
+    font-size: 16px;
+    -unity-font-style: bold;
+}
+
+.sw-workspace-navigation {
+    flex-direction: row;
+    align-items: center;
+    flex-grow: 1;
+    margin-left: 18px;
+}
+
+.sw-workspace-button,
+.sw-tab {
+    min-height: 32px;
+    margin-left: 3px;
+    margin-right: 3px;
+    padding-left: 12px;
+    padding-right: 12px;
+    color: rgb(205, 214, 226);
+    background-color: rgb(34, 46, 66);
+    border-left-width: 1px;
+    border-right-width: 1px;
+    border-top-width: 1px;
+    border-bottom-width: 1px;
+    border-left-color: rgb(65, 82, 108);
+    border-right-color: rgb(65, 82, 108);
+    border-top-color: rgb(65, 82, 108);
+    border-bottom-color: rgb(65, 82, 108);
+}
+
+.sw-workspace-button:hover,
+.sw-tab:hover {
+    color: rgb(255, 255, 255);
+    background-color: rgb(50, 66, 91);
+}
+
+.sw-workspace-button:focus,
+.sw-tab:focus {
+    border-left-color: rgb(246, 203, 116);
+    border-right-color: rgb(246, 203, 116);
+    border-top-color: rgb(246, 203, 116);
+    border-bottom-color: rgb(246, 203, 116);
+}
+
+.sw-workspace-button-selected,
+.sw-tab-selected {
+    color: rgb(25, 32, 44);
+    background-color: rgb(246, 203, 116);
+    -unity-font-style: bold;
+}
+
+.sw-primary-workspace {
+    flex-grow: 1;
+    min-height: 0;
+    background-color: rgb(27, 35, 49);
+}
+
+.sw-side-panel {
+    background-color: rgb(25, 33, 47);
+    border-right-width: 1px;
+    border-right-color: rgb(56, 69, 90);
+    padding-top: 12px;
+    padding-bottom: 10px;
+}
+
+.sw-workspace-section {
+    padding-bottom: 12px;
+}
+
+.sw-map-toolbar {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    min-height: 48px;
+    padding-left: 12px;
+    padding-right: 12px;
+    padding-top: 6px;
+    padding-bottom: 6px;
+    background-color: rgb(30, 40, 57);
+    border-bottom-width: 1px;
+    border-bottom-color: rgb(61, 74, 96);
+}
+
+.sw-map-toolbar-title {
+    margin-right: 14px;
+    color: rgb(246, 203, 116);
+    -unity-font-style: bold;
+}
+
+.sw-map-tool-button {
+    min-height: 30px;
+    margin-left: 3px;
+    margin-right: 3px;
+    color: rgb(208, 216, 228);
+    background-color: rgb(45, 59, 81);
+}
+
+.sw-map-tool-button:hover {
+    background-color: rgb(61, 79, 105);
+}
+
+.sw-map-tool-selected {
+    color: rgb(32, 37, 45);
+    background-color: rgb(246, 203, 116);
+    -unity-font-style: bold;
+}
+
+.sw-map-viewport {
+    background-color: rgb(67, 61, 54);
+    border-left-width: 1px;
+    border-right-width: 1px;
+    border-left-color: rgb(91, 84, 74);
+    border-right-color: rgb(91, 84, 74);
+}
+
+.sw-inspector-title,
+.sw-section-title,
+.sw-title {
+    color: rgb(246, 203, 116);
+    -unity-font-style: bold;
+}
+
+.sw-inspector-body {
+    color: rgb(227, 231, 236);
+    padding-top: 4px;
+    padding-bottom: 4px;
+}
+
+.sw-muted {
+    color: rgb(163, 174, 190);
+}
+
+.sw-piece-library-section,
+.sw-host-tool-section {
+    margin-top: 10px;
+    padding-top: 9px;
+    padding-bottom: 9px;
+    padding-left: 8px;
+    padding-right: 8px;
+    background-color: rgb(31, 41, 58);
+    border-top-width: 1px;
+    border-bottom-width: 1px;
+    border-top-color: rgb(56, 70, 92);
+    border-bottom-color: rgb(56, 70, 92);
+}
+
+.sw-material-palette,
+.sw-piece-grid {
+    flex-direction: row;
+    flex-wrap: wrap;
+}
+
+.sw-material-button {
+    min-width: 92px;
+    min-height: 52px;
+    margin-top: 4px;
+    margin-right: 5px;
+    padding-left: 5px;
+    padding-right: 5px;
+    border-left-width: 1px;
+    border-right-width: 1px;
+    border-top-width: 1px;
+    border-bottom-width: 1px;
+    border-left-color: rgb(102, 112, 126);
+    border-right-color: rgb(102, 112, 126);
+    border-top-color: rgb(102, 112, 126);
+    border-bottom-color: rgb(102, 112, 126);
+}
+
+.sw-material-selected {
+    border-left-width: 2px;
+    border-right-width: 2px;
+    border-top-width: 2px;
+    border-bottom-width: 2px;
+    border-left-color: rgb(246, 203, 116);
+    border-right-color: rgb(246, 203, 116);
+    border-top-color: rgb(246, 203, 116);
+    border-bottom-color: rgb(246, 203, 116);
+}
+
+.sw-material-thumbnail {
+    min-height: 24px;
+    margin-bottom: 4px;
+}
+
+.sw-material-label {
+    -unity-text-align: middle-center;
+}
+
+.sw-boundary-feedback {
+    padding-left: 9px;
+    padding-right: 9px;
+    padding-top: 5px;
+    padding-bottom: 5px;
+    color: rgb(54, 43, 27);
+    background-color: rgba(246, 203, 116, 0.9);
+    -unity-font-style: bold;
+}
+
+.sw-boundary-warning {
+    color: rgb(255, 239, 226);
+    background-color: rgba(176, 69, 49, 0.95);
+}
+
+.sw-button-accent {
+    color: rgb(35, 39, 45);
+    background-color: rgb(246, 203, 116);
+}
+
+.sw-button-accent:hover {
+    background-color: rgb(255, 220, 145);
+}
+
+.sw-root Button,
+.sw-root TextField,
+.sw-root DropdownField,
+.sw-root Toggle {
+    margin-top: 3px;
+}
+
+.sw-root Button:focus,
+.sw-root TextField:focus,
+.sw-root DropdownField:focus,
+.sw-root Toggle:focus {
+    border-left-color: rgb(246, 203, 116);
+    border-right-color: rgb(246, 203, 116);
+    border-top-color: rgb(246, 203, 116);
+    border-bottom-color: rgb(246, 203, 116);
+}
+
+.sw-project-overlay {
+    background-color: rgba(12, 17, 26, 0.96);
+}
+
+/* UX7 compatibility: dynamically-built diagnostic and workspace panels still
+ * use the original selectors below. Keep these rules in the shared sheet so
+ * visual cleanup does not silently remove their layout. */
 .sw-root Button {
     min-height: 32px;
-    margin-top: 3px;
     margin-bottom: 3px;
     padding-left: 10px;
     padding-right: 10px;
-    color: #ddd8cf;
-    background-color: #242d39;
+    color: rgb(221, 225, 232);
+    background-color: rgb(36, 45, 57);
     border-top-width: 1px;
     border-right-width: 1px;
     border-bottom-width: 1px;
     border-left-width: 1px;
-    border-top-color: #394657;
-    border-right-color: #394657;
-    border-bottom-color: #394657;
-    border-left-color: #394657;
+    border-top-color: rgb(57, 70, 87);
+    border-right-color: rgb(57, 70, 87);
+    border-bottom-color: rgb(57, 70, 87);
+    border-left-color: rgb(57, 70, 87);
     border-top-left-radius: 4px;
     border-top-right-radius: 4px;
     border-bottom-left-radius: 4px;
@@ -26,41 +272,26 @@
 }
 
 .sw-root Button:hover {
-    color: #fff8eb;
-    background-color: #303b49;
-    border-top-color: #c99a52;
-    border-right-color: #c99a52;
-    border-bottom-color: #c99a52;
-    border-left-color: #c99a52;
+    color: rgb(255, 255, 255);
+    background-color: rgb(48, 59, 73);
+    border-top-color: rgb(201, 154, 82);
+    border-right-color: rgb(201, 154, 82);
+    border-bottom-color: rgb(201, 154, 82);
+    border-left-color: rgb(201, 154, 82);
 }
 
 .sw-root TextField {
     min-height: 30px;
-    margin-top: 3px;
-    color: #e8e2d8;
+    margin-bottom: 3px;
 }
 
 .sw-root .unity-base-text-field__input {
-    color: #f2ede4;
-    background-color: #111821;
-    border-top-color: #354152;
-    border-right-color: #354152;
-    border-bottom-color: #354152;
-    border-left-color: #354152;
-}
-
-.sw-topbar {
-    background-color: #101721;
-    border-bottom-width: 1px;
-    border-bottom-color: #2b3645;
-}
-
-.sw-brand {
-    margin-left: 16px;
-    margin-right: 12px;
-    color: #f1d7a4;
-    font-size: 16px;
-    -unity-font-style: bold;
+    color: rgb(242, 237, 228);
+    background-color: rgb(17, 24, 33);
+    border-top-color: rgb(53, 65, 82);
+    border-right-color: rgb(53, 65, 82);
+    border-bottom-color: rgb(53, 65, 82);
+    border-left-color: rgb(53, 65, 82);
 }
 
 .sw-button,
@@ -69,10 +300,12 @@
     min-height: 32px;
 }
 
-.sw-side-panel {
-    background-color: #151d27;
-    border-right-width: 1px;
-    border-right-color: #2c3746;
+.sw-button-quiet {
+    background-color: rgb(24, 33, 44);
+    border-top-color: rgb(47, 58, 72);
+    border-right-color: rgb(47, 58, 72);
+    border-bottom-color: rgb(47, 58, 72);
+    border-left-color: rgb(47, 58, 72);
 }
 
 .sw-tabbar {
@@ -81,7 +314,7 @@
     flex-direction: row;
     margin-bottom: 8px;
     border-bottom-width: 1px;
-    border-bottom-color: #313c4a;
+    border-bottom-color: rgb(49, 60, 74);
 }
 
 .sw-root .sw-tab {
@@ -92,113 +325,59 @@
     margin-right: 1px;
     padding-left: 4px;
     padding-right: 4px;
-    color: #9ea8b4;
-    background-color: #18212b;
+    color: rgb(158, 168, 180);
+    background-color: rgb(24, 33, 43);
     border-top-width: 0;
     border-right-width: 0;
     border-bottom-width: 2px;
     border-left-width: 0;
-    border-bottom-color: #18212b;
+    border-bottom-color: rgb(24, 33, 43);
 }
 
 .sw-root .sw-tab-selected {
-    color: #f3dfb7;
-    background-color: #222c38;
-    border-bottom-color: #c99a52;
+    color: rgb(243, 223, 183);
+    background-color: rgb(34, 44, 56);
+    border-bottom-color: rgb(201, 154, 82);
 }
 
 .sw-workspace-section {
     flex-grow: 1;
     min-height: 0;
-}
-
-.sw-material-palette {
-    flex-direction: row;
-    flex-wrap: wrap;
-    margin-top: 4px;
-}
-
-.sw-root .sw-material-button {
-    width: 106px;
-    min-height: 38px;
-    margin-right: 4px;
-    margin-bottom: 4px;
-    -unity-font-style: bold;
-    white-space: normal;
+    padding-top: 6px;
 }
 
 .sw-piece-grid {
     min-height: 220px;
-    background-color: #111821;
+    background-color: rgb(17, 24, 33);
     border-top-width: 1px;
     border-right-width: 1px;
     border-bottom-width: 1px;
     border-left-width: 1px;
-    border-top-color: #2d3947;
-    border-right-color: #2d3947;
-    border-bottom-color: #2d3947;
-    border-left-color: #2d3947;
+    border-top-color: rgb(45, 57, 71);
+    border-right-color: rgb(45, 57, 71);
+    border-bottom-color: rgb(45, 57, 71);
+    border-left-color: rgb(45, 57, 71);
 }
 
-.sw-piece-library-section {
-    margin-top: 10px;
-    padding-left: 9px;
-    padding-right: 9px;
-    padding-top: 9px;
-    padding-bottom: 10px;
-    background-color: rgba(24, 33, 44, 0.72);
-    border-top-width: 1px;
-    border-right-width: 1px;
-    border-bottom-width: 1px;
-    border-left-width: 1px;
-    border-top-color: #2f3d4d;
-    border-right-color: #2f3d4d;
-    border-bottom-color: #2f3d4d;
-    border-left-color: #2f3d4d;
-    border-top-left-radius: 5px;
-    border-top-right-radius: 5px;
-    border-bottom-left-radius: 5px;
-    border-bottom-right-radius: 5px;
-}
-
-.sw-piece-library-section .sw-section-title {
-    margin-bottom: 6px;
-    color: #e3c17d;
-    font-size: 13px;
-}
-
-.sw-piece-library-section .sw-muted {
-    margin-bottom: 3px;
-    font-size: 11px;
-}
-
+.sw-piece-library-section,
 .sw-host-tool-section {
-    margin-top: 10px;
-    padding-left: 9px;
-    padding-right: 9px;
-    padding-top: 9px;
-    padding-bottom: 10px;
-    background-color: rgba(24, 33, 44, 0.72);
-    border-top-width: 1px;
     border-right-width: 1px;
-    border-bottom-width: 1px;
     border-left-width: 1px;
-    border-top-color: #2f3d4d;
-    border-right-color: #2f3d4d;
-    border-bottom-color: #2f3d4d;
-    border-left-color: #2f3d4d;
+    border-right-color: rgb(56, 70, 92);
+    border-left-color: rgb(56, 70, 92);
     border-top-left-radius: 5px;
     border-top-right-radius: 5px;
     border-bottom-left-radius: 5px;
     border-bottom-right-radius: 5px;
 }
 
+.sw-piece-library-section .sw-section-title,
 .sw-host-tool-section .sw-section-title {
     margin-bottom: 6px;
-    color: #e3c17d;
     font-size: 13px;
 }
 
+.sw-piece-library-section .sw-muted,
 .sw-host-tool-section .sw-muted {
     margin-bottom: 3px;
     font-size: 11px;
@@ -206,20 +385,18 @@
 
 .sw-inspector-title {
     min-height: 28px;
-    color: #f1d7a4;
     font-size: 15px;
-    -unity-font-style: bold;
     border-bottom-width: 1px;
-    border-bottom-color: #4a3d2b;
+    border-bottom-color: rgb(74, 61, 43);
 }
 
 .sw-root .unity-foldout__toggle {
-    color: #c8bda9;
+    color: rgb(200, 189, 169);
 }
 
 #InspectorDiagnosticsBody {
     margin-top: 4px;
-    color: #9fa9b5;
+    color: rgb(159, 169, 181);
     white-space: normal;
 }
 
@@ -243,32 +420,32 @@
     padding-right: 5px;
     padding-top: 5px;
     padding-bottom: 4px;
-    background-color: #1a2430;
-    border-top-color: #334253;
-    border-right-color: #334253;
-    border-bottom-color: #334253;
-    border-left-color: #334253;
+    background-color: rgb(26, 36, 48);
+    border-top-color: rgb(51, 66, 83);
+    border-right-color: rgb(51, 66, 83);
+    border-bottom-color: rgb(51, 66, 83);
+    border-left-color: rgb(51, 66, 83);
 }
 
 .sw-root .sw-piece-card-selected {
-    background-color: #293342;
-    border-top-color: #c99a52;
-    border-right-color: #c99a52;
-    border-bottom-color: #c99a52;
-    border-left-color: #c99a52;
+    background-color: rgb(41, 51, 66);
+    border-top-color: rgb(201, 154, 82);
+    border-right-color: rgb(201, 154, 82);
+    border-bottom-color: rgb(201, 154, 82);
+    border-left-color: rgb(201, 154, 82);
 }
 
 .sw-piece-card-image {
     width: 54px;
     height: 54px;
     align-self: center;
-    background-color: #0e141c;
+    background-color: rgb(14, 20, 28);
 }
 
 .sw-piece-card-title {
     height: 28px;
     margin-top: 2px;
-    color: #ece7db;
+    color: rgb(236, 231, 219);
     font-size: 11px;
     -unity-text-align: middle-center;
     white-space: normal;
@@ -276,62 +453,14 @@
 
 .sw-piece-card-status {
     height: 16px;
-    color: #8f9dac;
+    color: rgb(143, 157, 172);
     font-size: 9px;
     -unity-text-align: middle-center;
     overflow: hidden;
 }
 
-.sw-button-quiet {
-    background-color: #18212c;
-    border-top-color: #2f3a48;
-    border-right-color: #2f3a48;
-    border-bottom-color: #2f3a48;
-    border-left-color: #2f3a48;
-}
-
-.sw-button-accent {
-    color: #15191e;
-    background-color: #c99a52;
-    border-top-color: #e3ba78;
-    border-right-color: #e3ba78;
-    border-bottom-color: #e3ba78;
-    border-left-color: #e3ba78;
-    -unity-font-style: bold;
-}
-
-.sw-title {
-    color: #f1d7a4;
-    font-size: 22px;
-    -unity-font-style: bold;
-}
-
-.sw-section-title {
-    margin-top: 14px;
-    margin-bottom: 5px;
-    color: #dcb879;
-    font-size: 14px;
-    -unity-font-style: bold;
-}
-
-.sw-muted {
-    color: #919cab;
-    white-space: normal;
-}
-
 .sw-error {
-    color: #f19a96;
-}
-
-.sw-project-overlay {
-    position: absolute;
-    left: 0;
-    top: 0;
-    right: 0;
-    bottom: 0;
-    align-items: center;
-    justify-content: center;
-    background-color: rgba(5, 8, 12, 0.88);
+    color: rgb(241, 154, 150);
 }
 
 .sw-project-card {
@@ -343,15 +472,15 @@
     padding-right: 24px;
     padding-top: 20px;
     padding-bottom: 18px;
-    background-color: #171f2a;
+    background-color: rgb(23, 31, 42);
     border-top-width: 1px;
     border-right-width: 1px;
     border-bottom-width: 1px;
     border-left-width: 1px;
-    border-top-color: #8c6a3b;
-    border-right-color: #8c6a3b;
-    border-bottom-color: #8c6a3b;
-    border-left-color: #8c6a3b;
+    border-top-color: rgb(140, 106, 59);
+    border-right-color: rgb(140, 106, 59);
+    border-bottom-color: rgb(140, 106, 59);
+    border-left-color: rgb(140, 106, 59);
     border-top-left-radius: 8px;
     border-top-right-radius: 8px;
     border-bottom-left-radius: 8px;
@@ -368,7 +497,7 @@
 .sw-project-current {
     margin-top: 8px;
     margin-bottom: 8px;
-    color: #b8c3cf;
+    color: rgb(184, 195, 207);
 }
 
 .sw-project-columns {
@@ -401,50 +530,17 @@
     min-height: 36px;
     margin-top: 10px;
     padding-top: 8px;
-    color: #aeb8c4;
+    color: rgb(174, 184, 196);
     white-space: normal;
     border-top-width: 1px;
-    border-top-color: #303b49;
+    border-top-color: rgb(48, 59, 73);
 }
 
 .sw-workspace-navigation {
-    flex-direction: row;
-    align-items: center;
-    margin-left: 18px;
-    min-width: 300px;
-}
-
-.sw-workspace-button {
-    min-width: 92px;
-    min-height: 34px;
-    margin-left: 3px;
-    margin-right: 3px;
-    padding-left: 12px;
-    padding-right: 12px;
-    color: #aeb8c4;
-    background-color: #18212c;
-    border-top-color: #2d3a4a;
-    border-right-color: #2d3a4a;
-    border-bottom-color: #2d3a4a;
-    border-left-color: #2d3a4a;
-}
-
-.sw-workspace-button-selected {
-    color: #fff2d2;
-    background-color: #76552e;
-    border-top-color: #e0b66f;
-    border-right-color: #e0b66f;
-    border-bottom-color: #e0b66f;
-    border-left-color: #e0b66f;
-    -unity-font-style: bold;
-}
-
-.sw-primary-workspace {
-    background-color: #0d141d;
+    min-width: 250px;
 }
 
 .sw-inspector-body {
-    color: #e4d5b7;
     white-space: normal;
 }
 
@@ -459,66 +555,53 @@
 }
 
 #MapViewport {
-    background-color: #26211a;
+    margin: 10px;
+    background-color: rgb(38, 33, 26);
     border-top-width: 2px;
     border-right-width: 2px;
     border-bottom-width: 2px;
     border-left-width: 2px;
-    border-top-color: #6f5735;
-    border-right-color: #6f5735;
-    border-bottom-color: #6f5735;
-    border-left-color: #6f5735;
+    border-top-color: rgb(137, 109, 69);
+    border-right-color: rgb(137, 109, 69);
+    border-bottom-color: rgb(137, 109, 69);
+    border-left-color: rgb(137, 109, 69);
 }
 
 .sw-map-toolbar {
-    min-height: 54px;
     flex-shrink: 0;
-    flex-direction: row;
-    align-items: center;
-    padding-left: 12px;
-    padding-right: 12px;
-    background-color: #151e28;
-    border-bottom-width: 1px;
-    border-bottom-color: #39485a;
 }
 
 .sw-map-toolbar-title {
     min-width: 74px;
-    margin-right: 8px;
-    color: #f1d7a4;
     font-size: 14px;
-    -unity-font-style: bold;
 }
 
 .sw-map-tool-button {
     min-width: 58px;
-    min-height: 34px;
-    margin-left: 2px;
-    margin-right: 2px;
     padding-left: 6px;
     padding-right: 6px;
 }
 
 .sw-root .sw-map-tool-selected {
-    color: #fff4da;
-    background-color: #73552a;
-    border-top-color: #f0c777;
-    border-right-color: #f0c777;
-    border-bottom-color: #f0c777;
-    border-left-color: #f0c777;
+    color: rgb(255, 244, 218);
+    background-color: rgb(115, 85, 42);
+    border-top-color: rgb(240, 199, 119);
+    border-right-color: rgb(240, 199, 119);
+    border-bottom-color: rgb(240, 199, 119);
+    border-left-color: rgb(240, 199, 119);
     -unity-font-style: bold;
 }
 
 .sw-root .sw-layer-selected {
-    color: #fff4da;
-    background-color: #324052;
+    color: rgb(255, 244, 218);
+    background-color: rgb(50, 64, 82);
     border-left-width: 3px;
-    border-left-color: #d7a85b;
+    border-left-color: rgb(215, 168, 91);
 }
 
 .sw-root .sw-layer-state-active {
-    color: #f3dfb7;
-    background-color: #3a3023;
+    color: rgb(243, 223, 183);
+    background-color: rgb(58, 48, 35);
 }
 
 .sw-map-toolbar-divider {
@@ -526,7 +609,7 @@
     height: 28px;
     margin-left: 8px;
     margin-right: 8px;
-    background-color: #3b4857;
+    background-color: rgb(59, 72, 87);
 }
 
 #MapEditorWorkspaceBody {
@@ -539,21 +622,8 @@
     min-width: 240px;
 }
 
-#MapViewport {
-    margin: 10px;
-    border-top-width: 2px;
-    border-right-width: 2px;
-    border-bottom-width: 2px;
-    border-left-width: 2px;
-    border-top-color: #896d45;
-    border-right-color: #896d45;
-    border-bottom-color: #896d45;
-    border-left-color: #896d45;
-}
-
 .sw-map-viewport {
     position: relative;
-    background-color: #1a1713;
 }
 
 .sw-boundary-feedback {
@@ -561,20 +631,14 @@
     right: 12px;
     top: 12px;
     min-height: 28px;
-    padding-left: 10px;
-    padding-right: 10px;
-    padding-top: 5px;
-    padding-bottom: 5px;
-    color: #f4e3c1;
-    background-color: rgba(58, 45, 29, 0.92);
     border-top-width: 1px;
     border-right-width: 1px;
     border-bottom-width: 1px;
     border-left-width: 1px;
-    border-top-color: #98784a;
-    border-right-color: #98784a;
-    border-bottom-color: #98784a;
-    border-left-color: #98784a;
+    border-top-color: rgb(152, 120, 74);
+    border-right-color: rgb(152, 120, 74);
+    border-bottom-color: rgb(152, 120, 74);
+    border-left-color: rgb(152, 120, 74);
     border-top-left-radius: 4px;
     border-top-right-radius: 4px;
     border-bottom-left-radius: 4px;
@@ -582,17 +646,7 @@
 }
 
 .sw-boundary-ok {
-    color: #f4e3c1;
-}
-
-.sw-boundary-warning {
-    color: #fff1ed;
-    background-color: rgba(121, 42, 37, 0.96);
-    border-top-color: #f07d68;
-    border-right-color: #f07d68;
-    border-bottom-color: #f07d68;
-    border-left-color: #f07d68;
-    -unity-font-style: bold;
+    color: rgb(244, 227, 193);
 }
 
 .sw-material-button {
@@ -605,10 +659,10 @@
     border-right-width: 2px;
     border-bottom-width: 2px;
     border-left-width: 2px;
-    border-top-color: #f0c777;
-    border-right-color: #f0c777;
-    border-bottom-color: #f0c777;
-    border-left-color: #f0c777;
+    border-top-color: rgb(240, 199, 119);
+    border-right-color: rgb(240, 199, 119);
+    border-bottom-color: rgb(240, 199, 119);
+    border-left-color: rgb(240, 199, 119);
 }
 
 .sw-material-thumbnail {
@@ -634,8 +688,4 @@
     flex-grow: 1;
     white-space: normal;
     -unity-text-align: middle-left;
-}
-
-.sw-workspace-section {
-    padding-top: 6px;
 }
