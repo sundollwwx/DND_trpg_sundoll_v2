@@ -1,7 +1,7 @@
 # 桑哆尔的世界 · Unity
 
 > 状态：**M7 macOS Universal IL2CPP、自动化测试和 10 分钟操作 Soak 已通过；Windows/跨平台发布矩阵仍未关闭**
-> 更新日期：2026-08-30
+> 更新日期：2026-08-31
 
 这是“桑哆尔的世界”Unity 原生桌面产品的规划容器。目前包含方案文档、一次性 M0 Spike，以及正在推进的正式 Unity 工程 `SundollWorld`。
 
@@ -19,6 +19,7 @@
 - [正式工程上下文](./SundollWorld/Docs/AI/UnityProjectContext.md)
 - [M1–M7 阶段报告](./SundollWorld/Docs/Reports/)
 - [Unity 与 Windows 操作指南](./SundollWorld/Docs/Guides/)
+- [M7 Windows 验证交接](./SundollWorld/Docs/Guides/M7-Windows验证交接.md)
 - [v0.3 实施状态](./SundollWorld/Docs/Planning/v0.3-实施状态.md)
 - [测试与构建证据](./SundollWorld/Docs/Evidence/)
 
@@ -48,3 +49,5 @@
 M0 已正式接受并保留 Windows/Finder 限制；Unity `6000.3.22f1` 最新已存证 EditMode 93/93、PlayMode 15/15，macOS universal IL2CPP Player 成功启动。本机最新测试结果位于 `SundollWorld/Docs/Evidence/TestResults/`。本轮还完成了 M5 多地图工作区隔离：每张地图分别恢复相机、工具、图层状态和素材选择，并兼容已有单文件工作区状态；切图前会将当前草稿加入异步保存队列。M7 稳定化证据仍见 [EditMode XML](./SundollWorld/Docs/Evidence/TestResults/TestResults_EditMode_20260830_133200.xml)、[PlayMode XML](./SundollWorld/Docs/Evidence/TestResults/TestResults_PlayMode_20260830_133200.xml) 和 [M7 结果报告](./SundollWorld/Docs/Reports/M7-结果报告.md)。未使用的 Visual Scripting 包已移除；干净临时构建中 TypeDB 重复类型诊断为 0，当前本地旧 Library/Bee 构建仍会报告历史 TypeDB 诊断，另有 1 条 Unity Cloud 符号上传 token warning，不是 C# 编译错误。M7 已有 macOS 批量编辑、Snapshot、Revision 保存、10,000 Journal 恢复、64 棋子纹理共享、1000 棋子投影和稳态分配、棋子库缩略图 LRU 基线；1000 棋子 headless 投影刷新 p95 为 12.494 ms、稳态托管分配 p95 为 0 B。真实 2560×1440 Player 窗口解除采样限速后的渲染承载 p95 为 4.5495 ms、托管分配 p95 为 0 B；最新构建已再次通过 Universal IL2CPP 校验。10 分钟操作 Soak 通过，60 分钟操作 Soak 本轮运行约 50 分钟后未生成结果文件，按未验证处理；生产 60 FPS pacing、Windows/跨平台/强退矩阵仍未关闭。M4 使用新的 `SundollWorld_M4` 本地开发存档根目录，旧 M1/M2/M3 样本原地保留。
 
 Unity 连接和许可证链路排查入口见 [M7 Unity 连接诊断](./SundollWorld/Docs/Guides/M7-Unity连接诊断.md)。日常验证优先使用 `scripts/unity-doctor.sh`、`scripts/unity-license-check.sh` 和 `scripts/unity-run-tests.sh`；正式工程交互打开使用 [02-在Unity中编辑SundollWorld.command](./02-在Unity中编辑SundollWorld.command)，所有入口固定走 Unity `6000.3.22f1` 版本专用通道，避免 Hub/许可证客户端状态漂移影响判断。
+
+Windows 发布矩阵准备使用 `scripts/windows-m7-validation.ps1`；它会生成统一的测试 XML、Unity 日志和 `validation-summary.json`，并在缺少测试/构建证据、Unity 版本不符、许可证连接失败或 C# 编译错误时返回非零退出码。

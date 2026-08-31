@@ -20,6 +20,29 @@ cd DND_trpg_sundoll_v2\SundollWorld
 
 ## 按顺序执行
 
+### 推荐的批处理入口
+
+在仓库根目录打开 PowerShell。脚本固定检查 Unity `6000.3.22f1`、保存 EditMode/PlayMode XML 与日志，并调用正式 Windows x64 IL2CPP 构建入口；默认不会覆盖已有构建目录：
+
+```powershell
+Set-ExecutionPolicy -Scope Process Bypass
+.\scripts\windows-m7-validation.ps1 `
+  -UnityPath "C:\Program Files\Unity\Hub\Editor\6000.3.22f1\Editor\Unity.exe" `
+  -ProjectPath "$PWD\SundollWorld"
+```
+
+结果会写入 `SundollWorld\Docs\Evidence\Windows\M7-Windows-<时间戳>\`，包括 `validation-summary.json`、测试 XML 和 Unity 日志。若确认要替换同名构建目录，才额外传入 `-AllowBuildOutputOverwrite`。测试或构建被跳过时，脚本退出码不会伪装成完整 Passed。
+
+如果要检查跨平台 Canonical Hash，必须同时提供实际存在的包、外部记录的预期 Hash 和 Windows 实测 Hash；脚本不会自行生成或猜测预期值：
+
+```powershell
+.\scripts\windows-m7-validation.ps1 `
+  -SkipTests -SkipBuild `
+  -PackagePath "D:\evidence\sample.sundollpkg" `
+  -ExpectedCanonicalHash "<macOS 记录的 Hash>" `
+  -ActualCanonicalHash "<Windows 实测的 Hash>"
+```
+
 1. 在 Unity Test Runner 运行全部 EditMode 和 PlayMode 测试，保存 XML；当前目标分别为 `97/97` 和 `16/16`，失败数、忽略数都应为 0。若冻结候选在 RC-0 后增加了测试，总数只能增加且必须全部通过。
 2. 菜单选择 `Sundoll > M7 > Build Windows x64 IL2CPP`，构建输出为 `Builds/SundollWorld-v03-M7-Windows-x64/SundollWorld.exe`。
 3. 启动 `SundollWorld.exe`，完成新建项目、画图、保存、关闭、重开、继续编辑；确认保存状态为安全，地图和棋子没有丢失。
