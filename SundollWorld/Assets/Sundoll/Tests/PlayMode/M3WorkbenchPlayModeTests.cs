@@ -132,6 +132,49 @@ namespace Sundoll.Tests.PlayMode
                 Assert.That(controller.FilteredDefinitionCount, Is.EqualTo(3));
                 Assert.That(controller.Element.itemsSource.Count, Is.EqualTo(2));
 
+                controller.SetCategoryFilter("守卫");
+                controller.Refresh();
+                Assert.That(controller.FilteredDefinitionCount, Is.EqualTo(2));
+                Assert.That(controller.Element.itemsSource.Count, Is.EqualTo(1));
+
+                controller.SetCategoryFilter(string.Empty);
+                controller.SetAssetFilter("missing");
+                controller.Refresh();
+                Assert.That(controller.FilteredDefinitionCount, Is.EqualTo(3));
+
+                var source = new Texture2D(2, 2, TextureFormat.RGBA32, false);
+                source.SetPixels(new[] { Color.cyan, Color.cyan, Color.cyan, Color.cyan });
+                source.Apply(false, false);
+                var imageBytes = source.EncodeToPNG();
+                Object.Destroy(source);
+                var imported = M4RuntimeImageImporter.Import(
+                    session.PieceAssetCatalog,
+                    imageBytes,
+                    "png",
+                    "image/png");
+                Assert.That(imported.accepted, Is.True, imported.diagnostic);
+                var assetReceipt = session.PieceLibrary.RegisterAsset(imported.asset);
+                Assert.That(assetReceipt.accepted, Is.True, assetReceipt.message);
+                session.SaveSession.RecordAccepted(assetReceipt, session.CommandBus.State);
+                var definitionReceipt = session.PieceLibrary.UpdateDefinition(
+                    "grid-red",
+                    "红色守卫",
+                    "守卫",
+                    new[] { "红色", "测试" },
+                    imported.asset.id);
+                Assert.That(definitionReceipt.accepted, Is.True, definitionReceipt.message);
+                session.SaveSession.RecordAccepted(definitionReceipt, session.CommandBus.State);
+
+                controller.SetAssetFilter("available");
+                controller.Refresh();
+                Assert.That(controller.FilteredDefinitionCount, Is.EqualTo(1));
+                controller.SetAssetFilter("missing");
+                controller.SetCategoryFilter("守卫");
+                controller.Refresh();
+                Assert.That(controller.FilteredDefinitionCount, Is.EqualTo(1));
+
+                controller.SetAssetFilter("all");
+                controller.SetCategoryFilter(string.Empty);
                 controller.SetSearch("守卫");
                 controller.Refresh();
                 Assert.That(controller.FilteredDefinitionCount, Is.EqualTo(2));
@@ -322,6 +365,12 @@ namespace Sundoll.Tests.PlayMode
             var document = root.GetComponent<UIDocument>();
             Assert.That(document, Is.Not.Null);
             Assert.That(document.rootVisualElement.Q<TextField>("PieceSearch"), Is.Not.Null);
+            Assert.That(document.rootVisualElement.Q<VisualElement>("PieceLibraryFilters"), Is.Not.Null);
+            Assert.That(document.rootVisualElement.Q<VisualElement>("PieceDefinitionEditor"), Is.Not.Null);
+            Assert.That(document.rootVisualElement.Q<VisualElement>("PieceImageImport"), Is.Not.Null);
+            Assert.That(document.rootVisualElement.Q<Label>("PieceDefinitionEditorTitle").text, Is.EqualTo("当前定义编辑"));
+            Assert.That(document.rootVisualElement.Q<DropdownField>("PieceCategoryFilter"), Is.Not.Null);
+            Assert.That(document.rootVisualElement.Q<DropdownField>("PieceAssetFilter"), Is.Not.Null);
             Assert.That(document.rootVisualElement.Q<VisualElement>("PieceLibraryList"), Is.Not.Null);
             Assert.That(document.rootVisualElement.Q<Button>("PickPieceImageFile"), Is.Not.Null);
             Assert.That(document.rootVisualElement.Q<Button>("InstallStarterContent"), Is.Not.Null);

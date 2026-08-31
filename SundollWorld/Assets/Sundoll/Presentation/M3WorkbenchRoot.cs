@@ -94,6 +94,8 @@ namespace Sundoll.Presentation
         private string selectedPieceInstanceId;
         private TextField mapIdField;
         private TextField mapNameField;
+        private DropdownField pieceCategoryFilterField;
+        private DropdownField pieceAssetFilterField;
         private TextField fogXField;
         private TextField fogYField;
         private TextField fogRadiusField;
@@ -134,6 +136,8 @@ namespace Sundoll.Presentation
         private int lastMapListRevision = -1;
         private int lastPieceListRevision = -1;
         private string lastPieceListSearch;
+        private string lastPieceListCategoryFilter;
+        private string lastPieceListAssetFilter;
         private string lastPieceListDefinitionId;
         private string lastPieceListInstanceId;
 
@@ -940,6 +944,7 @@ namespace Sundoll.Presentation
 
             var pieceSection = CreateWorkspaceSection("PieceLibraryScroll");
             var pieceTitle = new Label("棋子库") { name = "PieceLibraryTitle" };
+            pieceTitle.AddToClassList("sw-title");
             pieceSection.Add(pieceTitle);
             var starterContentButton = new Button(InstallStarterContent) { text = "安装 / 修复内置中性棋子" };
             starterContentButton.name = "InstallStarterContent";
@@ -949,54 +954,99 @@ namespace Sundoll.Presentation
             var starterContentNote = new Label("内置素材为项目原创程序化内容，无外部归属要求。");
             starterContentNote.AddToClassList("sw-muted");
             pieceSection.Add(starterContentNote);
-            pieceSearchField = new TextField { name = "PieceSearch", tooltip = "按名称、分类或标签搜索" };
+
+            var filterSection = CreatePieceLibrarySubsection("PieceLibraryFilters", "搜索与筛选");
+            pieceSearchField = new TextField("名称 / 标签")
+            {
+                name = "PieceSearch",
+                tooltip = "按名称、分类、标签或定义 ID 搜索"
+            };
             pieceSearchField.style.marginTop = 5f;
             pieceSearchField.RegisterValueChangedCallback(_ => RefreshPieceLibraryList());
-            pieceSection.Add(pieceSearchField);
+            filterSection.Add(pieceSearchField);
+            pieceCategoryFilterField = new DropdownField(
+                "分类筛选",
+                new List<string> { "全部分类" },
+                0)
+            {
+                name = "PieceCategoryFilter"
+            };
+            pieceCategoryFilterField.style.marginTop = 4f;
+            pieceCategoryFilterField.RegisterValueChangedCallback(_ => RefreshPieceLibraryList());
+            filterSection.Add(pieceCategoryFilterField);
+            pieceAssetFilterField = new DropdownField(
+                "素材状态",
+                new List<string> { "全部", "有缩略图", "缺少缩略图" },
+                0)
+            {
+                name = "PieceAssetFilter"
+            };
+            pieceAssetFilterField.style.marginTop = 4f;
+            pieceAssetFilterField.RegisterValueChangedCallback(_ => RefreshPieceLibraryList());
+            filterSection.Add(pieceAssetFilterField);
+            pieceSection.Add(filterSection);
+
+            var definitionSection = CreatePieceLibrarySubsection("PieceDefinitionEditor", "当前定义编辑");
+            var definitionHint = new Label("先从定义列表选择一项，再编辑分类与标签；保存会进入正常命令和历史记录。");
+            definitionHint.AddToClassList("sw-muted");
+            definitionSection.Add(definitionHint);
             pieceCategoryField = new TextField("分类") { name = "PieceCategory" };
             pieceCategoryField.style.marginTop = 4f;
-            pieceSection.Add(pieceCategoryField);
+            definitionSection.Add(pieceCategoryField);
             pieceTagsField = new TextField("标签") { name = "PieceTags" };
             pieceTagsField.style.marginTop = 4f;
-            pieceSection.Add(pieceTagsField);
+            definitionSection.Add(pieceTagsField);
             var updateDefinitionButton = new Button(SaveSelectedPieceDefinition) { text = "保存定义分类/标签" };
             updateDefinitionButton.style.marginTop = 4f;
-            pieceSection.Add(updateDefinitionButton);
+            definitionSection.Add(updateDefinitionButton);
             var createPieceButton = new Button(CreatePlaceholderPiece) { text = "新增占位定义" };
             createPieceButton.style.marginTop = 5f;
-            pieceSection.Add(createPieceButton);
+            definitionSection.Add(createPieceButton);
             var createInstanceButton = new Button(CreateInstanceFromSelectedDefinition) { text = "创建实例并放置" };
             createInstanceButton.style.marginTop = 5f;
-            pieceSection.Add(createInstanceButton);
+            definitionSection.Add(createInstanceButton);
+            pieceSection.Add(definitionSection);
+
+            var importSection = CreatePieceLibrarySubsection("PieceImageImport", "素材导入");
+            var importHint = new Label("原图进入内容寻址资产目录；列表优先读取 128px 缩略图，缺失时保留定义并显示诊断。");
+            importHint.AddToClassList("sw-muted");
+            importSection.Add(importHint);
             pieceImagePathField = new TextField("图片路径") { name = "PieceImagePath" };
             pieceImagePathField.style.marginTop = 6f;
-            pieceSection.Add(pieceImagePathField);
+            importSection.Add(pieceImagePathField);
             var pickImageButton = new Button(PickPieceImageFile) { text = "选择图片文件" };
             pickImageButton.name = "PickPieceImageFile";
             pickImageButton.style.marginTop = 4f;
-            pieceSection.Add(pickImageButton);
+            importSection.Add(pickImageButton);
             var importImageButton = new Button(ImportPieceImageFromPath) { text = "导入并重新绑定当前定义" };
             importImageButton.name = "RebindPieceImage";
             importImageButton.style.marginTop = 4f;
-            pieceSection.Add(importImageButton);
+            importSection.Add(importImageButton);
+            pieceSection.Add(importSection);
+
+            var definitionListSection = CreatePieceLibrarySubsection("PieceLibraryDefinitions", "定义列表");
             pieceLibraryLabel = new Label { name = "PieceLibraryBody" };
             pieceLibraryLabel.style.marginTop = 8f;
             pieceLibraryLabel.style.whiteSpace = WhiteSpace.Normal;
-            pieceSection.Add(pieceLibraryLabel);
+            definitionListSection.Add(pieceLibraryLabel);
             pieceLibraryGrid = new M7PieceLibraryGridController(SelectPieceDefinition);
             pieceLibraryGrid.Bind(workbenchSession);
             pieceListContainer = pieceLibraryGrid.Element;
             pieceListContainer.style.marginTop = 6f;
             pieceListContainer.style.minHeight = 220f;
             pieceListContainer.style.flexGrow = 1f;
-            pieceSection.Add(pieceListContainer);
+            definitionListSection.Add(pieceListContainer);
+            pieceSection.Add(definitionListSection);
+
+            var instanceSection = CreatePieceLibrarySubsection("PieceLibraryInstances", "棋盘实例");
             var instanceHeader = new Label("棋盘实例") { name = "PieceInstanceHeader" };
-            instanceHeader.style.marginTop = 8f;
-            pieceSection.Add(instanceHeader);
+            instanceHeader.style.display = DisplayStyle.None;
+            instanceSection.Add(instanceHeader);
             pieceInstanceListContainer = new ScrollView(ScrollViewMode.Vertical) { name = "PieceInstanceList" };
             pieceInstanceListContainer.style.minHeight = 90f;
             pieceInstanceListContainer.style.maxHeight = 160f;
-            pieceSection.Add(pieceInstanceListContainer);
+            instanceSection.Add(pieceInstanceListContainer);
+            pieceSection.Add(instanceSection);
 
             var hostSection = CreateWorkspaceSection("HostToolsScroll");
             hostSection.Add(new Label("主持工具") { name = "HostToolsTitle" });
@@ -1111,6 +1161,17 @@ namespace Sundoll.Presentation
             section.style.flexGrow = 1f;
             section.style.minHeight = 0f;
             section.AddToClassList("sw-workspace-section");
+            return section;
+        }
+
+        private static VisualElement CreatePieceLibrarySubsection(string name, string title)
+        {
+            var section = new VisualElement { name = name };
+            section.AddToClassList("sw-piece-library-section");
+            var heading = new Label(title) { name = name + "Title" };
+            heading.AddToClassList("sw-section-title");
+            heading.style.marginTop = 0f;
+            section.Add(heading);
             return section;
         }
 
@@ -3149,10 +3210,21 @@ namespace Sundoll.Presentation
                 return;
             }
 
+            RefreshPieceCategoryFilterChoices();
             var search = pieceSearchField == null ? string.Empty : pieceSearchField.value ?? string.Empty;
+            var category = pieceCategoryFilterField == null ? string.Empty : pieceCategoryFilterField.value;
+            if (string.Equals(category, "全部分类", StringComparison.Ordinal))
+            {
+                category = string.Empty;
+            }
+
+            var asset = pieceAssetFilterField == null ? "全部" : pieceAssetFilterField.value;
             pieceLibraryGrid.SetSearch(search);
+            pieceLibraryGrid.SetCategoryFilter(category);
+            pieceLibraryGrid.SetAssetFilter(asset == "有缩略图" ? "available" : asset == "缺少缩略图" ? "missing" : "all");
             pieceLibraryGrid.SetSelectedDefinition(selectedPieceDefinitionId);
             pieceLibraryGrid.Refresh();
+            UpdatePieceLibrarySummaryLabel();
             if (pieceInstanceListContainer == null)
             {
                 return;
@@ -3178,6 +3250,64 @@ namespace Sundoll.Presentation
                     instanceButton.style.marginTop = 3f;
                     pieceInstanceListContainer.Add(instanceButton);
                 }
+            }
+
+            lastPieceListRevision = pieceLibrary.State.revision;
+            lastPieceListSearch = pieceSearchField == null ? string.Empty : pieceSearchField.value ?? string.Empty;
+            lastPieceListCategoryFilter = pieceCategoryFilterField == null ? string.Empty : pieceCategoryFilterField.value ?? string.Empty;
+            lastPieceListAssetFilter = pieceAssetFilterField == null ? string.Empty : pieceAssetFilterField.value ?? string.Empty;
+            lastPieceListDefinitionId = selectedPieceDefinitionId;
+            lastPieceListInstanceId = selectedPieceInstanceId;
+        }
+
+        private void UpdatePieceLibrarySummaryLabel()
+        {
+            if (pieceLibraryLabel == null || pieceLibrary == null || pieceLibrary.State == null)
+            {
+                return;
+            }
+
+            var total = pieceLibrary.State.pieceDefinitions == null ? 0 : pieceLibrary.State.pieceDefinitions.Count;
+            var visible = pieceLibraryGrid == null ? total : pieceLibraryGrid.FilteredDefinitionCount;
+            var cached = pieceLibraryGrid == null ? 0 : pieceLibraryGrid.CachedThumbnailCount;
+            pieceLibraryLabel.text = "显示 " + visible + " / " + total +
+                                     " 个定义 · 缩略图缓存 " + cached + " 项\n" +
+                                     "棋盘实例 " + (pieceLibrary.State.pieceInstances == null ? 0 : pieceLibrary.State.pieceInstances.Count) +
+                                     " · 内置内容 " + (starterContentManifest == null ? 0 : starterContentManifest.Records.Count) +
+                                     " 项";
+        }
+
+        private void RefreshPieceCategoryFilterChoices()
+        {
+            if (pieceCategoryFilterField == null || pieceLibrary == null || pieceLibrary.State == null)
+            {
+                return;
+            }
+
+            var choices = new List<string> { "全部分类" };
+            var categories = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            if (pieceLibrary.State.pieceDefinitions != null)
+            {
+                foreach (var definition in pieceLibrary.State.pieceDefinitions)
+                {
+                    var category = definition == null ? string.Empty : definition.category;
+                    if (!string.IsNullOrWhiteSpace(category) && categories.Add(category))
+                    {
+                        choices.Add(category);
+                    }
+                }
+            }
+
+            if (choices.Count > 1)
+            {
+                choices.Sort(1, choices.Count - 1, StringComparer.OrdinalIgnoreCase);
+            }
+
+            var current = pieceCategoryFilterField.value;
+            pieceCategoryFilterField.choices = choices;
+            if (!choices.Contains(current))
+            {
+                pieceCategoryFilterField.SetValueWithoutNotify("全部分类");
             }
         }
 
@@ -3794,10 +3924,7 @@ namespace Sundoll.Presentation
 
             if (pieceLibraryLabel != null)
             {
-                pieceLibraryLabel.text = "定义 " + (editor.State.pieceDefinitions == null ? 0 : editor.State.pieceDefinitions.Count) +
-                                         " · 实例 " + (editor.State.pieceInstances == null ? 0 : editor.State.pieceInstances.Count) + "\n" +
-                                         "内置内容 " + (starterContentManifest == null ? 0 : starterContentManifest.Records.Count) +
-                                         " 项 · 缺少图片时保留数据并显示占位色块。";
+                UpdatePieceLibrarySummaryLabel();
             }
 
             RefreshPieceRelationTargets();
@@ -3852,14 +3979,20 @@ namespace Sundoll.Presentation
             }
 
             var pieceSearch = pieceSearchField == null ? string.Empty : pieceSearchField.value ?? string.Empty;
+            var pieceCategoryFilter = pieceCategoryFilterField == null ? string.Empty : pieceCategoryFilterField.value ?? string.Empty;
+            var pieceAssetFilter = pieceAssetFilterField == null ? string.Empty : pieceAssetFilterField.value ?? string.Empty;
             if (lastPieceListRevision != worldRevision ||
                 !string.Equals(lastPieceListSearch, pieceSearch, StringComparison.Ordinal) ||
+                !string.Equals(lastPieceListCategoryFilter, pieceCategoryFilter, StringComparison.Ordinal) ||
+                !string.Equals(lastPieceListAssetFilter, pieceAssetFilter, StringComparison.Ordinal) ||
                 !string.Equals(lastPieceListDefinitionId, selectedPieceDefinitionId, StringComparison.Ordinal) ||
                 !string.Equals(lastPieceListInstanceId, selectedPieceInstanceId, StringComparison.Ordinal))
             {
                 RefreshPieceLibraryList();
                 lastPieceListRevision = worldRevision;
                 lastPieceListSearch = pieceSearch;
+                lastPieceListCategoryFilter = pieceCategoryFilter;
+                lastPieceListAssetFilter = pieceAssetFilter;
                 lastPieceListDefinitionId = selectedPieceDefinitionId;
                 lastPieceListInstanceId = selectedPieceInstanceId;
             }

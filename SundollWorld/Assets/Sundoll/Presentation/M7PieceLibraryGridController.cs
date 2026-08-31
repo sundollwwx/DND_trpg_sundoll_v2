@@ -42,6 +42,8 @@ namespace Sundoll.Presentation
         private readonly M7PieceThumbnailCache thumbnailCache;
         private WorkbenchSession session;
         private string search = string.Empty;
+        private string categoryFilter = string.Empty;
+        private string assetFilter = "all";
         private string selectedDefinitionId;
         private bool disposed;
 
@@ -70,6 +72,8 @@ namespace Sundoll.Presentation
         public int FilteredDefinitionCount { get; private set; }
         public int CachedThumbnailCount => thumbnailCache.Count;
         public long CachedThumbnailBytes => thumbnailCache.ResidentBytes;
+        public string CategoryFilter => categoryFilter;
+        public string AssetFilter => assetFilter;
 
         public void Bind(WorkbenchSession nextSession)
         {
@@ -108,6 +112,37 @@ namespace Sundoll.Presentation
             Element.RefreshItems();
         }
 
+        public void SetCategoryFilter(string value)
+        {
+            value = value == null ? string.Empty : value.Trim();
+            if (string.Equals(categoryFilter, value, StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
+            categoryFilter = value;
+        }
+
+        /// <summary>
+        /// Supported values are all, available and missing. Missing includes a
+        /// definition without an asset, an unresolved asset or a missing proxy.
+        /// </summary>
+        public void SetAssetFilter(string value)
+        {
+            value = string.IsNullOrWhiteSpace(value) ? "all" : value.Trim().ToLowerInvariant();
+            if (value != "available" && value != "missing")
+            {
+                value = "all";
+            }
+
+            if (string.Equals(assetFilter, value, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            assetFilter = value;
+        }
+
         public void Refresh()
         {
             ThrowIfDisposed();
@@ -122,7 +157,8 @@ namespace Sundoll.Presentation
             var filtered = new List<M4PieceDefinition>();
             foreach (var definition in session.CommandBus.State.pieceDefinitions)
             {
-                if (definition != null && MatchesSearch(definition, search))
+                if (definition != null && MatchesSearch(definition, search) &&
+                    MatchesCategory(definition, categoryFilter) && MatchesAsset(definition, assetFilter))
                 {
                     filtered.Add(definition);
                 }
@@ -332,6 +368,28 @@ namespace Sundoll.Presentation
             }
 
             return false;
+        }
+
+        private bool MatchesCategory(M4PieceDefinition definition, string value)
+        {
+            return string.IsNullOrWhiteSpace(value) ||
+                   string.Equals(definition.category ?? string.Empty, value, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private bool MatchesAsset(M4PieceDefinition definition, string value)
+        {
+            if (value == "all")
+            {
+                return true;
+            }
+
+            var asset = M4PieceQueries.FindAsset(
+                session.CommandBus.State,
+                definition == null ? null : definition.assetId);
+            var available = asset != null && session.PieceAssetCatalog != null &&
+                            session.PieceAssetCatalog.IsAssetAvailable(asset) &&
+                            session.PieceAssetCatalog.IsThumbnailAvailable(asset);
+            return value == "available" ? available : !available;
         }
 
         private void ThrowIfDisposed()

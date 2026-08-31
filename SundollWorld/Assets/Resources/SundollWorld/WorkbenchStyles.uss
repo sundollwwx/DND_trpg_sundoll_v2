@@ -140,6 +140,57 @@
     border-left-color: #2d3947;
 }
 
+.sw-piece-library-section {
+    margin-top: 10px;
+    padding-left: 9px;
+    padding-right: 9px;
+    padding-top: 9px;
+    padding-bottom: 10px;
+    background-color: rgba(24, 33, 44, 0.72);
+    border-top-width: 1px;
+    border-right-width: 1px;
+    border-bottom-width: 1px;
+    border-left-width: 1px;
+    border-top-color: #2f3d4d;
+    border-right-color: #2f3d4d;
+    border-bottom-color: #2f3d4d;
+    border-left-color: #2f3d4d;
+    border-top-left-radius: 5px;
+    border-top-right-radius: 5px;
+    border-bottom-left-radius: 5px;
+    border-bottom-right-radius: 5px;
+}
+
+.sw-piece-library-section .sw-section-title {
+    margin-bottom: 6px;
+    color: #e3c17d;
+    font-size: 13px;
+}
+
+.sw-piece-library-section .sw-muted {
+    margin-bottom: 3px;
+    font-size: 11px;
+}
+
+.sw-inspector-title {
+    min-height: 28px;
+    color: #f1d7a4;
+    font-size: 15px;
+    -unity-font-style: bold;
+    border-bottom-width: 1px;
+    border-bottom-color: #4a3d2b;
+}
+
+.sw-root .unity-foldout__toggle {
+    color: #c8bda9;
+}
+
+#InspectorDiagnosticsBody {
+    margin-top: 4px;
+    color: #9fa9b5;
+    white-space: normal;
+}
+
 .sw-piece-grid-row {
     height: 116px;
     min-height: 116px;
