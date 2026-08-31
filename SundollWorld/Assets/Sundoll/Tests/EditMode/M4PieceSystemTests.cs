@@ -173,6 +173,142 @@ namespace Sundoll.Tests.EditMode
         }
 
         [Test]
+        public void RuntimeStateRoundTripsThroughCommandUndoRedoAndCanonicalHash()
+        {
+            var bus = CreateBusWithDefinition();
+            Execute(bus, new M4CreatePieceInstanceCommand(
+                "m4-runtime-instance",
+                bus.State.revision,
+                "definition-token",
+                "runtime-instance"));
+            var beforeHash = M2CanonicalStateHasher.Compute(bus.State);
+            var runtimeState = new M4PieceRuntimeState
+            {
+                hostNote = "只给主持人看的线索",
+                audienceVisible = true,
+                resourceBars = new System.Collections.Generic.List<M4PieceResourceBar>
+                {
+                    new M4PieceResourceBar
+                    {
+                        id = "hp",
+                        displayName = "生命",
+                        current = 7,
+                        maximum = 10,
+                        visibleToAudience = true
+                    }
+                },
+                statuses = new System.Collections.Generic.List<M4PieceStatusEntry>
+                {
+                    new M4PieceStatusEntry
+                    {
+                        id = "marked",
+                        displayName = "标记",
+                        detail = "已被追踪",
+                        visibleToAudience = false
+                    }
+                },
+                customFields = new System.Collections.Generic.List<M4PieceCustomField>
+                {
+                    new M4PieceCustomField
+                    {
+                        key = "阵营",
+                        value = "中立",
+                        visibleToAudience = true
+                    }
+                }
+            };
+
+            var receipt = bus.Execute(new M4SetPieceRuntimeStateCommand(
+                "m4-runtime-state",
+                bus.State.revision,
+                "runtime-instance",
+                runtimeState));
+            Assert.That(receipt.accepted, Is.True, receipt.message);
+            Assert.That(M2CanonicalStateHasher.Compute(bus.State), Is.Not.EqualTo(beforeHash));
+            Assert.That(M4PieceQueries.FindInstance(bus.State, "runtime-instance").runtimeState.hostNote, Is.EqualTo("只给主持人看的线索"));
+
+            Assert.That(bus.Undo(), Is.True);
+            Assert.That(M4PieceQueries.FindInstance(bus.State, "runtime-instance").runtimeState.resourceBars, Is.Empty);
+            Assert.That(bus.Redo(), Is.True);
+            Assert.That(M4PieceQueries.FindInstance(bus.State, "runtime-instance").runtimeState.resourceBars[0].current, Is.EqualTo(7));
+
+            var loaded = JsonUtility.FromJson<M1WorldState>(JsonUtility.ToJson(bus.State, false));
+            loaded.EnsureSchema2Defaults();
+            Assert.That(M2CanonicalStateHasher.Compute(loaded), Is.EqualTo(M2CanonicalStateHasher.Compute(bus.State)));
+            Assert.That(M4PieceStateValidator.TryValidate(loaded, out var diagnostic), Is.True, diagnostic);
+        }
+
+        [Test]
+        public void RuntimeStateCommandEnvelopeAndJournalReplayPreserveState()
+        {
+            var bus = CreateBusWithDefinition();
+            Execute(bus, new M4CreatePieceInstanceCommand(
+                "m4-runtime-envelope-instance",
+                bus.State.revision,
+                "definition-token",
+                "runtime-envelope-instance"));
+            var snapshot = bus.State.DeepClone();
+            var command = new M4SetPieceRuntimeStateCommand(
+                "m4-runtime-envelope",
+                bus.State.revision,
+                "runtime-envelope-instance",
+                new M4PieceRuntimeState
+                {
+                    hostNote = "journal note",
+                    resourceBars = new System.Collections.Generic.List<M4PieceResourceBar>
+                    {
+                        new M4PieceResourceBar { id = "charge", displayName = "充能", current = 2, maximum = 3 }
+                    }
+                });
+            var receipt = bus.Execute(command);
+            Assert.That(receipt.accepted, Is.True, receipt.message);
+
+            var envelope = M2CommandEnvelopeCodec.Encode(command);
+            var decoded = M2CommandEnvelopeCodec.Decode(
+                JsonUtility.FromJson<M1CommandEnvelope>(JsonUtility.ToJson(envelope, false)));
+            Assert.That(decoded, Is.TypeOf<M4SetPieceRuntimeStateCommand>());
+
+            var journal = new M2JournalStore(root, "m4-runtime-state-stream");
+            journal.Append(M2CommandEnvelopeCodec.CreateAcceptedBatch(receipt), receipt.message, bus.State);
+            Assert.That(journal.TryReplay(snapshot, 0, out var replay), Is.True, replay.diagnostic);
+            Assert.That(replay.complete, Is.True, replay.diagnostic);
+            Assert.That(
+                M2CanonicalStateHasher.Compute(replay.state),
+                Is.EqualTo(M2CanonicalStateHasher.Compute(bus.State)));
+            Assert.That(
+                M4PieceQueries.FindInstance(replay.state, "runtime-envelope-instance").runtimeState.hostNote,
+                Is.EqualTo("journal note"));
+        }
+
+        [Test]
+        public void InvalidRuntimeStateIsRejectedWithoutMutation()
+        {
+            var bus = CreateBusWithDefinition();
+            Execute(bus, new M4CreatePieceInstanceCommand(
+                "m4-runtime-invalid-instance",
+                bus.State.revision,
+                "definition-token",
+                "runtime-invalid-instance"));
+            var hashBefore = M2CanonicalStateHasher.Compute(bus.State);
+            var revisionBefore = bus.State.revision;
+
+            Assert.Throws<InvalidOperationException>(() => bus.Execute(new M4SetPieceRuntimeStateCommand(
+                "m4-runtime-invalid",
+                bus.State.revision,
+                "runtime-invalid-instance",
+                new M4PieceRuntimeState
+                {
+                    resourceBars = new System.Collections.Generic.List<M4PieceResourceBar>
+                    {
+                        new M4PieceResourceBar { id = "hp", current = 11, maximum = 10 }
+                    }
+                })));
+
+            Assert.That(bus.State.revision, Is.EqualTo(revisionBefore));
+            Assert.That(M2CanonicalStateHasher.Compute(bus.State), Is.EqualTo(hashBefore));
+        }
+
+        [Test]
         public void MultiPieceMoveIsOneAtomicUndoableJournalOperation()
         {
             var bus = CreateBusWithDefinition();

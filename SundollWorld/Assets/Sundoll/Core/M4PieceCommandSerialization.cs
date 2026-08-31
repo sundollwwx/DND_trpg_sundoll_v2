@@ -129,6 +129,13 @@ namespace Sundoll.Core
     }
 
     [Serializable]
+    public sealed class M4SetPieceRuntimeStateCommandPayload
+    {
+        public string instanceId;
+        public M4PieceRuntimeState runtimeState = M4PieceRuntimeState.CreateDefault();
+    }
+
+    [Serializable]
     public sealed class M4PiecePresentationMutation
     {
         public string instanceId;

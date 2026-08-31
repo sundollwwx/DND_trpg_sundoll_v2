@@ -378,6 +378,80 @@ namespace Sundoll.Infrastructure
                 AppendOptionalString(builder, location == null ? null : location.attachedToPieceId);
                 AppendOptionalString(builder, location == null ? null : location.attachmentSlot);
                 AppendInt(builder, location == null ? 0 : location.stackOrder);
+                AppendPieceRuntimeState(builder, instance.runtimeState);
+            }
+        }
+
+        private static void AppendPieceRuntimeState(StringBuilder builder, M4PieceRuntimeState runtimeState)
+        {
+            var state = runtimeState ?? M4PieceRuntimeState.CreateDefault();
+            AppendInt(builder, state.audienceVisible ? 1 : 0);
+            AppendOptionalString(builder, state.hostNote);
+
+            var resourceBars = new List<M4PieceResourceBar>();
+            if (state.resourceBars != null)
+            {
+                foreach (var resourceBar in state.resourceBars)
+                {
+                    if (resourceBar != null)
+                    {
+                        resourceBars.Add(resourceBar);
+                    }
+                }
+            }
+
+            resourceBars.Sort((left, right) => string.CompareOrdinal(left.id, right.id));
+            AppendInt(builder, resourceBars.Count);
+            foreach (var resourceBar in resourceBars)
+            {
+                AppendOptionalString(builder, resourceBar.id);
+                AppendOptionalString(builder, resourceBar.displayName);
+                AppendInt(builder, resourceBar.current);
+                AppendInt(builder, resourceBar.maximum);
+                AppendInt(builder, resourceBar.visibleToAudience ? 1 : 0);
+            }
+
+            var statuses = new List<M4PieceStatusEntry>();
+            if (state.statuses != null)
+            {
+                foreach (var status in state.statuses)
+                {
+                    if (status != null)
+                    {
+                        statuses.Add(status);
+                    }
+                }
+            }
+
+            statuses.Sort((left, right) => string.CompareOrdinal(left.id, right.id));
+            AppendInt(builder, statuses.Count);
+            foreach (var status in statuses)
+            {
+                AppendOptionalString(builder, status.id);
+                AppendOptionalString(builder, status.displayName);
+                AppendOptionalString(builder, status.detail);
+                AppendInt(builder, status.visibleToAudience ? 1 : 0);
+            }
+
+            var customFields = new List<M4PieceCustomField>();
+            if (state.customFields != null)
+            {
+                foreach (var field in state.customFields)
+                {
+                    if (field != null)
+                    {
+                        customFields.Add(field);
+                    }
+                }
+            }
+
+            customFields.Sort((left, right) => string.CompareOrdinal(left.key, right.key));
+            AppendInt(builder, customFields.Count);
+            foreach (var field in customFields)
+            {
+                AppendOptionalString(builder, field.key);
+                AppendOptionalString(builder, field.value);
+                AppendInt(builder, field.visibleToAudience ? 1 : 0);
             }
         }
 

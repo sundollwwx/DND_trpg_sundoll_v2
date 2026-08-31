@@ -126,6 +126,191 @@ namespace Sundoll.Core
     }
 
     [Serializable]
+    public sealed class M4PieceResourceBar
+    {
+        public string id;
+        public string displayName;
+        public int current;
+        public int maximum;
+        public bool visibleToAudience = true;
+
+        public M4PieceResourceBar DeepClone()
+        {
+            return new M4PieceResourceBar
+            {
+                id = id,
+                displayName = displayName,
+                current = current,
+                maximum = maximum,
+                visibleToAudience = visibleToAudience
+            };
+        }
+    }
+
+    [Serializable]
+    public sealed class M4PieceStatusEntry
+    {
+        public string id;
+        public string displayName;
+        public string detail;
+        public bool visibleToAudience = true;
+
+        public M4PieceStatusEntry DeepClone()
+        {
+            return new M4PieceStatusEntry
+            {
+                id = id,
+                displayName = displayName,
+                detail = detail,
+                visibleToAudience = visibleToAudience
+            };
+        }
+    }
+
+    [Serializable]
+    public sealed class M4PieceCustomField
+    {
+        public string key;
+        public string value;
+        public bool visibleToAudience = true;
+
+        public M4PieceCustomField DeepClone()
+        {
+            return new M4PieceCustomField
+            {
+                key = key,
+                value = value,
+                visibleToAudience = visibleToAudience
+            };
+        }
+    }
+
+    /// <summary>
+    /// Rule-agnostic per-instance state. The Core stores labels and values but
+    /// does not assign game meaning to them; a future rules layer may interpret
+    /// the same data without changing the save or presentation contracts.
+    /// </summary>
+    [Serializable]
+    public sealed class M4PieceRuntimeState
+    {
+        public List<M4PieceResourceBar> resourceBars = new List<M4PieceResourceBar>();
+        public List<M4PieceStatusEntry> statuses = new List<M4PieceStatusEntry>();
+        public List<M4PieceCustomField> customFields = new List<M4PieceCustomField>();
+        public string hostNote = string.Empty;
+        public bool audienceVisible = true;
+
+        public static M4PieceRuntimeState CreateDefault()
+        {
+            return new M4PieceRuntimeState();
+        }
+
+        public void EnsureDefaults()
+        {
+            if (resourceBars == null)
+            {
+                resourceBars = new List<M4PieceResourceBar>();
+            }
+
+            if (statuses == null)
+            {
+                statuses = new List<M4PieceStatusEntry>();
+            }
+
+            if (customFields == null)
+            {
+                customFields = new List<M4PieceCustomField>();
+            }
+
+            if (hostNote == null)
+            {
+                hostNote = string.Empty;
+            }
+        }
+
+        public M4PieceRuntimeState DeepClone()
+        {
+            var clone = CreateDefault();
+            clone.hostNote = hostNote ?? string.Empty;
+            clone.audienceVisible = audienceVisible;
+            if (resourceBars != null)
+            {
+                foreach (var resourceBar in resourceBars)
+                {
+                    if (resourceBar != null)
+                    {
+                        clone.resourceBars.Add(resourceBar.DeepClone());
+                    }
+                }
+            }
+
+            if (statuses != null)
+            {
+                foreach (var status in statuses)
+                {
+                    if (status != null)
+                    {
+                        clone.statuses.Add(status.DeepClone());
+                    }
+                }
+            }
+
+            if (customFields != null)
+            {
+                foreach (var field in customFields)
+                {
+                    if (field != null)
+                    {
+                        clone.customFields.Add(field.DeepClone());
+                    }
+                }
+            }
+
+            return clone;
+        }
+
+        public M4PieceRuntimeState CreateAudienceProjection()
+        {
+            var projected = CreateDefault();
+            projected.audienceVisible = true;
+            if (resourceBars != null)
+            {
+                foreach (var resourceBar in resourceBars)
+                {
+                    if (resourceBar != null && resourceBar.visibleToAudience)
+                    {
+                        projected.resourceBars.Add(resourceBar.DeepClone());
+                    }
+                }
+            }
+
+            if (statuses != null)
+            {
+                foreach (var status in statuses)
+                {
+                    if (status != null && status.visibleToAudience)
+                    {
+                        projected.statuses.Add(status.DeepClone());
+                    }
+                }
+            }
+
+            if (customFields != null)
+            {
+                foreach (var field in customFields)
+                {
+                    if (field != null && field.visibleToAudience)
+                    {
+                        projected.customFields.Add(field.DeepClone());
+                    }
+                }
+            }
+
+            // Host notes are deliberately never part of an audience projection.
+            return projected;
+        }
+    }
+
+    [Serializable]
     public sealed class M4PieceInstance
     {
         public string id;
@@ -134,6 +319,9 @@ namespace Sundoll.Core
         public int rotation;
         public bool flipped;
         public bool visible = true;
+        // Additive to schema 2. Missing legacy JSON is filled by
+        // M1WorldState.EnsureSchema2Defaults().
+        public M4PieceRuntimeState runtimeState = M4PieceRuntimeState.CreateDefault();
 
         public M4PieceInstance DeepClone()
         {
@@ -144,7 +332,10 @@ namespace Sundoll.Core
                 location = location == null ? null : location.DeepClone(),
                 rotation = NormalizeRotation(rotation),
                 flipped = flipped,
-                visible = visible
+                visible = visible,
+                runtimeState = runtimeState == null
+                    ? M4PieceRuntimeState.CreateDefault()
+                    : runtimeState.DeepClone()
             };
         }
 
@@ -232,6 +423,69 @@ namespace Sundoll.Core
                 {
                     diagnostic = "Piece rotation must be 0, 90, 180 or 270 degrees.";
                     return false;
+                }
+
+                if (!TryValidateRuntimeState(instance.runtimeState, out diagnostic))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        public static bool TryValidateRuntimeState(M4PieceRuntimeState runtimeState, out string diagnostic)
+        {
+            diagnostic = string.Empty;
+            if (runtimeState == null)
+            {
+                return true;
+            }
+
+            var resourceIds = new HashSet<string>(StringComparer.Ordinal);
+            if (runtimeState.resourceBars != null)
+            {
+                foreach (var resourceBar in runtimeState.resourceBars)
+                {
+                    if (resourceBar == null || string.IsNullOrWhiteSpace(resourceBar.id) ||
+                        !resourceIds.Add(resourceBar.id))
+                    {
+                        diagnostic = "Piece resource bars must have unique non-empty IDs.";
+                        return false;
+                    }
+
+                    if (resourceBar.current < 0 || resourceBar.maximum < 0 ||
+                        resourceBar.current > resourceBar.maximum)
+                    {
+                        diagnostic = "Piece resource bar values must satisfy 0 <= current <= maximum.";
+                        return false;
+                    }
+                }
+            }
+
+            var statusIds = new HashSet<string>(StringComparer.Ordinal);
+            if (runtimeState.statuses != null)
+            {
+                foreach (var status in runtimeState.statuses)
+                {
+                    if (status == null || string.IsNullOrWhiteSpace(status.id) || !statusIds.Add(status.id))
+                    {
+                        diagnostic = "Piece statuses must have unique non-empty IDs.";
+                        return false;
+                    }
+                }
+            }
+
+            var fieldKeys = new HashSet<string>(StringComparer.Ordinal);
+            if (runtimeState.customFields != null)
+            {
+                foreach (var field in runtimeState.customFields)
+                {
+                    if (field == null || string.IsNullOrWhiteSpace(field.key) || !fieldKeys.Add(field.key))
+                    {
+                        diagnostic = "Piece custom fields must have unique non-empty keys.";
+                        return false;
+                    }
                 }
             }
 

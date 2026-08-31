@@ -435,6 +435,14 @@ namespace Sundoll.Core
                 pieceInstances = new List<M4PieceInstance>();
             }
 
+            foreach (var instance in pieceInstances)
+            {
+                if (instance != null && instance.runtimeState == null)
+                {
+                    instance.runtimeState = M4PieceRuntimeState.CreateDefault();
+                }
+            }
+
             if (m5Console == null)
             {
                 m5Console = new M5ConsoleState();

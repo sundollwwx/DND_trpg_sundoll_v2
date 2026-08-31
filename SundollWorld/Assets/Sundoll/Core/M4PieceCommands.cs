@@ -549,6 +549,51 @@ namespace Sundoll.Core
     }
 
     /// <summary>
+    /// Replaces the complete rule-agnostic state of one piece in a single
+    /// command. A complete payload makes Journal replay deterministic and
+    /// keeps the Inspector edit atomic when one of its lists is invalid.
+    /// </summary>
+    public sealed class M4SetPieceRuntimeStateCommand : M1Command
+    {
+        private readonly string instanceId;
+        private readonly M4PieceRuntimeState runtimeState;
+
+        public M4SetPieceRuntimeStateCommand(
+            string commandId,
+            int baseRevision,
+            string instanceId,
+            M4PieceRuntimeState runtimeState)
+            : base(commandId, baseRevision)
+        {
+            this.instanceId = instanceId;
+            this.runtimeState = runtimeState == null
+                ? M4PieceRuntimeState.CreateDefault()
+                : runtimeState.DeepClone();
+        }
+
+        public override string Description => "更新棋子规则无关状态";
+        public override string CommandType => "M4.SetPieceRuntimeState";
+        public override int PayloadVersion => 1;
+        public override object CreatePayload() => new M4SetPieceRuntimeStateCommandPayload
+        {
+            instanceId = instanceId,
+            runtimeState = runtimeState.DeepClone()
+        };
+
+        public override void Apply(M1WorldState state)
+        {
+            M4PieceCommandSupport.EnsureLists(state);
+            var instance = M4PieceCommandSupport.RequireInstance(state, instanceId);
+            if (!M4PieceStateValidator.TryValidateRuntimeState(runtimeState, out var diagnostic))
+            {
+                throw new InvalidOperationException(diagnostic);
+            }
+
+            instance.runtimeState = runtimeState.DeepClone();
+        }
+    }
+
+    /// <summary>
     /// Applies rotation, flip, or visibility changes to a selection in one
     /// undo/Journaling operation. It deliberately carries complete resulting
     /// presentation state, not a UI-relative action such as "rotate now".

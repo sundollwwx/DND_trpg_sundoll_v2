@@ -265,6 +265,28 @@ namespace Sundoll.Infrastructure
                 projected.pieceInstances.RemoveAll(instance => instance == null || !instance.visible);
             }
 
+            if (projected.pieceInstances != null)
+            {
+                // Audience visibility is a separate contract from the local
+                // editor visibility flag. A private piece never crosses the
+                // projection boundary, even for an otherwise full snapshot.
+                projected.pieceInstances.RemoveAll(instance =>
+                    instance == null || instance.runtimeState != null && !instance.runtimeState.audienceVisible);
+
+                if (!effectivePolicy.includePrivatePieceState)
+                {
+                    foreach (var instance in projected.pieceInstances)
+                    {
+                        if (instance != null)
+                        {
+                            instance.runtimeState = instance.runtimeState == null
+                                ? M4PieceRuntimeState.CreateDefault()
+                                : instance.runtimeState.CreateAudienceProjection();
+                        }
+                    }
+                }
+            }
+
             if (effectivePolicy.allowedPieceInstanceIds != null && effectivePolicy.allowedPieceInstanceIds.Count > 0 &&
                 projected.pieceInstances != null)
             {

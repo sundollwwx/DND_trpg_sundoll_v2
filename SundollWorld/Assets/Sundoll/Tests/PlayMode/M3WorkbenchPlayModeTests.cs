@@ -408,6 +408,13 @@ namespace Sundoll.Tests.PlayMode
             Assert.That(document.rootVisualElement.Q<Label>("InspectorTitle").text, Is.EqualTo("地图摘要"));
             Assert.That(document.rootVisualElement.Q<Label>("InspectorDiagnosticsBody"), Is.Not.Null);
             Assert.That(document.rootVisualElement.Q<DropdownField>("PieceRelationTarget"), Is.Not.Null);
+            Assert.That(document.rootVisualElement.Q<VisualElement>("PieceRuntimeStateEditor"), Is.Not.Null);
+            Assert.That(document.rootVisualElement.Q<TextField>("PieceResourceBars"), Is.Not.Null);
+            Assert.That(document.rootVisualElement.Q<TextField>("PieceStatuses"), Is.Not.Null);
+            Assert.That(document.rootVisualElement.Q<TextField>("PieceCustomFields"), Is.Not.Null);
+            Assert.That(document.rootVisualElement.Q<TextField>("PieceHostNote"), Is.Not.Null);
+            Assert.That(document.rootVisualElement.Q<Toggle>("PieceAudienceVisible"), Is.Not.Null);
+            Assert.That(document.rootVisualElement.Q<Button>("SavePieceRuntimeState"), Is.Not.Null);
             Assert.That(document.rootVisualElement.Q<Button>("DeleteSelectedPieces").enabledSelf, Is.False);
             Assert.That(document.rootVisualElement.Q<Button>("DeleteSelectedPieces"), Is.Not.Null);
             Assert.That(document.rootVisualElement.Q<VisualElement>("HostMapList"), Is.Not.Null);

@@ -250,6 +250,15 @@ namespace Sundoll.Infrastructure
                         payload.flipped,
                         payload.visible);
                 }
+                case "M4.SetPieceRuntimeState":
+                {
+                    var payload = ReadPayload<M4SetPieceRuntimeStateCommandPayload>(envelope);
+                    return new M4SetPieceRuntimeStateCommand(
+                        envelope.commandId,
+                        envelope.baseRevision,
+                        payload.instanceId,
+                        payload.runtimeState);
+                }
                 case "M4.SetPiecePresentations":
                 {
                     var payload = ReadPayload<M4SetPiecePresentationsCommandPayload>(envelope);

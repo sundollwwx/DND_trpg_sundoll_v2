@@ -8,6 +8,7 @@ namespace Sundoll.Core
     {
         public bool revealAllFog = true;
         public bool includeHiddenPieces = true;
+        public bool includePrivatePieceState;
         public List<string> allowedPieceInstanceIds = new List<string>();
 
         public M6AudiencePolicy DeepClone()
@@ -16,6 +17,7 @@ namespace Sundoll.Core
             {
                 revealAllFog = revealAllFog,
                 includeHiddenPieces = includeHiddenPieces,
+                includePrivatePieceState = includePrivatePieceState,
                 allowedPieceInstanceIds = allowedPieceInstanceIds == null
                     ? new List<string>()
                     : new List<string>(allowedPieceInstanceIds)

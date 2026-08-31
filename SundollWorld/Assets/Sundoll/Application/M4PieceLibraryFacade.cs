@@ -152,6 +152,15 @@ namespace Sundoll.Application
                 mutations));
         }
 
+        public M1CommandReceipt SetRuntimeState(string instanceId, M4PieceRuntimeState runtimeState)
+        {
+            return commandBus.Execute(new M4SetPieceRuntimeStateCommand(
+                "m4-runtime-state-" + Guid.NewGuid().ToString("N"),
+                State.revision,
+                instanceId,
+                runtimeState));
+        }
+
         public M1CommandReceipt SetStackOrder(string instanceId, int stackOrder)
         {
             return commandBus.Execute(new M4SetPieceStackOrderCommand(

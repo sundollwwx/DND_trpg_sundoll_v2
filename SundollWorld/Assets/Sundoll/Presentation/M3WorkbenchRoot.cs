@@ -74,6 +74,12 @@ namespace Sundoll.Presentation
         private TextField pieceImagePathField;
         private DropdownField pieceRelationTargetField;
         private TextField pieceAttachmentSlotField;
+        private TextField pieceRuntimeResourceBarsField;
+        private TextField pieceRuntimeStatusesField;
+        private TextField pieceRuntimeCustomFieldsField;
+        private TextField pieceRuntimeHostNoteField;
+        private Toggle pieceRuntimeAudienceVisibleToggle;
+        private Button pieceRuntimeSaveButton;
         private VisualElement pieceListContainer;
         private VisualElement pieceInstanceListContainer;
         private string currentTool = "画笔";
@@ -1342,6 +1348,80 @@ namespace Sundoll.Presentation
             attachButton.style.marginTop = 4f;
             panel.Add(attachButton);
             inspectorPieceActionButtons.Add(attachButton);
+
+            var runtimeStateFoldout = new Foldout
+            {
+                name = "PieceRuntimeStateEditor",
+                text = "规则无关状态",
+                value = true
+            };
+            runtimeStateFoldout.style.marginTop = 14f;
+            var runtimeStateHint = new Label(
+                "单选棋子后编辑。每行一项，使用 | 分隔；玩家可见填写“是/否”。\n" +
+                "资源条：ID|名称|当前|最大|玩家可见\n" +
+                "状态：ID|名称|说明|玩家可见；自定义：键|值|玩家可见");
+            runtimeStateHint.name = "PieceRuntimeStateHint";
+            runtimeStateHint.AddToClassList("sw-muted");
+            runtimeStateHint.style.whiteSpace = WhiteSpace.Normal;
+            runtimeStateFoldout.Add(runtimeStateHint);
+
+            pieceRuntimeResourceBarsField = new TextField("资源条")
+            {
+                name = "PieceResourceBars",
+                multiline = true,
+                tooltip = "每行：ID|名称|当前|最大|玩家可见"
+            };
+            pieceRuntimeResourceBarsField.style.minHeight = 58f;
+            pieceRuntimeResourceBarsField.style.marginTop = 6f;
+            runtimeStateFoldout.Add(pieceRuntimeResourceBarsField);
+
+            pieceRuntimeStatusesField = new TextField("状态列表")
+            {
+                name = "PieceStatuses",
+                multiline = true,
+                tooltip = "每行：ID|名称|说明|玩家可见"
+            };
+            pieceRuntimeStatusesField.style.minHeight = 58f;
+            pieceRuntimeStatusesField.style.marginTop = 5f;
+            runtimeStateFoldout.Add(pieceRuntimeStatusesField);
+
+            pieceRuntimeCustomFieldsField = new TextField("自定义字段")
+            {
+                name = "PieceCustomFields",
+                multiline = true,
+                tooltip = "每行：键|值|玩家可见"
+            };
+            pieceRuntimeCustomFieldsField.style.minHeight = 58f;
+            pieceRuntimeCustomFieldsField.style.marginTop = 5f;
+            runtimeStateFoldout.Add(pieceRuntimeCustomFieldsField);
+
+            pieceRuntimeHostNoteField = new TextField("主持备注")
+            {
+                name = "PieceHostNote",
+                multiline = true
+            };
+            pieceRuntimeHostNoteField.style.minHeight = 52f;
+            pieceRuntimeHostNoteField.style.marginTop = 5f;
+            runtimeStateFoldout.Add(pieceRuntimeHostNoteField);
+
+            pieceRuntimeAudienceVisibleToggle = new Toggle("玩家可见")
+            {
+                name = "PieceAudienceVisible",
+                value = true,
+                tooltip = "关闭后，该棋子不会进入玩家预览投影"
+            };
+            pieceRuntimeAudienceVisibleToggle.style.marginTop = 4f;
+            runtimeStateFoldout.Add(pieceRuntimeAudienceVisibleToggle);
+
+            pieceRuntimeSaveButton = new Button(SaveSelectedPieceRuntimeState)
+            {
+                name = "SavePieceRuntimeState",
+                text = "保存棋子状态"
+            };
+            pieceRuntimeSaveButton.AddToClassList("sw-button-accent");
+            pieceRuntimeSaveButton.style.marginTop = 6f;
+            runtimeStateFoldout.Add(pieceRuntimeSaveButton);
+            panel.Add(runtimeStateFoldout);
             WrapPanelChildrenInScrollView(panel, "InspectorScroll");
             return panel;
         }
@@ -3050,6 +3130,268 @@ namespace Sundoll.Presentation
             RefreshUiState();
         }
 
+        private void SyncSelectedPieceRuntimeStateFields()
+        {
+            var instance = M4PieceQueries.FindInstance(
+                pieceLibrary == null ? null : pieceLibrary.State,
+                selectedPieceInstanceId);
+            var runtimeState = instance == null || instance.runtimeState == null
+                ? M4PieceRuntimeState.CreateDefault()
+                : instance.runtimeState;
+            if (pieceRuntimeResourceBarsField != null)
+            {
+                pieceRuntimeResourceBarsField.SetValueWithoutNotify(FormatResourceBars(runtimeState.resourceBars));
+            }
+
+            if (pieceRuntimeStatusesField != null)
+            {
+                pieceRuntimeStatusesField.SetValueWithoutNotify(FormatStatuses(runtimeState.statuses));
+            }
+
+            if (pieceRuntimeCustomFieldsField != null)
+            {
+                pieceRuntimeCustomFieldsField.SetValueWithoutNotify(FormatCustomFields(runtimeState.customFields));
+            }
+
+            if (pieceRuntimeHostNoteField != null)
+            {
+                pieceRuntimeHostNoteField.SetValueWithoutNotify(runtimeState.hostNote ?? string.Empty);
+            }
+
+            pieceRuntimeAudienceVisibleToggle?.SetValueWithoutNotify(runtimeState.audienceVisible);
+        }
+
+        private void ClearSelectedPieceRuntimeStateFields()
+        {
+            pieceRuntimeResourceBarsField?.SetValueWithoutNotify(string.Empty);
+            pieceRuntimeStatusesField?.SetValueWithoutNotify(string.Empty);
+            pieceRuntimeCustomFieldsField?.SetValueWithoutNotify(string.Empty);
+            pieceRuntimeHostNoteField?.SetValueWithoutNotify(string.Empty);
+            pieceRuntimeAudienceVisibleToggle?.SetValueWithoutNotify(true);
+        }
+
+        private void SaveSelectedPieceRuntimeState()
+        {
+            if (hostPreviewMode || SelectedPieceCount != 1 || pieceLibrary == null ||
+                string.IsNullOrWhiteSpace(selectedPieceInstanceId))
+            {
+                status = hostPreviewMode ? "玩家预览为只读" : "请先选择一个棋子实例";
+                RefreshUiState();
+                return;
+            }
+
+            if (!TryParseRuntimeStateFields(
+                    pieceRuntimeResourceBarsField == null ? string.Empty : pieceRuntimeResourceBarsField.value,
+                    pieceRuntimeStatusesField == null ? string.Empty : pieceRuntimeStatusesField.value,
+                    pieceRuntimeCustomFieldsField == null ? string.Empty : pieceRuntimeCustomFieldsField.value,
+                    pieceRuntimeHostNoteField == null ? string.Empty : pieceRuntimeHostNoteField.value,
+                    pieceRuntimeAudienceVisibleToggle != null && pieceRuntimeAudienceVisibleToggle.value,
+                    out var runtimeState,
+                    out var diagnostic))
+            {
+                status = diagnostic;
+                RefreshUiState();
+                return;
+            }
+
+            var receipt = pieceLibrary.SetRuntimeState(selectedPieceInstanceId, runtimeState);
+            CommitPieceReceipt(receipt);
+            status = receipt.accepted ? "棋子规则无关状态已保存" : receipt.message;
+            RefreshUiState();
+        }
+
+        private static string FormatResourceBars(List<M4PieceResourceBar> resourceBars)
+        {
+            var lines = new List<string>();
+            if (resourceBars != null)
+            {
+                foreach (var resourceBar in resourceBars)
+                {
+                    if (resourceBar != null)
+                    {
+                        lines.Add(string.Join("|", new[]
+                        {
+                            resourceBar.id ?? string.Empty,
+                            resourceBar.displayName ?? string.Empty,
+                            resourceBar.current.ToString(),
+                            resourceBar.maximum.ToString(),
+                            resourceBar.visibleToAudience ? "是" : "否"
+                        }));
+                    }
+                }
+            }
+
+            return string.Join("\n", lines);
+        }
+
+        private static string FormatStatuses(List<M4PieceStatusEntry> statuses)
+        {
+            var lines = new List<string>();
+            if (statuses != null)
+            {
+                foreach (var status in statuses)
+                {
+                    if (status != null)
+                    {
+                        lines.Add(string.Join("|", new[]
+                        {
+                            status.id ?? string.Empty,
+                            status.displayName ?? string.Empty,
+                            status.detail ?? string.Empty,
+                            status.visibleToAudience ? "是" : "否"
+                        }));
+                    }
+                }
+            }
+
+            return string.Join("\n", lines);
+        }
+
+        private static string FormatCustomFields(List<M4PieceCustomField> customFields)
+        {
+            var lines = new List<string>();
+            if (customFields != null)
+            {
+                foreach (var field in customFields)
+                {
+                    if (field != null)
+                    {
+                        lines.Add(string.Join("|", new[]
+                        {
+                            field.key ?? string.Empty,
+                            field.value ?? string.Empty,
+                            field.visibleToAudience ? "是" : "否"
+                        }));
+                    }
+                }
+            }
+
+            return string.Join("\n", lines);
+        }
+
+        private static bool TryParseRuntimeStateFields(
+            string resourceBarsText,
+            string statusesText,
+            string customFieldsText,
+            string hostNote,
+            bool audienceVisible,
+            out M4PieceRuntimeState runtimeState,
+            out string diagnostic)
+        {
+            runtimeState = new M4PieceRuntimeState
+            {
+                hostNote = hostNote ?? string.Empty,
+                audienceVisible = audienceVisible
+            };
+            diagnostic = string.Empty;
+
+            var resourceLines = SplitStateLines(resourceBarsText);
+            for (var index = 0; index < resourceLines.Count; index++)
+            {
+                var columns = resourceLines[index].Split('|');
+                if (columns.Length != 5 || !int.TryParse(columns[2].Trim(), out var current) ||
+                    !int.TryParse(columns[3].Trim(), out var maximum) ||
+                    !TryParseAudienceFlag(columns[4], out var visibleToAudience))
+                {
+                    diagnostic = "资源条第 " + (index + 1) + " 行格式错误，应为 ID|名称|当前|最大|玩家可见。";
+                    runtimeState = null;
+                    return false;
+                }
+
+                runtimeState.resourceBars.Add(new M4PieceResourceBar
+                {
+                    id = columns[0].Trim(),
+                    displayName = columns[1].Trim(),
+                    current = current,
+                    maximum = maximum,
+                    visibleToAudience = visibleToAudience
+                });
+            }
+
+            var statusLines = SplitStateLines(statusesText);
+            for (var index = 0; index < statusLines.Count; index++)
+            {
+                var columns = statusLines[index].Split('|');
+                if (columns.Length != 4 || !TryParseAudienceFlag(columns[3], out var visibleToAudience))
+                {
+                    diagnostic = "状态第 " + (index + 1) + " 行格式错误，应为 ID|名称|说明|玩家可见。";
+                    runtimeState = null;
+                    return false;
+                }
+
+                runtimeState.statuses.Add(new M4PieceStatusEntry
+                {
+                    id = columns[0].Trim(),
+                    displayName = columns[1].Trim(),
+                    detail = columns[2].Trim(),
+                    visibleToAudience = visibleToAudience
+                });
+            }
+
+            var customFieldLines = SplitStateLines(customFieldsText);
+            for (var index = 0; index < customFieldLines.Count; index++)
+            {
+                var columns = customFieldLines[index].Split('|');
+                if (columns.Length != 3 || !TryParseAudienceFlag(columns[2], out var visibleToAudience))
+                {
+                    diagnostic = "自定义字段第 " + (index + 1) + " 行格式错误，应为 键|值|玩家可见。";
+                    runtimeState = null;
+                    return false;
+                }
+
+                runtimeState.customFields.Add(new M4PieceCustomField
+                {
+                    key = columns[0].Trim(),
+                    value = columns[1].Trim(),
+                    visibleToAudience = visibleToAudience
+                });
+            }
+
+            if (!M4PieceStateValidator.TryValidateRuntimeState(runtimeState, out diagnostic))
+            {
+                runtimeState = null;
+                return false;
+            }
+
+            return true;
+        }
+
+        private static List<string> SplitStateLines(string text)
+        {
+            var lines = new List<string>();
+            foreach (var line in (text ?? string.Empty).Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
+            {
+                if (!string.IsNullOrWhiteSpace(line))
+                {
+                    lines.Add(line.Trim());
+                }
+            }
+
+            return lines;
+        }
+
+        private static bool TryParseAudienceFlag(string text, out bool value)
+        {
+            switch ((text ?? string.Empty).Trim().ToLowerInvariant())
+            {
+                case "是":
+                case "可见":
+                case "true":
+                case "1":
+                    value = true;
+                    return true;
+                case "否":
+                case "不可见":
+                case "false":
+                case "0":
+                    value = false;
+                    return true;
+                default:
+                    value = false;
+                    return false;
+            }
+        }
+
         private void SelectPieceInstance(string instanceId)
         {
             if (pieceInteraction != null)
@@ -3064,6 +3406,7 @@ namespace Sundoll.Presentation
             {
                 selectedPieceDefinitionId = instance.definitionId;
                 SyncSelectedPieceDefinitionFields();
+                SyncSelectedPieceRuntimeStateFields();
                 status = "已选择棋子实例：" + instanceId;
             }
 
@@ -3577,6 +3920,11 @@ namespace Sundoll.Presentation
             {
                 selectedPieceDefinitionId = instance.definitionId;
                 SyncSelectedPieceDefinitionFields();
+                SyncSelectedPieceRuntimeStateFields();
+            }
+            else if (selectedIds == null || selectedIds.Count == 0)
+            {
+                ClearSelectedPieceRuntimeStateFields();
             }
 
             var count = selectedIds == null ? 0 : selectedIds.Count;
@@ -3688,6 +4036,7 @@ namespace Sundoll.Presentation
             selectedMapObjectId = null;
             selectedPieceDefinitionId = null;
             selectedPieceInstanceId = null;
+            ClearSelectedPieceRuntimeStateFields();
             pieceInteraction?.ClearSelection();
             lastHierarchyRevision = -1;
             lastMapListRevision = -1;
@@ -3761,6 +4110,7 @@ namespace Sundoll.Presentation
                 else
                 {
                     var location = instance.location;
+                    var runtimeState = instance.runtimeState ?? M4PieceRuntimeState.CreateDefault();
                     var locationText = location == null
                         ? "未知"
                         : location.kind + (location.kind == M1PieceLocationKind.OnBoard
@@ -3772,6 +4122,9 @@ namespace Sundoll.Presentation
                                               "旋转：" + instance.rotation + "°\n" +
                                               "翻面：" + (instance.flipped ? "是" : "否") + "\n" +
                                               "可见：" + (instance.visible ? "是" : "否") + "\n" +
+                                              "玩家可见：" + (runtimeState.audienceVisible ? "是" : "否") + "\n" +
+                                              "资源条：" + (runtimeState.resourceBars == null ? 0 : runtimeState.resourceBars.Count) + " · 状态：" + (runtimeState.statuses == null ? 0 : runtimeState.statuses.Count) + " · 自定义字段：" + (runtimeState.customFields == null ? 0 : runtimeState.customFields.Count) + "\n" +
+                                              "主持备注：" + (string.IsNullOrWhiteSpace(runtimeState.hostNote) ? "无" : "已填写") + "\n" +
                                               "堆叠：" + (location == null ? "-" : location.stackOrder) + "\n" +
                                               "容器：" + (location == null ? "-" : (location.containerPieceId ?? "-")) + "\n" +
                                               "附着：" + (location == null ? "-" : (location.attachedToPieceId ?? "-"));
@@ -3811,6 +4164,7 @@ namespace Sundoll.Presentation
                         pieceLibrary == null ? null : pieceLibrary.State,
                         instance.definitionId);
                     var location = instance.location;
+                    var runtimeState = instance.runtimeState ?? M4PieceRuntimeState.CreateDefault();
                     var locationText = location == null
                         ? "未知"
                         : location.kind == M1PieceLocationKind.OnBoard
@@ -3823,6 +4177,8 @@ namespace Sundoll.Presentation
                            "旋转：" + instance.rotation + "°\n" +
                            "翻面：" + (instance.flipped ? "是" : "否") + "\n" +
                            "主持可见：" + (instance.visible ? "是" : "否") + "\n" +
+                           "玩家可见：" + (runtimeState.audienceVisible ? "是" : "否") + "\n" +
+                           "资源条：" + (runtimeState.resourceBars == null ? 0 : runtimeState.resourceBars.Count) + " · 状态：" + (runtimeState.statuses == null ? 0 : runtimeState.statuses.Count) + " · 自定义字段：" + (runtimeState.customFields == null ? 0 : runtimeState.customFields.Count) + "\n" +
                            "堆叠：" + (location == null ? "-" : location.stackOrder) + "\n" +
                            "容器：" + (location == null ? "-" : (location.containerPieceId ?? "-")) + "\n" +
                            "附着：" + (location == null ? "-" : (location.attachedToPieceId ?? "-"));
@@ -3935,6 +4291,12 @@ namespace Sundoll.Presentation
 
             pieceRelationTargetField?.SetEnabled(hasSinglePieceSelection);
             pieceAttachmentSlotField?.SetEnabled(hasSinglePieceSelection);
+            pieceRuntimeResourceBarsField?.SetEnabled(hasSinglePieceSelection && !hostPreviewMode);
+            pieceRuntimeStatusesField?.SetEnabled(hasSinglePieceSelection && !hostPreviewMode);
+            pieceRuntimeCustomFieldsField?.SetEnabled(hasSinglePieceSelection && !hostPreviewMode);
+            pieceRuntimeHostNoteField?.SetEnabled(hasSinglePieceSelection && !hostPreviewMode);
+            pieceRuntimeAudienceVisibleToggle?.SetEnabled(hasSinglePieceSelection && !hostPreviewMode);
+            pieceRuntimeSaveButton?.SetEnabled(hasSinglePieceSelection && !hostPreviewMode);
 
             if (inspectorLabel != null)
             {
