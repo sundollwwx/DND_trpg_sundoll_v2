@@ -32,5 +32,8 @@ sysinfo.txt
 TestResults/
 SundollWorld/TestResults/
 SundollWorld/TestResults_*.xml
+# Unity Performance Testing package output. Curated performance evidence lives
+# under SundollWorld/Docs/Evidence instead of Assets/Resources.
+SundollWorld/Assets/Resources/PerformanceTestRun*.json*
 *.tmp
 *.bak
