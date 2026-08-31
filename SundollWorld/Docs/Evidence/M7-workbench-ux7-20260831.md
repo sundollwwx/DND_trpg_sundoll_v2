@@ -32,6 +32,21 @@ UX7 第一批完成 Workbench 共享 USS 的视觉兼容与布局收尾：
 
 本批次新增的 PlayMode 断言确认顶部工作区按钮可聚焦且 Tab 顺序固定为 1/2/3；在棋子库搜索框取得焦点时，Workbench 能识别文本输入焦点，随后失焦状态也能恢复。全局快捷键已让文本框优先处理 Cmd/Ctrl 操作，Escape 仍保留为全局取消手势。
 
+## 最新 macOS Player 构建
+
+焦点修复提交 `a461527` 使用一次性干净工作树完成 macOS Universal IL2CPP 构建：
+
+- BuildResult：`Succeeded`
+- Backend：`IL2CPP`
+- 架构：`x86_64 + arm64`
+- C# 编译错误：`0`
+- TypeDB 诊断：`0`
+- 产物大小：`2243173485` bytes
+- 可执行文件 SHA-256：`f3c31feb2641cb4c6967e812f7ad0fd2bc323d8fc8a8e5cbf6474ecaf23cc3e8`
+- 构建日志：`Logs/Build_macOS_clean_20260831_130035.log`
+
+构建唯一 warning 是 Unity Cloud Diagnostics 原生 symbols 上传 token 未配置；不影响 IL2CPP 产物生成。该临时构建未再次执行 Player Smoke，真实 Player 键盘手感和视觉截图仍需后续复验。
+
 ## 未关闭风险
 
 - UX7 还需要真实 Player 窗口的键盘焦点、中文布局、缩放和视觉截图复验。
