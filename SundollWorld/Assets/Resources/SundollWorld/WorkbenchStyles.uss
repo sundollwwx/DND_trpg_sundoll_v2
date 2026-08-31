@@ -172,6 +172,38 @@
     font-size: 11px;
 }
 
+.sw-host-tool-section {
+    margin-top: 10px;
+    padding-left: 9px;
+    padding-right: 9px;
+    padding-top: 9px;
+    padding-bottom: 10px;
+    background-color: rgba(24, 33, 44, 0.72);
+    border-top-width: 1px;
+    border-right-width: 1px;
+    border-bottom-width: 1px;
+    border-left-width: 1px;
+    border-top-color: #2f3d4d;
+    border-right-color: #2f3d4d;
+    border-bottom-color: #2f3d4d;
+    border-left-color: #2f3d4d;
+    border-top-left-radius: 5px;
+    border-top-right-radius: 5px;
+    border-bottom-left-radius: 5px;
+    border-bottom-right-radius: 5px;
+}
+
+.sw-host-tool-section .sw-section-title {
+    margin-bottom: 6px;
+    color: #e3c17d;
+    font-size: 13px;
+}
+
+.sw-host-tool-section .sw-muted {
+    margin-bottom: 3px;
+    font-size: 11px;
+}
+
 .sw-inspector-title {
     min-height: 28px;
     color: #f1d7a4;
@@ -414,7 +446,6 @@
 .sw-inspector-body {
     color: #e4d5b7;
     white-space: normal;
-    line-height: 1.25;
 }
 
 #MapEditorTools,

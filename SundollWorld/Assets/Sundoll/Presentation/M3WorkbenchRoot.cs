@@ -1049,28 +1049,40 @@ namespace Sundoll.Presentation
             pieceSection.Add(instanceSection);
 
             var hostSection = CreateWorkspaceSection("HostToolsScroll");
-            hostSection.Add(new Label("主持工具") { name = "HostToolsTitle" });
+            var hostTitle = new Label("主控台") { name = "HostToolsTitle" };
+            hostTitle.AddToClassList("sw-title");
+            hostSection.Add(hostTitle);
+            var hostHint = new Label("管理主持地图、控制迷雾与标注，并随时切换到玩家可见的预览投影。");
+            hostHint.AddToClassList("sw-muted");
+            hostSection.Add(hostHint);
+
+            var hostMapSection = CreateHostToolSubsection("HostMapManagement", "地图管理");
             mapIdField = new TextField("地图 ID") { name = "HostMapId" };
             mapIdField.style.marginTop = 8f;
-            hostSection.Add(mapIdField);
+            hostMapSection.Add(mapIdField);
             mapNameField = new TextField("地图名称") { name = "HostMapName" };
             mapNameField.style.marginTop = 4f;
-            hostSection.Add(mapNameField);
+            hostMapSection.Add(mapNameField);
             var switchMapButton = new Button(SwitchHostMapFromUi) { text = "切换主持地图" };
             switchMapButton.name = "SwitchHostMap";
             switchMapButton.style.marginTop = 4f;
-            hostSection.Add(switchMapButton);
+            hostMapSection.Add(switchMapButton);
             var renameMapButton = new Button(RenameHostMap) { text = "重命名当前地图" };
             renameMapButton.name = "RenameHostMap";
             renameMapButton.style.marginTop = 4f;
-            hostSection.Add(renameMapButton);
+            hostMapSection.Add(renameMapButton);
+            hostSection.Add(hostMapSection);
+
+            var hostOverviewSection = CreateHostToolSubsection("HostSessionOverview", "当前主持状态");
             consoleLabel = new Label { name = "HostConsoleBody" };
-            consoleLabel.style.marginTop = 6f;
             consoleLabel.style.whiteSpace = WhiteSpace.Normal;
-            hostSection.Add(consoleLabel);
+            hostOverviewSection.Add(consoleLabel);
+            hostSection.Add(hostOverviewSection);
 
             var hierarchySection = CreateWorkspaceSection("HierarchyScroll");
-            hierarchySection.Add(new Label("层级与地图") { name = "HierarchyTitle" });
+            var hierarchyTitle = new Label("地图与层级") { name = "HierarchyTitle" };
+            hierarchyTitle.AddToClassList("sw-title");
+            hierarchySection.Add(hierarchyTitle);
             mapListContainer = new ScrollView(ScrollViewMode.Vertical) { name = "HostMapList" };
             mapListContainer.style.marginTop = 5f;
             mapListContainer.style.maxHeight = 160f;
@@ -1081,67 +1093,78 @@ namespace Sundoll.Presentation
             hierarchyContainer.style.minHeight = 220f;
             hierarchySection.Add(hierarchyContainer);
 
-            var fogTitle = new Label("迷雾 / 标注 / 交互");
-            fogTitle.style.marginTop = 10f;
-            hostSection.Add(fogTitle);
+            var fogSection = CreateHostToolSubsection("HostFogTools", "迷雾笔刷");
+            var fogHint = new Label("选择揭示或隐藏笔刷后，在地图上拖动；也可按坐标执行单格操作。");
+            fogHint.AddToClassList("sw-muted");
+            fogSection.Add(fogHint);
             fogRadiusField = new TextField("迷雾笔刷半径") { name = "FogBrushRadius" };
             fogRadiusField.value = "1";
             fogRadiusField.style.marginTop = 4f;
-            hostSection.Add(fogRadiusField);
+            fogSection.Add(fogRadiusField);
             var revealFogBrushButton = new Button(() => SelectTool("迷雾揭示"))
             {
                 name = "RevealFogBrush",
                 text = "使用揭示迷雾笔刷"
             };
             revealFogBrushButton.style.marginTop = 4f;
-            hostSection.Add(revealFogBrushButton);
+            fogSection.Add(revealFogBrushButton);
             var hideFogBrushButton = new Button(() => SelectTool("迷雾隐藏"))
             {
                 name = "HideFogBrush",
                 text = "使用隐藏迷雾笔刷"
             };
             hideFogBrushButton.style.marginTop = 4f;
-            hostSection.Add(hideFogBrushButton);
+            fogSection.Add(hideFogBrushButton);
+            fogXField = new TextField("格子 X") { name = "FogX" };
+            fogXField.style.marginTop = 4f;
+            fogSection.Add(fogXField);
+            fogYField = new TextField("格子 Y") { name = "FogY" };
+            fogYField.style.marginTop = 4f;
+            fogSection.Add(fogYField);
+            var hideFogButton = new Button(() => SetFogFromUi(false)) { text = "隐藏格子" };
+            hideFogButton.style.marginTop = 4f;
+            fogSection.Add(hideFogButton);
+            var revealFogButton = new Button(() => SetFogFromUi(true)) { text = "揭示格子" };
+            revealFogButton.style.marginTop = 4f;
+            fogSection.Add(revealFogButton);
+            hostSection.Add(fogSection);
+
+            var annotationSection = CreateHostToolSubsection("HostAnnotationTools", "动态标注");
             var moveAnnotationButton = new Button(() => SelectTool("标注移动"))
             {
                 name = "MoveAnnotationTool",
                 text = "拖动动态标注"
             };
             moveAnnotationButton.style.marginTop = 4f;
-            hostSection.Add(moveAnnotationButton);
-            fogXField = new TextField("格子 X") { name = "FogX" };
-            fogXField.style.marginTop = 4f;
-            hostSection.Add(fogXField);
-            fogYField = new TextField("格子 Y") { name = "FogY" };
-            fogYField.style.marginTop = 4f;
-            hostSection.Add(fogYField);
-            var hideFogButton = new Button(() => SetFogFromUi(false)) { text = "隐藏格子" };
-            hideFogButton.style.marginTop = 4f;
-            hostSection.Add(hideFogButton);
-            var revealFogButton = new Button(() => SetFogFromUi(true)) { text = "揭示格子" };
-            revealFogButton.style.marginTop = 4f;
-            hostSection.Add(revealFogButton);
+            annotationSection.Add(moveAnnotationButton);
             annotationIdField = new TextField("标注 ID") { name = "AnnotationId" };
             annotationIdField.style.marginTop = 5f;
-            hostSection.Add(annotationIdField);
+            annotationSection.Add(annotationIdField);
             annotationTextField = new TextField("标注文本") { name = "AnnotationText" };
             annotationTextField.style.marginTop = 4f;
-            hostSection.Add(annotationTextField);
+            annotationSection.Add(annotationTextField);
             var upsertAnnotationButton = new Button(UpsertAnnotationFromUi) { text = "保存动态标注" };
             upsertAnnotationButton.style.marginTop = 4f;
-            hostSection.Add(upsertAnnotationButton);
+            annotationSection.Add(upsertAnnotationButton);
             var removeAnnotationButton = new Button(RemoveAnnotationFromUi) { text = "删除动态标注" };
             removeAnnotationButton.style.marginTop = 4f;
-            hostSection.Add(removeAnnotationButton);
+            annotationSection.Add(removeAnnotationButton);
+            hostSection.Add(annotationSection);
+
+            var interactionSection = CreateHostToolSubsection("HostInteractionTools", "交互对象");
+            var interactionHint = new Label("通过对象 ID 执行打开/关闭；对象也可从地图右键菜单选择。");
+            interactionHint.AddToClassList("sw-muted");
+            interactionSection.Add(interactionHint);
             interactionObjectField = new TextField("对象 ID") { name = "InteractionObjectId" };
             interactionObjectField.style.marginTop = 5f;
-            hostSection.Add(interactionObjectField);
+            interactionSection.Add(interactionObjectField);
             var openInteractionButton = new Button(() => SetInteractionFromUi(true)) { text = "打开对象" };
             openInteractionButton.style.marginTop = 4f;
-            hostSection.Add(openInteractionButton);
+            interactionSection.Add(openInteractionButton);
             var closeInteractionButton = new Button(() => SetInteractionFromUi(false)) { text = "关闭对象" };
             closeInteractionButton.style.marginTop = 4f;
-            hostSection.Add(closeInteractionButton);
+            interactionSection.Add(closeInteractionButton);
+            hostSection.Add(interactionSection);
 
             leftTabController.Add("map", "地图", mapSection);
             leftTabController.Add("pieces", "棋子", pieceSection);
@@ -1168,6 +1191,17 @@ namespace Sundoll.Presentation
         {
             var section = new VisualElement { name = name };
             section.AddToClassList("sw-piece-library-section");
+            var heading = new Label(title) { name = name + "Title" };
+            heading.AddToClassList("sw-section-title");
+            heading.style.marginTop = 0f;
+            section.Add(heading);
+            return section;
+        }
+
+        private static VisualElement CreateHostToolSubsection(string name, string title)
+        {
+            var section = new VisualElement { name = name };
+            section.AddToClassList("sw-host-tool-section");
             var heading = new Label(title) { name = name + "Title" };
             heading.AddToClassList("sw-section-title");
             heading.style.marginTop = 0f;
