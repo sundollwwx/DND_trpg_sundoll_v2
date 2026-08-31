@@ -158,4 +158,5 @@
 - UX6 验证：EditMode 97/97、PlayMode 16/16；新增状态保存/重载、Undo/Redo、Journal 连续重放、非法值原子拒绝、玩家投影过滤和 Inspector 控件断言，许可证通道握手通过。日志中的 `Access token is unavailable` 为可选远程刷新提示，不影响本次本地 entitlement 与许可证握手；本轮不重复运行 60 分钟 Soak。证据见 `Docs/Evidence/M7-workbench-ux6-20260831.md` 与最新 XML。
 - UX7 第一批已完成：共享 USS 保留原 GUID，恢复项目中心、旧诊断 Tab、棋子库网格、地图工具栏、图层状态、地图边界反馈和 Inspector 所需选择器；统一深色外壳、暖色地图画布及按钮/素材/棋子卡片状态，不改变 World Schema 或保存链路。
 - UX7 第一批验证：EditMode 97/97、PlayMode 16/16；许可证通道握手通过；未发现编译错误、USS 无效属性或测试失败。证据见 `Docs/Evidence/M7-workbench-ux7-20260831.md`。本轮不重复运行 60 分钟 Soak。
-- 下一批次：继续 UX7 真实 Player 验收，重点处理键盘焦点、中文布局、窗口缩放、空闲分配和截图。
+- UX7 第二批已完成：顶部工作区按钮具备稳定 Tab 顺序和可见焦点；文本输入获得焦点时由文本框优先处理 Cmd/Ctrl 快捷键，Escape 仍可全局取消地图或棋子操作；新增 PlayMode 焦点识别与失焦断言。第一次编译发现并修复 `Focusable` 类型访问错误后，固定通道复跑 EditMode 97/97、PlayMode 16/16 通过。
+- 下一批次：继续 UX7 真实 Player 验收，重点处理中文布局、窗口缩放、空闲分配和截图。

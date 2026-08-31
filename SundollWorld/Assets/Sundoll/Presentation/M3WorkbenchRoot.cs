@@ -164,6 +164,29 @@ namespace Sundoll.Presentation
             return primaryWorkspaceController != null && primaryWorkspaceController.Select(workspaceId);
         }
 
+        public bool IsTextInputFocused()
+        {
+            if (uiDocument == null || uiDocument.rootVisualElement == null)
+            {
+                return false;
+            }
+
+            var focused = uiDocument.rootVisualElement.focusController.focusedElement as VisualElement;
+            while (focused != null)
+            {
+                if (focused is TextField ||
+                    focused.ClassListContains("unity-base-text-field__input") ||
+                    focused.ClassListContains("unity-text-field__input"))
+                {
+                    return true;
+                }
+
+                focused = focused.parent;
+            }
+
+            return false;
+        }
+
         // The desktop performance harness is an opt-in diagnostic surface. It
         // reads the already-composed session without becoming a production UI
         // dependency or bypassing the normal command bus.
@@ -695,6 +718,7 @@ namespace Sundoll.Presentation
                 () => saveSession);
             root.Add(projectCenterPanel.Element);
             RefreshUiState();
+            root.schedule.Execute(() => primaryWorkspaceController?.FocusCurrentWorkspace()).ExecuteLater(0);
         }
 
         private void BuildWorkspacePanels(VisualElement workspaceHost, VisualElement root)

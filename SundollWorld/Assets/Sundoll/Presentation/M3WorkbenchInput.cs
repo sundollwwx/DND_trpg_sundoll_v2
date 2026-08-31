@@ -134,6 +134,14 @@ namespace Sundoll.Presentation
                 return;
             }
 
+            // Let TextField own Cmd/Ctrl shortcuts while editing names, IDs,
+            // notes, and status data. Escape remains a global cancel gesture so
+            // an in-progress map or piece drag can always be abandoned.
+            if (!keyboard.escapeKey.wasPressedThisFrame && root.IsTextInputFocused())
+            {
+                return;
+            }
+
             var command = keyboard.leftCommandKey.isPressed || keyboard.rightCommandKey.isPressed ||
                           keyboard.leftCtrlKey.isPressed || keyboard.rightCtrlKey.isPressed;
             if (command && keyboard.zKey.wasPressedThisFrame)

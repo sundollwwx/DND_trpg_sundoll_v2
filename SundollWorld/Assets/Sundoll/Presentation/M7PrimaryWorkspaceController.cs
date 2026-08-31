@@ -46,6 +46,10 @@ namespace Sundoll.Presentation
             var capturedId = workspaceId;
             var button = new Button(() => Select(capturedId)) { text = label };
             button.name = "PrimaryWorkspace_" + workspaceId;
+            button.focusable = true;
+            // Keep the three top-level destinations first and deterministic in
+            // keyboard navigation, independent of later panel controls.
+            button.tabIndex = buttons.Count + 1;
             button.AddToClassList("sw-workspace-button");
             buttons.Add(workspaceId, button);
             Navigation.Add(button);
@@ -79,6 +83,18 @@ namespace Sundoll.Presentation
                 WorkspaceChanged?.Invoke(workspaceId);
             }
 
+            return true;
+        }
+
+        public bool FocusCurrentWorkspace()
+        {
+            if (string.IsNullOrEmpty(CurrentWorkspaceId) ||
+                !buttons.TryGetValue(CurrentWorkspaceId, out var button))
+            {
+                return false;
+            }
+
+            button.Focus();
             return true;
         }
     }

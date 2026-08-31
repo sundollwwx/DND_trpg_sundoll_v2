@@ -22,13 +22,15 @@ UX7 第一批完成 Workbench 共享 USS 的视觉兼容与布局收尾：
 
 | 套件 | 结果 | 证据 |
 | --- | --- | --- |
-| EditMode | 97/97 passed，0 failed，0 skipped | `TestResults/Local/TestResults_EditMode_20260831_124959.xml` |
-| PlayMode | 16/16 passed，0 failed，0 skipped | `TestResults/Local/TestResults_PlayMode_20260831_124959.xml` |
-| License handshake | Passed | `Logs/Test_EditMode_20260831_124959.log`、`Logs/Test_PlayMode_20260831_124959.log` |
+| EditMode | 97/97 passed，0 failed，0 skipped | `TestResults/Local/TestResults_EditMode_20260831_125749.xml` |
+| PlayMode | 16/16 passed，0 failed，0 skipped | `TestResults/Local/TestResults_PlayMode_20260831_125749.xml` |
+| License handshake | Passed | `Logs/Test_EditMode_20260831_125749.log`、`Logs/Test_PlayMode_20260831_125749.log` |
 
 ## 日志说明
 
-两次 Unity 日志均确认以原样式 GUID 导入 `WorkbenchStyles.uss`，并成功解析版本专用许可证。未发现编译错误、USS 无效属性、重连失败或测试失败。日志中的 `Access token is unavailable; failed to update` 属于可选远程刷新提示，不影响本地 entitlement。
+验证迭代中第一次运行在编译阶段发现 `M3WorkbenchRoot.cs` 对 `Focusable` 直接访问 `ClassListContains` 和 `parent` 的 `CS1061` 错误；已改为安全转换为 `VisualElement` 后重跑。第二次运行确认以原样式 GUID 导入 `WorkbenchStyles.uss`，无 C# 编译错误、USS 无效属性、重连失败或测试失败。日志中的 `Access token is unavailable; failed to update` 属于可选远程刷新提示，不影响本地 entitlement。
+
+本批次新增的 PlayMode 断言确认顶部工作区按钮可聚焦且 Tab 顺序固定为 1/2/3；在棋子库搜索框取得焦点时，Workbench 能识别文本输入焦点，随后失焦状态也能恢复。全局快捷键已让文本框优先处理 Cmd/Ctrl 操作，Escape 仍保留为全局取消手势。
 
 ## 未关闭风险
 
